@@ -48,7 +48,6 @@ export async function checkCPFExists(cpf: string) {
     
     
     const supabase = getServiceSupabase()
-    const clean = cleanCPF(cpf)
 
     // Check if already applied
     const { data: existingUser } = await supabase
