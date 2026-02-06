@@ -175,6 +175,12 @@ CREATE POLICY "Qualquer um pode validar cartão via token"
   FOR SELECT
   USING (validation_token IS NOT NULL);
 
+-- Política para permitir inserções públicas (solicitações de cadastro)
+CREATE POLICY "Qualquer um pode criar solicitação"
+  ON public.users_cards
+  FOR INSERT
+  WITH CHECK (true);
+
 -- ==============================================================================
 -- SUCESSO!
 -- ==============================================================================

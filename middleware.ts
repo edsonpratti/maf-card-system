@@ -63,7 +63,7 @@ export async function middleware(request: NextRequest) {
     // Permitir acesso à página de login sem autenticação
     if (request.nextUrl.pathname === '/admin/login') {
       // Se já está autenticado e é admin, redirecionar para dashboard
-      if (user && user.user_metadata?.role === 'admin') {
+      if (user && (user.user_metadata?.is_admin === true || user.app_metadata?.is_admin === true)) {
         return NextResponse.redirect(new URL('/admin/dashboard', request.url))
       }
       return response
@@ -74,8 +74,9 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/admin/login', request.url))
     }
 
-    // Verificar se o usuário tem role de admin
-    if (user.user_metadata?.role !== 'admin') {
+    // Verificar se o usuário tem permissão de admin
+    const isAdmin = user.user_metadata?.is_admin === true || user.app_metadata?.is_admin === true
+    if (!isAdmin) {
       // Usuário autenticado mas não é admin - redirecionar para página principal
       return NextResponse.redirect(new URL('/', request.url))
     }
