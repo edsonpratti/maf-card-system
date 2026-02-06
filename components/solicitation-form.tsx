@@ -11,11 +11,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner"
 import { checkCPFExists, submitApplication } from "@/app/actions/solicitar"
 import { Loader2 } from "lucide-react"
+import { formatCEP, formatPhone } from "@/lib/utils"
 
 export default function SolicitationForm() {
     const [loading, setLoading] = useState(false)
     const [cpfStatus, setCpfStatus] = useState<"initial" | "found" | "not_found" | "checking">("initial")
-    const [studentName, setStudentName] = useState("")
+
 
     const form = useForm<StudentFormData>({
         resolver: zodResolver(studentSchema),
@@ -36,10 +37,15 @@ export default function SolicitationForm() {
         },
     })
 
+    // Update handleCPFBlur to validate first
     const handleCPFBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
-        const cpf = e.target.value
-        if (cpf.length < 11) return
+        const isValid = await form.trigger("cpf")
+        if (!isValid) {
+            setCpfStatus("initial")
+            return
+        }
 
+        const cpf = e.target.value
         setCpfStatus("checking")
         try {
             const result = await checkCPFExists(cpf)
@@ -50,7 +56,7 @@ export default function SolicitationForm() {
             }
 
             if (result.exists && result.name) {
-                setStudentName(result.name)
+
                 form.setValue("name", result.name)
                 setCpfStatus("found")
                 toast.success(result.message)
@@ -64,6 +70,34 @@ export default function SolicitationForm() {
             setCpfStatus("initial")
         }
     }
+
+    const cpfRegister = form.register("cpf")
+
+    const handleCEPBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
+        const cep = e.target.value.replace(/\D/g, "")
+        if (cep.length !== 8) return
+
+        try {
+            const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`)
+            const data = await response.json()
+
+            if (data.erro) {
+                toast.error("CEP não encontrado")
+                return
+            }
+
+            form.setValue("address.street", data.logradouro)
+            form.setValue("address.neighborhood", data.bairro)
+            form.setValue("address.city", data.localidade)
+            form.setValue("address.state", data.uf)
+            // Focus on number field automatically for better UX
+            form.setFocus("address.number")
+        } catch (error) {
+            console.error("Erro ao buscar CEP:", error)
+        }
+    }
+
+
 
     const onSubmit = async (data: StudentFormData) => {
         setLoading(true)
@@ -83,8 +117,21 @@ export default function SolicitationForm() {
         // Handle file upload if needed (manual via input ref or controlled input)
         // For simplicity, assuming file input exists and we grab it from DOM or state if not using controlled
         const fileInput = document.getElementById("certificate") as HTMLInputElement
-        if (cpfStatus === "not_found" && fileInput?.files?.[0]) {
-            formData.append("certificate", fileInput.files[0])
+        if (cpfStatus === "not_found") {
+            const file = fileInput?.files?.[0]
+            if (file) {
+                if (file.size > 5 * 1024 * 1024) {
+                    toast.error("O arquivo deve ter no máximo 5MB.")
+                    setLoading(false)
+                    return
+                }
+                formData.append("certificate", file)
+            } else {
+                // Should be caught by 'required' attribute on input, but safe to check
+                toast.error("Por favor, faça o upload do certificado.")
+                setLoading(false)
+                return
+            }
         }
 
         try {
@@ -116,8 +163,11 @@ export default function SolicitationForm() {
                         <Input
                             id="cpf"
                             placeholder="000.000.000-00"
-                            {...form.register("cpf")}
-                            onBlur={handleCPFBlur}
+                            {...cpfRegister}
+                            onBlur={(e) => {
+                                cpfRegister.onBlur(e)
+                                handleCPFBlur(e)
+                            }}
                         />
                         {form.formState.errors.cpf && (
                             <p className="text-sm text-red-500">{form.formState.errors.cpf.message}</p>
@@ -140,7 +190,15 @@ export default function SolicitationForm() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="whatsapp">WhatsApp</Label>
-                            <Input id="whatsapp" {...form.register("whatsapp")} placeholder="(00) 00000-0000" />
+                            <Input
+                                id="whatsapp"
+                                {...form.register("whatsapp")}
+                                placeholder="(00) 00000-0000"
+                                onChange={(e) => {
+                                    e.target.value = formatPhone(e.target.value)
+                                    form.register("whatsapp").onChange(e)
+                                }}
+                            />
                             {form.formState.errors.whatsapp && (
                                 <p className="text-sm text-red-500">{form.formState.errors.whatsapp.message}</p>
                             )}
@@ -157,8 +215,22 @@ export default function SolicitationForm() {
                     {/* Address Fields Simplified */}
                     <div className="space-y-2">
                         <Label htmlFor="cep">CEP</Label>
-                        <Input id="cep" {...form.register("address.cep")} placeholder="00000-000" />
+                        <Input
+                            id="cep"
+                            {...form.register("address.cep")}
+                            placeholder="00000-000"
+                            onChange={(e) => {
+                                e.target.value = formatCEP(e.target.value)
+                                form.register("address.cep").onChange(e)
+                            }}
+                            onBlur={(e) => {
+                                form.register("address.cep").onBlur(e)
+                                handleCEPBlur(e)
+                            }}
+                        />
                     </div>
+
+
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="street">Rua</Label>
@@ -181,7 +253,15 @@ export default function SolicitationForm() {
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="state">Estado (UF)</Label>
-                        <Input id="state" {...form.register("address.state")} maxLength={2} />
+                        <Input
+                            id="state"
+                            {...form.register("address.state")}
+                            maxLength={2}
+                            onChange={(e) => {
+                                e.target.value = e.target.value.toUpperCase()
+                                form.register("address.state").onChange(e)
+                            }}
+                        />
                     </div>
 
                     {cpfStatus === "not_found" && (
