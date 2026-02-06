@@ -1,4 +1,4 @@
-import { SearchParams } from "next/navigation"
+
 import Link from "next/link"
 import { getRequests } from "@/app/actions/admin"
 import { Button } from "@/components/ui/button"
