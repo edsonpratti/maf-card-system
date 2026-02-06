@@ -47,6 +47,46 @@ npm run dev
 
 Acesse `http://localhost:3000`.
 
+## Configuração do Admin
+
+Para acessar o painel administrativo em `/admin`, você precisa criar um usuário com role de admin:
+
+### Método 1: Via Dashboard do Supabase
+1. Acesse o Dashboard do Supabase → Authentication → Users
+2. Crie um novo usuário com email e senha
+3. Após criar, clique no usuário e vá em "Raw User Meta Data"
+4. Adicione o seguinte JSON:
+   ```json
+   {
+     "role": "admin"
+   }
+   ```
+5. Salve as alterações
+
+### Método 2: Via SQL
+Execute no SQL Editor do Supabase:
+```sql
+-- Primeiro, crie o usuário via Dashboard ou Auth API
+-- Depois, atualize os metadados:
+UPDATE auth.users 
+SET raw_user_meta_data = jsonb_set(
+  COALESCE(raw_user_meta_data, '{}'::jsonb),
+  '{role}',
+  '"admin"'
+)
+WHERE email = 'seu-email-admin@example.com';
+```
+
+### Credenciais Padrão
+**Não existem credenciais padrão por segurança.** Você deve criar seu próprio usuário admin usando um dos métodos acima.
+
+### Acesso ao Admin
+- **URL**: `http://localhost:3000/admin/login`
+- **Email**: O que você configurou no Supabase
+- **Senha**: A que você definiu ao criar o usuário
+
+**Importante**: Apenas usuários com `user_metadata.role = "admin"` podem acessar rotas `/admin/*`. O middleware verifica automaticamente essa permissão.
+
 ## Deploy na Vercel
 
 1. Importe o projeto na Vercel.

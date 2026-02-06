@@ -5,7 +5,48 @@ import { cleanCPF } from "@/lib/utils"
 import { z } from "zod"
 import { studentSchema } from "@/lib/validators"
 
+// Rate limiting helper (simple in-memory implementation)
+// For production, consider using Redis or similar
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+
+function checkRateLimit(identifier: string, maxAttempts: number = 10, windowMs: number = 60000): boolean {
+    const now = Date.now()
+    const record = rateLimitMap.get(identifier)
+    
+    if (!record || now > record.resetAt) {
+        rateLimitMap.set(identifier, { count: 1, resetAt: now + windowMs })
+        return true
+    }
+    
+    if (record.count >= maxAttempts) {
+        return false
+    }
+    
+    record.count++
+    return true
+}
+
 export async function checkCPFExists(cpf: string) {
+    // Basic input validation
+    const clean = cleanCPF(cpf)
+    if (!clean || clean.length !== 11) {
+        return {
+            exists: false,
+            alreadyApplied: false,
+            message: "CPF inválido."
+        }
+    }
+    
+    // Rate limiting by CPF
+    if (!checkRateLimit(`cpf-check-${clean}`, 5, 60000)) {
+        return {
+            exists: false,
+            alreadyApplied: false,
+            message: "Muitas tentativas. Aguarde um minuto."
+        }
+    }
+    
+    
     const supabase = getServiceSupabase()
     const clean = cleanCPF(cpf)
 
@@ -69,6 +110,21 @@ export async function submitApplication(prevState: any, formData: FormData) {
     }
 
     const cpfClean = cleanCPF(rawData.cpf as string)
+    
+    // Basic validation
+    if (!cpfClean || cpfClean.length !== 11) {
+        return { success: false, message: "CPF inválido." }
+    }
+    
+    // Rate limiting by CPF to prevent spam
+    if (!checkRateLimit(`submit-${cpfClean}`, 3, 3600000)) { // 3 attempts per hour
+        return { success: false, message: "Muitas tentativas. Aguarde antes de tentar novamente." }
+    }
+    
+    // Additional validation for required fields
+    if (!rawData.name || !rawData.email || !rawData.whatsapp) {
+        return { success: false, message: "Todos os campos obrigatórios devem ser preenchidos." }
+    }
 
     // Validate using Zod
     // Note: We need to adapt the rawData to match the schema expectations if needed, 

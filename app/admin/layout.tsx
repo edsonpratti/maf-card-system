@@ -1,12 +1,14 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Users, FileText, Database, Shield, LogOut } from "lucide-react"
+import { adminLogout, getCurrentAdmin } from "@/app/actions/admin"
 
-export default function AdminLayout({
+export default async function AdminLayout({
     children,
 }: {
     children: React.ReactNode
 }) {
+    const user = await getCurrentAdmin()
     return (
         <div className="flex h-screen bg-muted/40">
             <aside className="hidden w-64 flex-col border-r bg-background lg:flex">
@@ -54,10 +56,17 @@ export default function AdminLayout({
                     </ul>
                 </nav>
                 <div className="border-t p-4">
-                    <Button variant="ghost" className="w-full justify-start gap-3">
-                        <LogOut className="h-4 w-4" />
-                        Sair
-                    </Button>
+                    {user && (
+                        <div className="mb-2 px-3 text-xs text-muted-foreground">
+                            {user.email}
+                        </div>
+                    )}
+                    <form action={adminLogout}>
+                        <Button type="submit" variant="ghost" className="w-full justify-start gap-3">
+                            <LogOut className="h-4 w-4" />
+                            Sair
+                        </Button>
+                    </form>
                 </div>
             </aside>
             <main className="flex-1 overflow-auto p-4 lg:p-6">

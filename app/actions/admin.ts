@@ -2,11 +2,16 @@
 
 import { getServiceSupabase } from "@/lib/supabase"
 import { revalidatePath } from "next/cache"
+import { redirect } from "next/navigation"
+import { cookies } from "next/headers"
+import { createServerClient } from "@supabase/ssr"
+import { verifyAdminAccess } from "@/lib/auth"
 
-// TODO: In real app, check if current user is admin using getUser() and metadata
-// For MVP, we assume admin routes are protected by middleware or layout check
+// Admin actions - protected by middleware and additional checks
 
 export async function getRequests(filterStatus?: string) {
+    await verifyAdminAccess()
+    
     const supabase = getServiceSupabase()
     let query = supabase
         .from("users_cards")
@@ -28,6 +33,8 @@ export async function getRequests(filterStatus?: string) {
 }
 
 export async function updateRequestStatus(id: string, newStatus: string, reason?: string) {
+    const user = await verifyAdminAccess()
+    
     const supabase = getServiceSupabase()
 
     const updateData: any = {
@@ -57,6 +64,7 @@ export async function updateRequestStatus(id: string, newStatus: string, reason?
 
     // Log action
     await supabase.from("admin_audit_logs").insert({
+        admin_id: user.id,
         action: newStatus,
         target_user_id: id,
         metadata: { reason },
@@ -67,6 +75,8 @@ export async function updateRequestStatus(id: string, newStatus: string, reason?
 }
 
 export async function deleteRequest(id: string) {
+    await verifyAdminAccess()
+    
     const supabase = getServiceSupabase()
     const { error } = await supabase.from("users_cards").delete().eq("id", id)
 
@@ -76,4 +86,171 @@ export async function deleteRequest(id: string) {
 
     revalidatePath("/admin/solicitacoes")
     return { success: true }
+}
+
+export async function getDashboardStats() {
+    await verifyAdminAccess()
+    
+    const supabase = getServiceSupabase()
+
+    // Get total pending approvals (waitlist manual)
+    const { count: pendingCount } = await supabase
+        .from("users_cards")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "WAITLIST_MANUAL")
+
+    // Get total issued cards
+    const { count: issuedCount } = await supabase
+        .from("users_cards")
+        .select("*", { count: "exact", head: true })
+        .in("status", ["APROVADA_MANUAL", "AUTO_APROVADA"])
+
+    // Get rejected in last 30 days
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+    const { count: rejectedCount } = await supabase
+        .from("users_cards")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "RECUSADA")
+        .gte("updated_at", thirtyDaysAgo.toISOString())
+
+    // Get issued this month for growth calculation
+    const firstDayOfMonth = new Date()
+    firstDayOfMonth.setDate(1)
+    firstDayOfMonth.setHours(0, 0, 0, 0)
+
+    const { count: issuedThisMonth } = await supabase
+        .from("users_cards")
+        .select("*", { count: "exact", head: true })
+        .in("status", ["APROVADA_MANUAL", "AUTO_APROVADA"])
+        .gte("issued_at", firstDayOfMonth.toISOString())
+
+    // Get issued last month for growth calculation
+    const firstDayOfLastMonth = new Date(firstDayOfMonth)
+    firstDayOfLastMonth.setMonth(firstDayOfLastMonth.getMonth() - 1)
+    const lastDayOfLastMonth = new Date(firstDayOfMonth)
+    lastDayOfLastMonth.setDate(lastDayOfLastMonth.getDate() - 1)
+
+    const { count: issuedLastMonth } = await supabase
+        .from("users_cards")
+        .select("*", { count: "exact", head: true })
+        .in("status", ["APROVADA_MANUAL", "AUTO_APROVADA"])
+        .gte("issued_at", firstDayOfLastMonth.toISOString())
+        .lte("issued_at", lastDayOfLastMonth.toISOString())
+
+    // Calculate growth percentage
+    let growthPercentage = 0
+    if (issuedLastMonth && issuedLastMonth > 0) {
+        growthPercentage = Math.round(((issuedThisMonth || 0) - issuedLastMonth) / issuedLastMonth * 100)
+    } else if (issuedThisMonth && issuedThisMonth > 0) {
+        growthPercentage = 100
+    }
+
+    return {
+        pending: pendingCount || 0,
+        issued: issuedCount || 0,
+        rejected: rejectedCount || 0,
+        growthPercentage,
+        issuedThisMonth: issuedThisMonth || 0,
+    }
+}
+
+export async function adminLogout() {
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                get(name: string) {
+                    return cookieStore.get(name)?.value
+                },
+                set(name: string, value: string, options: any) {
+                    cookieStore.set({ name, value, ...options })
+                },
+                remove(name: string, options: any) {
+                    cookieStore.set({ name, value: '', ...options })
+                },
+            },
+        }
+    )
+
+    await supabase.auth.signOut()
+    redirect("/admin/login")
+}
+
+export async function getCurrentAdmin() {
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                get(name: string) {
+                    return cookieStore.get(name)?.value
+                },
+                set(name: string, value: string, options: any) {
+                    cookieStore.set({ name, value, ...options })
+                },
+                remove(name: string, options: any) {
+                    cookieStore.set({ name, value: '', ...options })
+                },
+            },
+        }
+    )
+
+    const { data: { user } } = await supabase.auth.getUser()
+    return user
+}
+
+export async function getAuditLogs(filters?: {
+    action?: string
+    startDate?: string
+    endDate?: string
+    limit?: number
+}) {
+    const supabase = getServiceSupabase()
+    
+    let query = supabase
+        .from("admin_audit_logs")
+        .select(`
+            *,
+            users_cards:target_user_id (
+                name,
+                cpf,
+                email
+            )
+        `)
+        .order("created_at", { ascending: false })
+
+    if (filters?.action && filters.action !== "ALL") {
+        query = query.eq("action", filters.action)
+    }
+
+    if (filters?.startDate) {
+        query = query.gte("created_at", filters.startDate)
+    }
+
+    if (filters?.endDate) {
+        // Add one day to include the entire end date
+        const endDate = new Date(filters.endDate)
+        endDate.setDate(endDate.getDate() + 1)
+        query = query.lt("created_at", endDate.toISOString())
+    }
+
+    if (filters?.limit) {
+        query = query.limit(filters.limit)
+    } else {
+        query = query.limit(100) // Default limit
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+        console.error("Error fetching audit logs:", error)
+        return []
+    }
+
+    return data || []
 }

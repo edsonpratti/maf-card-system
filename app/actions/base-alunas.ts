@@ -3,6 +3,7 @@
 import { getServiceSupabase } from "@/lib/supabase"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
+import { verifyAdminAccess } from "@/lib/auth"
 
 const baseSchema = z.object({
     name: z.string().min(3),
@@ -10,6 +11,8 @@ const baseSchema = z.object({
 })
 
 export async function addStudent(prevState: any, formData: FormData) {
+    await verifyAdminAccess()
+    
     const supabase = getServiceSupabase()
     const name = formData.get("name") as string
     const cpf = (formData.get("cpf") as string).replace(/\D/g, "")
@@ -36,6 +39,8 @@ export async function addStudent(prevState: any, formData: FormData) {
 }
 
 export async function importCSV(prevState: any, formData: FormData) {
+    await verifyAdminAccess()
+    
     const file = formData.get("file") as File
     if (!file) {
         return { success: false, message: "Arquivo obrigatório." }
@@ -74,6 +79,8 @@ export async function importCSV(prevState: any, formData: FormData) {
 }
 
 export async function deleteStudent(id: string) {
+    await verifyAdminAccess()
+    
     const supabase = getServiceSupabase()
     await supabase.from("students_base").delete().eq("id", id)
     revalidatePath("/admin/base-alunas")
