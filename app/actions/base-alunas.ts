@@ -10,8 +10,23 @@ const baseSchema = z.object({
     cpf: z.string().length(11), // Clean CPF
 })
 
+// Helper function to create audit logs
+async function createAuditLog(
+    adminUserId: string,
+    action: string,
+    metadata: any = {}
+) {
+    const supabase = getServiceSupabase()
+    await supabase.from("admin_audit_logs").insert({
+        admin_user_id: adminUserId,
+        action,
+        target_user_id: null,
+        metadata,
+    })
+}
+
 export async function addStudent(prevState: any, formData: FormData) {
-    await verifyAdminAccess()
+    const user = await verifyAdminAccess()
     
     const supabase = getServiceSupabase()
     const name = formData.get("name") as string
@@ -34,12 +49,15 @@ export async function addStudent(prevState: any, formData: FormData) {
         return { success: false, message: error.message }
     }
 
+    // Log action
+    await createAuditLog(user.id, "ADD_STUDENT", { name, cpf })
+
     revalidatePath("/admin/base-alunas")
     return { success: true, message: "Aluna adicionada!" }
 }
 
 export async function importCSV(prevState: any, formData: FormData) {
-    await verifyAdminAccess()
+    const user = await verifyAdminAccess()
     
     const file = formData.get("file") as File
     if (!file) {
@@ -74,14 +92,31 @@ export async function importCSV(prevState: any, formData: FormData) {
         return { success: false, message: "Erro na importação: " + error.message }
     }
 
+    // Log action
+    await createAuditLog(user.id, "UPLOAD_CSV", { count: students.length, fileName: file.name })
+
     revalidatePath("/admin/base-alunas")
     return { success: true, message: `${students.length} alunas importadas!` }
 }
 
 export async function deleteStudent(id: string) {
-    await verifyAdminAccess()
+    const user = await verifyAdminAccess()
     
     const supabase = getServiceSupabase()
+    
+    // Get student info before deleting
+    const { data: student } = await supabase
+        .from("students_base")
+        .select("name, cpf")
+        .eq("id", id)
+        .single()
+    
     await supabase.from("students_base").delete().eq("id", id)
+    
+    // Log action
+    if (student) {
+        await createAuditLog(user.id, "DELETE_STUDENT", { name: student.name, cpf: student.cpf })
+    }
+    
     revalidatePath("/admin/base-alunas")
 }

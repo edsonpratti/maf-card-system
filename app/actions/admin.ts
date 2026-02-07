@@ -9,6 +9,30 @@ import { verifyAdminAccess } from "@/lib/auth"
 
 // Admin actions - protected by middleware and additional checks
 
+// Helper function to create audit logs
+async function createAuditLog(
+    adminUserId: string,
+    action: string,
+    targetUserId: string | null = null,
+    metadata: any = {}
+) {
+    const supabase = getServiceSupabase()
+    console.log("📝 Criando log de auditoria:", { adminUserId, action, targetUserId, metadata })
+    
+    const { data, error } = await supabase.from("admin_audit_logs").insert({
+        admin_user_id: adminUserId,
+        action,
+        target_user_id: targetUserId,
+        metadata,
+    }).select()
+    
+    if (error) {
+        console.error("❌ Erro ao criar log:", error)
+    } else {
+        console.log("✅ Log criado com sucesso:", data)
+    }
+}
+
 export async function getRequests(filterStatus?: string) {
     await verifyAdminAccess()
     
@@ -63,19 +87,14 @@ export async function updateRequestStatus(id: string, newStatus: string, reason?
     }
 
     // Log action
-    await supabase.from("admin_audit_logs").insert({
-        admin_id: user.id,
-        action: newStatus,
-        target_user_id: id,
-        metadata: { reason },
-    })
+    await createAuditLog(user.id, newStatus, id, { reason })
 
     revalidatePath("/admin/solicitacoes")
     return { success: true }
 }
 
 export async function deleteRequest(id: string) {
-    await verifyAdminAccess()
+    const user = await verifyAdminAccess()
     
     const supabase = getServiceSupabase()
     const { error } = await supabase.from("users_cards").delete().eq("id", id)
@@ -83,6 +102,9 @@ export async function deleteRequest(id: string) {
     if (error) {
         return { success: false, message: error.message }
     }
+
+    // Log action
+    await createAuditLog(user.id, "DELETE_REQUEST", id)
 
     revalidatePath("/admin/solicitacoes")
     return { success: true }
@@ -210,6 +232,8 @@ export async function getAuditLogs(filters?: {
     endDate?: string
     limit?: number
 }) {
+    await verifyAdminAccess()
+    
     const supabase = getServiceSupabase()
     
     let query = supabase
@@ -249,6 +273,50 @@ export async function getAuditLogs(filters?: {
 
     if (error) {
         console.error("Error fetching audit logs:", error)
+        return []
+    }
+
+    console.log("📊 Logs encontrados:", data?.length || 0)
+    if (data && data.length > 0) {
+        console.log("Primeiro log:", data[0])
+    }
+
+    return data || []
+}
+
+export async function createTestLog() {
+    const user = await verifyAdminAccess()
+    
+    console.log("🧪 Criando log de teste...")
+    await createAuditLog(
+        user.id,
+        "TESTE_SISTEMA",
+        null,
+        { 
+            teste: true, 
+            timestamp: new Date().toISOString(),
+            mensagem: "Log de teste criado manualmente"
+        }
+    )
+    
+    revalidatePath("/admin/logs")
+    return { success: true, message: "Log de teste criado!" }
+}
+
+export async function getRegisteredStudents() {
+    await verifyAdminAccess()
+    
+    const supabase = getServiceSupabase()
+    
+    // Busca alunas que fizeram login e foram autorizadas (status aprovado)
+    const { data, error } = await supabase
+        .from("users_cards")
+        .select("*")
+        .in("status", ["APROVADA_MANUAL", "AUTO_APROVADA"])
+        .order("created_at", { ascending: false })
+
+    if (error) {
+        console.error("Error fetching registered students:", error)
         return []
     }
 

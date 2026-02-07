@@ -28,10 +28,10 @@ export default function Home() {
             <div className="flex flex-col items-center space-y-4 text-center">
               <div className="space-y-2">
                 <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-teal-500">
-                  Carteirinha de Habilitada MAF
+                  Portal MAF Habilitada
                 </h1>
                 <p className="mx-auto max-w-[700px] text-gray-500 md:text-xl dark:text-gray-400">
-                  Emita sua carteirinha digital, comprove sua formação e acesse benefícios exclusivos da comunidade MAF.
+                  Acesse seu portal exclusivo: carteirinha digital, materiais didáticos, vídeo aulas e muito mais.
                 </p>
               </div>
               <div className="space-x-4">
@@ -41,8 +41,8 @@ export default function Home() {
                   </Link>
                 </Button>
                 <Button variant="outline" size="lg" asChild>
-                  <Link href="/login">
-                    Já sou cadastrada
+                  <Link href="/portal">
+                    Acessar Portal
                   </Link>
                 </Button>
               </div>

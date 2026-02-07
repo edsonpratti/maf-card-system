@@ -1,10 +1,49 @@
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Download } from "lucide-react"
+import { ModuleCard } from "@/components/modules/module-card"
+import { CreditCard, FileText, Video, Users } from "lucide-react"
+import { Module } from "@/lib/modules"
+
+const modules: Module[] = [
+  {
+    id: 'carteira-profissional',
+    title: 'Carteira Profissional',
+    description: 'Solicite e gerencie sua carteirinha de habilitada MAF',
+    icon: CreditCard,
+    href: '/portal/carteira-profissional',
+    color: 'bg-gradient-to-br from-blue-500 to-blue-600',
+    status: 'active',
+    badge: 'Ativo'
+  },
+  {
+    id: 'arquivos',
+    title: 'Biblioteca de Arquivos',
+    description: 'Acesse apostilas, materiais didáticos e documentos',
+    icon: FileText,
+    href: '/portal/arquivos',
+    color: 'bg-gradient-to-br from-green-500 to-green-600',
+    status: 'coming-soon'
+  },
+  {
+    id: 'video-aulas',
+    title: 'Vídeo Aulas',
+    description: 'Assista aulas gravadas e conteúdos exclusivos',
+    icon: Video,
+    href: '/portal/video-aulas',
+    color: 'bg-gradient-to-br from-purple-500 to-purple-600',
+    status: 'coming-soon'
+  },
+  {
+    id: 'rede-social',
+    title: 'Rede Social MAF',
+    description: 'Conecte-se com outras habilitadas da comunidade',
+    icon: Users,
+    href: '/portal/rede-social',
+    color: 'bg-gradient-to-br from-pink-500 to-pink-600',
+    status: 'coming-soon'
+  }
+]
 
 export default async function PortalPage() {
     const cookieStore = await cookies()
@@ -27,89 +66,29 @@ export default async function PortalPage() {
         redirect("/login")
     }
 
-    // Buscar a carteirinha da usuária logada
-    const { data: userCard } = await supabase
-        .from('users_cards')
-        .select('*')
-        .eq('email', user.email)
-        .single()
-
-    const statusMap: Record<string, string> = {
-        pending: 'PENDENTE',
-        approved: 'APROVADA',
-        rejected: 'REJEITADA'
-    }
-
-    const statusColorMap: Record<string, string> = {
-        pending: 'bg-yellow-500',
-        approved: 'bg-green-500',
-        rejected: 'bg-red-500'
-    }
-
     return (
         <div className="container py-10">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold">Portal da Aluna</h1>
-                <p className="text-sm text-muted-foreground">Logada como: {user.email}</p>
+            <div className="flex flex-col gap-2 mb-8">
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-teal-500 bg-clip-text text-transparent">
+                    Portal da Aluna
+                </h1>
+                <p className="text-muted-foreground">
+                    Bem-vinda, {user.email}
+                </p>
             </div>
-            <Card>
-                <CardHeader>
-                    <CardTitle>Minha Solicitação</CardTitle>
-                    <CardDescription>Acompanhe o status da sua carteirinha.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {userCard ? (
-                        <>
-                            <div className="flex items-center justify-between border p-4 rounded-md">
-                                <div>
-                                    <p className="font-medium">Status Atual</p>
-                                    <p className="text-sm text-muted-foreground">
-                                        Última atualização: {new Date(userCard.updated_at || userCard.created_at).toLocaleDateString('pt-BR')}
-                                    </p>
-                                </div>
-                                <Badge className={statusColorMap[userCard.status] || 'bg-gray-500'}>
-                                    {statusMap[userCard.status] || userCard.status}
-                                </Badge>
-                            </div>
 
-                            <div className="space-y-2 border p-4 rounded-md">
-                                <p className="text-sm"><span className="font-medium">Nome:</span> {userCard.full_name}</p>
-                                <p className="text-sm"><span className="font-medium">CPF:</span> {userCard.cpf}</p>
-                                <p className="text-sm"><span className="font-medium">Email:</span> {userCard.email}</p>
-                            </div>
+            <div className="mb-6">
+                <h2 className="text-2xl font-semibold mb-2">Módulos Disponíveis</h2>
+                <p className="text-sm text-muted-foreground">
+                    Escolha um módulo para acessar seus recursos
+                </p>
+            </div>
 
-                            {userCard.status === 'approved' && userCard.qr_code_token && (
-                                <Button asChild variant="default" className="w-full">
-                                    <a href={`/validar/${userCard.qr_code_token}`} target="_blank" rel="noopener noreferrer">
-                                        <Download className="mr-2 h-4 w-4" />
-                                        Visualizar Carteirinha
-                                    </a>
-                                </Button>
-                            )}
-
-                            {userCard.status === 'pending' && (
-                                <div className="bg-blue-50 p-4 rounded-md text-sm text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
-                                    <p>Sua solicitação está em análise. Você receberá um e-mail quando for aprovada.</p>
-                                </div>
-                            )}
-
-                            {userCard.status === 'rejected' && userCard.admin_notes && (
-                                <div className="bg-red-50 p-4 rounded-md text-sm text-red-800 dark:bg-red-900/20 dark:text-red-400">
-                                    <p className="font-medium mb-1">Motivo da rejeição:</p>
-                                    <p>{userCard.admin_notes}</p>
-                                </div>
-                            )}
-                        </>
-                    ) : (
-                        <div className="bg-yellow-50 p-4 rounded-md text-sm text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
-                            <p className="font-medium mb-2">Você ainda não possui uma solicitação de carteirinha.</p>
-                            <Button asChild variant="default" size="sm" className="mt-2">
-                                <a href="/solicitar">Solicitar Carteirinha</a>
-                            </Button>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {modules.map((module) => (
+                    <ModuleCard key={module.id} module={module} />
+                ))}
+            </div>
         </div>
     )
 }

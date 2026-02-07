@@ -1,4 +1,4 @@
-import { getAuditLogs } from "@/app/actions/admin"
+import { getAuditLogs, createTestLog } from "@/app/actions/admin"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
     Table,
@@ -9,7 +9,24 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { AuditLogFilters } from "@/components/admin/audit-log-filters"
+
+async function TestLogButton() {
+    "use server"
+    async function handleCreateTestLog() {
+        "use server"
+        await createTestLog()
+    }
+
+    return (
+        <form action={handleCreateTestLog}>
+            <Button type="submit" variant="outline" size="sm">
+                🧪 Criar Log de Teste
+            </Button>
+        </form>
+    )
+}
 
 const actionLabels: Record<string, string> = {
     APROVADA_MANUAL: "Aprovação Manual",
@@ -18,6 +35,10 @@ const actionLabels: Record<string, string> = {
     REVOGADA: "Revogação",
     UPLOAD_CSV: "Upload CSV",
     PENDENTE_MANUAL: "Pendente Manual",
+    ADD_STUDENT: "Adicionar Aluna",
+    DELETE_STUDENT: "Remover Aluna",
+    DELETE_REQUEST: "Excluir Solicitação",
+    TESTE_SISTEMA: "Teste do Sistema",
 }
 
 const actionColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -27,6 +48,10 @@ const actionColors: Record<string, "default" | "secondary" | "destructive" | "ou
     REVOGADA: "destructive",
     UPLOAD_CSV: "outline",
     PENDENTE_MANUAL: "outline",
+    ADD_STUDENT: "secondary",
+    DELETE_STUDENT: "destructive",
+    DELETE_REQUEST: "destructive",
+    TESTE_SISTEMA: "outline",
 }
 
 function formatDate(dateString: string) {
@@ -54,11 +79,14 @@ export default async function AuditLogsPage({
 
     return (
         <div className="space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold">Logs de Auditoria</h1>
-                <p className="text-muted-foreground mt-2">
-                    Histórico de todas as ações administrativas realizadas no sistema
-                </p>
+            <div className="flex justify-between items-center">
+                <div>
+                    <h1 className="text-3xl font-bold">Logs de Auditoria</h1>
+                    <p className="text-muted-foreground mt-2">
+                        Histórico de todas as ações administrativas realizadas no sistema
+                    </p>
+                </div>
+                <TestLogButton />
             </div>
 
             <AuditLogFilters />

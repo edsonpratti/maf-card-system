@@ -7,7 +7,13 @@ import { Trash2 } from "lucide-react"
 
 async function getStudents() {
     const supabase = getServiceSupabase()
-    const { data } = await supabase.from("students_base").select("*").order("created_at", { ascending: false }).limit(50)
+    // Filtra apenas alunas habilitadas/reconhecidas
+    const { data } = await supabase
+        .from("students_base")
+        .select("*")
+        .eq("is_recognized", true)
+        .order("created_at", { ascending: false })
+        .limit(50)
     return data || []
 }
 
@@ -16,7 +22,8 @@ export default async function BaseAlunasPage() {
 
     return (
         <div className="space-y-8">
-            <h1 className="text-3xl font-bold">Base de Alunas</h1>
+            <h1 className="text-3xl font-bold">Base de Alunas Habilitadas</h1>
+            <p className="text-muted-foreground">Alunas com habilitação reconhecida pelo sistema.</p>
 
             <div className="grid gap-8 md:grid-cols-2">
                 <div className="space-y-4 rounded-lg border p-4">

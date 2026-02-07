@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Users, FileText, Database, Shield, LogOut } from "lucide-react"
+import { Users, FileText, Database, Shield, LogOut, UserCheck } from "lucide-react"
 import { adminLogout, getCurrentAdmin } from "@/app/actions/admin"
 
 export default async function AdminLayout({
@@ -33,6 +33,15 @@ export default async function AdminLayout({
                             >
                                 <FileText className="h-4 w-4" />
                                 Solicitações
+                            </Link>
+                        </li>
+                        <li>
+                            <Link
+                                href="/admin/alunas-cadastradas"
+                                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                            >
+                                <UserCheck className="h-4 w-4" />
+                                Alunas Cadastradas
                             </Link>
                         </li>
                         <li>
