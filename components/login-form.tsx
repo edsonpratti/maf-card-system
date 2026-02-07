@@ -30,13 +30,12 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
                 toast.error("Erro ao fazer login: " + error.message)
             } else {
                 toast.success("Login realizado com sucesso!")
-                // Aguarda um momento para garantir que os cookies sejam definidos
-                await new Promise(resolve => setTimeout(resolve, 100))
+                // Aguarda os cookies serem salvos antes de redirecionar
+                await new Promise(resolve => setTimeout(resolve, 500))
                 if (admin) {
                     window.location.href = "/admin/dashboard"
                 } else {
-                    router.push("/portal")
-                    router.refresh()
+                    window.location.href = "/portal"
                 }
             }
         } catch {
