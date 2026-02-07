@@ -30,8 +30,14 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
                 toast.error("Erro ao fazer login: " + error.message)
             } else {
                 toast.success("Login realizado com sucesso!")
-                router.push(admin ? "/admin/dashboard" : "/portal")
-                router.refresh()
+                // Aguarda um momento para garantir que os cookies sejam definidos
+                await new Promise(resolve => setTimeout(resolve, 100))
+                if (admin) {
+                    window.location.href = "/admin/dashboard"
+                } else {
+                    router.push("/portal")
+                    router.refresh()
+                }
             }
         } catch {
             toast.error("Erro inesperado")

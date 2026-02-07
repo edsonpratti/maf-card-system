@@ -34,7 +34,8 @@ export async function verifyAdminAccess() {
         throw new Error('Unauthorized: Authentication required')
     }
     
-    if (user.user_metadata?.role !== 'admin') {
+    const isAdmin = user.user_metadata?.is_admin === true || user.app_metadata?.is_admin === true
+    if (!isAdmin) {
         throw new Error('Forbidden: Admin access required')
     }
     
@@ -76,7 +77,7 @@ export async function getCurrentUser() {
 export async function isAdmin() {
     try {
         const user = await getCurrentUser()
-        return user?.user_metadata?.role === 'admin'
+        return user?.user_metadata?.is_admin === true || user?.app_metadata?.is_admin === true
     } catch {
         return false
     }
