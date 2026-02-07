@@ -1,6 +1,16 @@
 "use server"
 
-wwwwww    targetUserId: string | null = null,
+import { getServiceSupabase } from "@/lib/supabase"
+import { verifyAdminAccess } from "@/lib/auth"
+import { revalidatePath } from "next/cache"
+import { cookies } from "next/headers"
+import { createServerClient } from "@supabase/ssr"
+import { redirect } from "next/navigation"
+
+async function createAuditLog(
+    adminUserId: string,
+    action: string,
+    targetUserId: string | null = null,
     metadata: any = {}
 ) {
     const supabase = getServiceSupabase()
