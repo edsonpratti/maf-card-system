@@ -1,60 +1,113 @@
-import { getServiceSupabase } from "@/lib/supabase" // Should use createServerClient from @supabase/ssr in real app
+import { createServerClient } from "@supabase/ssr"
+import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Download, Loader2 } from "lucide-react"
-
-// Mock auth check function (In real app, use Supabase Auth getUser)
-async function getUser() {
-    // This is where you'd check cookies/headers to get the user
-    // For MVP structure, assuming user is passed or handled via client wrapper?
-    // Since this is key, let's assume we can't easily mock auth without full setup.
-    // We'll render a "Simulated" view or check for a cookie if possible.
-    return null // Default to not dirtying the component
-}
+import { Download } from "lucide-react"
 
 export default async function PortalPage() {
-    // In a real implementation:
-    // const supabase = createServerClient(...)
-    // const { data: { user } } = await supabase.auth.getUser()
-    // if (!user) redirect("/login")
+    const cookieStore = await cookies()
+    
+    const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                get(name: string) {
+                    return cookieStore.get(name)?.value
+                },
+            },
+        }
+    )
 
-    // For this generated code to be compilable/runnable without valid keys:
-    // We will assume the user sees a valid states if they are logged in.
-    // But without auth context, we can't query their specific card.
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+        redirect("/login")
+    }
 
-    // I will create a placeholder explaining this part needs the real Auth context.
+    // Buscar a carteirinha da usuária logada
+    const { data: userCard } = await supabase
+        .from('users_cards')
+        .select('*')
+        .eq('email', user.email)
+        .single()
+
+    const statusMap: Record<string, string> = {
+        pending: 'PENDENTE',
+        approved: 'APROVADA',
+        rejected: 'REJEITADA'
+    }
+
+    const statusColorMap: Record<string, string> = {
+        pending: 'bg-yellow-500',
+        approved: 'bg-green-500',
+        rejected: 'bg-red-500'
+    }
 
     return (
         <div className="container py-10">
-            <h1 className="text-3xl font-bold mb-6">Portal da Aluna</h1>
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-3xl font-bold">Portal da Aluna</h1>
+                <p className="text-sm text-muted-foreground">Logada como: {user.email}</p>
+            </div>
             <Card>
                 <CardHeader>
                     <CardTitle>Minha Solicitação</CardTitle>
                     <CardDescription>Acompanhe o status da sua carteirinha.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between border p-4 rounded-md">
-                        <div>
-                            <p className="font-medium">Status Atual</p>
-                            <p className="text-sm text-muted-foreground">Última atualização: Hoje</p>
+                    {userCard ? (
+                        <>
+                            <div className="flex items-center justify-between border p-4 rounded-md">
+                                <div>
+                                    <p className="font-medium">Status Atual</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        Última atualização: {new Date(userCard.updated_at || userCard.created_at).toLocaleDateString('pt-BR')}
+                                    </p>
+                                </div>
+                                <Badge className={statusColorMap[userCard.status] || 'bg-gray-500'}>
+                                    {statusMap[userCard.status] || userCard.status}
+                                </Badge>
+                            </div>
+
+                            <div className="space-y-2 border p-4 rounded-md">
+                                <p className="text-sm"><span className="font-medium">Nome:</span> {userCard.full_name}</p>
+                                <p className="text-sm"><span className="font-medium">CPF:</span> {userCard.cpf}</p>
+                                <p className="text-sm"><span className="font-medium">Email:</span> {userCard.email}</p>
+                            </div>
+
+                            {userCard.status === 'approved' && userCard.qr_code_token && (
+                                <Button asChild variant="default" className="w-full">
+                                    <a href={`/validar/${userCard.qr_code_token}`} target="_blank" rel="noopener noreferrer">
+                                        <Download className="mr-2 h-4 w-4" />
+                                        Visualizar Carteirinha
+                                    </a>
+                                </Button>
+                            )}
+
+                            {userCard.status === 'pending' && (
+                                <div className="bg-blue-50 p-4 rounded-md text-sm text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+                                    <p>Sua solicitação está em análise. Você receberá um e-mail quando for aprovada.</p>
+                                </div>
+                            )}
+
+                            {userCard.status === 'rejected' && userCard.admin_notes && (
+                                <div className="bg-red-50 p-4 rounded-md text-sm text-red-800 dark:bg-red-900/20 dark:text-red-400">
+                                    <p className="font-medium mb-1">Motivo da rejeição:</p>
+                                    <p>{userCard.admin_notes}</p>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <div className="bg-yellow-50 p-4 rounded-md text-sm text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
+                            <p className="font-medium mb-2">Você ainda não possui uma solicitação de carteirinha.</p>
+                            <Button asChild variant="default" size="sm" className="mt-2">
+                                <a href="/solicitar">Solicitar Carteirinha</a>
+                            </Button>
                         </div>
-                        <Badge>PENDENTE DE LOGIN</Badge>
-                    </div>
-
-                    <div className="bg-yellow-50 p-4 rounded-md text-sm text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
-                        <p>
-                            Para visualizar seus dados reais, é necessário configurar as chaves do Supabase e realizar o login/cadastro.
-                            <br />
-                            O código fonte já contém a estrutura para buscar `users_cards` filtrando pelo `user.email` ou `user.id`.
-                        </p>
-                    </div>
-
-                    <Button disabled variant="outline" className="w-full">
-                        <Download className="mr-2 h-4 w-4" />
-                        Baixar Carteirinha (Disponível após aprovação)
-                    </Button>
+                    )}
                 </CardContent>
             </Card>
         </div>

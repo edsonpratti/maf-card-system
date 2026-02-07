@@ -58,6 +58,15 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Proteger rotas /portal (exige autenticação de aluna)
+  if (request.nextUrl.pathname.startsWith('/portal')) {
+    if (!user) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+    // Se for admin, permitir acesso ao portal também
+    return response
+  }
+
   // Proteger rotas /admin (exceto /admin/login)
   if (request.nextUrl.pathname.startsWith('/admin')) {
     // Permitir acesso à página de login sem autenticação

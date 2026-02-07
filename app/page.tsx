@@ -41,7 +41,7 @@ export default function Home() {
                   </Link>
                 </Button>
                 <Button variant="outline" size="lg" asChild>
-                  <Link href="/portal">
+                  <Link href="/login">
                     Já sou cadastrada
                   </Link>
                 </Button>

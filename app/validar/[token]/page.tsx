@@ -2,13 +2,14 @@ import { getServiceSupabase } from "@/lib/supabase"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CheckCircle, XCircle, AlertTriangle } from "lucide-react"
 
-export default async function ValidarPage({ params }: { params: { token: string } }) {
+export default async function ValidarPage({ params }: { params: Promise<{ token: string }> }) {
+    const { token } = await params
     const supabase = getServiceSupabase()
 
     const { data: card } = await supabase
         .from("users_cards")
         .select("name, cpf, status, issued_at, card_number")
-        .eq("validation_token", params.token)
+        .eq("validation_token", token)
         .single()
 
     let status = "inválido"
