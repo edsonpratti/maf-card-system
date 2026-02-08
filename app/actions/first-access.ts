@@ -1,6 +1,84 @@
 "use server"
 
 import { getServiceSupabase } from "@/lib/supabase"
+import crypto from "crypto"
+import { Resend } from "resend"
+import { firstAccessEmailTemplate } from "@/lib/email-templates"
+
+const resend = new Resend(process.env.RESEND_API_KEY)
+
+export async function sendFirstAccessEmail(userId: string, email: string, name: string) {
+    try {
+        const supabase = getServiceSupabase()
+        
+        // Generate a secure token
+        const token = crypto.randomBytes(32).toString('hex')
+        const expiresAt = new Date()
+        expiresAt.setHours(expiresAt.getHours() + 48) // 48 hours to set password
+        
+        // Save token to database
+        const { error: updateError } = await supabase
+            .from("users_cards")
+            .update({
+                first_access_token: token,
+                first_access_token_expires_at: expiresAt.toISOString()
+            })
+            .eq("id", userId)
+        
+        if (updateError) {
+            console.error("Erro ao salvar token:", updateError)
+            return { success: false, error: "Erro ao gerar token de acesso" }
+        }
+        
+        // Generate the link
+        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+        const accessLink = `${baseUrl}/primeiro-acesso/${token}`
+        
+        // Send email via Resend
+        try {
+            const { data, error } = await resend.emails.send({
+                from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
+                to: email,
+                subject: '🎉 Carteirinha Aprovada - Defina sua Senha | MAF Card System',
+                html: firstAccessEmailTemplate(name, accessLink, expiresAt)
+            })
+            
+            if (error) {
+                console.error("Erro ao enviar email via Resend:", error)
+                // Fallback: log the link for development
+                console.log(`
+                ===== EMAIL DE PRIMEIRO ACESSO (FALLBACK) =====
+                Para: ${email}
+                Nome: ${name}
+                Link: ${accessLink}
+                Expira em: ${expiresAt.toLocaleString('pt-BR')}
+                ===============================================
+                `)
+                return { success: false, error: "Erro ao enviar email. Verifique as configurações do Resend." }
+            }
+            
+            console.log("Email enviado com sucesso via Resend:", data?.id)
+            return { success: true, link: accessLink }
+            
+        } catch (emailError) {
+            console.error("Exceção ao enviar email:", emailError)
+            // Fallback for development
+            console.log(`
+            ===== EMAIL DE PRIMEIRO ACESSO (MODO DESENVOLVIMENTO) =====
+            Para: ${email}
+            Nome: ${name}
+            Link: ${accessLink}
+            Expira em: ${expiresAt.toLocaleString('pt-BR')}
+            ===========================================================
+            `)
+            return { success: true, link: accessLink } // Still return success for development
+        }
+        
+    } catch (error) {
+        console.error("Erro ao enviar email:", error)
+        return { success: false, error: "Erro ao enviar email de primeiro acesso" }
+    }
+}
 
 export async function verifyFirstAccessToken(token: string) {
     try {

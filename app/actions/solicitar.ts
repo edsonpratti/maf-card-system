@@ -4,6 +4,7 @@ import { getServiceSupabase } from "@/lib/supabase"
 import { cleanCPF } from "@/lib/utils"
 import { z } from "zod"
 import { studentSchema } from "@/lib/validators"
+import { sendFirstAccessEmail } from "./first-access"
 
 // Rate limiting helper (simple in-memory implementation)
 // For production, consider using Redis or similar
@@ -187,8 +188,7 @@ export async function submitApplication(prevState: any, formData: FormData) {
         }
     }
 
-    // Insert
-    const { error } = await supabase.from("users_cards").insert({
+    // Inserdata: insertedData, error } = await supabase.from("users_cards").insert({
         name: rawData.name,
         cpf: cpfClean,
         cpf_hash: cpfClean,
@@ -197,9 +197,15 @@ export async function submitApplication(prevState: any, formData: FormData) {
         address_json: rawData.address,
         status,
         certificate_file_path: certificatePath || null,
-    })
+    }).select().single()
 
     if (error) {
+        return { success: false, message: "Erro ao salvar dados." }
+    }
+
+    // If auto-approved, send first access email
+    if (status === "AUTO_APROVADA" && insertedData) {
+        await sendFirstAccessEmail(insertedData.id, rawData.email as string, rawData.name as string)
         return { success: false, message: "Erro ao salvar dados." }
     }
 

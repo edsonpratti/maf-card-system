@@ -102,7 +102,28 @@ O sistema agora valida automaticamente as variáveis de ambiente em `lib/env.ts`
 
 O arquivo `.gitignore` já está configurado para ignorá-lo, mas sempre verifique antes de fazer commit.
 
+## 🌐 Erro no Vercel (Produção)
+
+Se você está vendo este erro no site publicado (Vercel):
+```
+Fetch failed loading: GET "https://maf-card-system.vercel.app/portal"
+Error: An error occurred in the Server Components render
+```
+
+**Causa:** Variáveis de ambiente não configuradas no Vercel.
+
+**Solução Rápida:** Veja [QUICK_FIX_VERCEL.md](QUICK_FIX_VERCEL.md)
+
+**Guia Completo:** Veja [VERCEL_SETUP.md](VERCEL_SETUP.md)
+
+**Resumo:**
+1. Acesse Vercel Dashboard → Settings → Environment Variables
+2. Adicione as 3 variáveis (URL, ANON_KEY, SERVICE_ROLE_KEY)
+3. Marque todos os ambientes (Production, Preview, Development)
+4. Faça redeploy do projeto
+
 ## 📚 Documentação Adicional
 
 - [Next.js Environment Variables](https://nextjs.org/docs/app/building-your-application/configuring/environment-variables)
 - [Supabase Setup](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs)
+- [Vercel Environment Variables](https://vercel.com/docs/projects/environment-variables)

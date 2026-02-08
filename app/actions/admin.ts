@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 import { createServerClient } from "@supabase/ssr"
 import { redirect } from "next/navigation"
+import { sendFirstAccessEmail } from "./first-access"
 
 async function createAuditLog(
     adminUserId: string,
@@ -74,11 +75,63 @@ export async function updateRequestStatus(id: string, newStatus: string, reason?
         return { success: false, message: error.message }
     }
 
+    // If approved, send first access email
+    if (newStatus === "APROVADA_MANUAL" || newStatus === "AUTO_APROVADA") {
+        const { data: userData } = await supabase
+            .from("users_cards")
+            .select("id, email, name")
+            .eq("id", id)
+            .single()
+        
+        if (userData && userData.email && userData.name) {
+            await sendFirstAccessEmail(userData.id, userData.email, userData.name)
+        }
+    }
+
     // Log action
     await createAuditLog(user.id, newStatus, id, { reason })
 
     revalidatePath("/admin/solicitacoes")
     return { success: true }
+}
+
+export async function resendFirstAccessEmail(id: string) {
+    const user = await verifyAdminAccess()
+    
+    const supabase = getServiceSupabase()
+    
+    // Get user data
+    const { data: userData, error } = await supabase
+        .from("users_cards")
+        .select("id, email, name, status, auth_user_id")
+        .eq("id", id)
+        .single()
+    
+    if (error || !userData) {
+        return { success: false, message: "Usuário não encontrado" }
+    }
+    
+    // Check if already has auth account
+    if (userData.auth_user_id) {
+        return { success: false, message: "Usuário já possui conta criada. Use 'Esqueci minha senha' na tela de login." }
+    }
+    
+    // Only allow for approved cards
+    if (userData.status !== "APROVADA_MANUAL" && userData.status !== "AUTO_APROVADA") {
+        return { success: false, message: "Apenas carteirinhas aprovadas podem receber o email de primeiro acesso" }
+    }
+    
+    // Resend email
+    const result = await sendFirstAccessEmail(userData.id, userData.email, userData.name)
+    
+    if (result.success) {
+        // Log action
+        await createAuditLog(user.id, "RESEND_FIRST_ACCESS_EMAIL", id)
+        
+        return { success: true, message: "Email de primeiro acesso reenviado com sucesso!" }
+    }
+    
+    return { success: false, message: result.error || "Erro ao enviar email" }
 }
 
 export async function deleteRequest(id: string) {

@@ -2,12 +2,12 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { updateRequestStatus, deleteRequest } from "@/app/actions/admin"
+import { updateRequestStatus, deleteRequest, resendFirstAccessEmail } from "@/app/actions/admin"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
-import { Loader2 } from "lucide-react"
+import { Loader2, Mail } from "lucide-react"
 
 export default function RequestActions({ request }: { request: any }) {
     const router = useRouter()
@@ -52,6 +52,23 @@ export default function RequestActions({ request }: { request: any }) {
         }
     }
 
+    const handleResendEmail = async () => {
+        if (!confirm("Reenviar email de primeiro acesso para esta usuária?")) return
+        setLoading(true)
+        try {
+            const res = await resendFirstAccessEmail(request.id)
+            if (res.success) {
+                toast.success(res.message)
+            } else {
+                toast.error(res.message)
+            }
+        } catch (error) {
+            toast.error("Erro ao reenviar email")
+        } finally {
+            setLoading(false)
+        }
+    }
+
     return (
         <div className="flex gap-4">
             {request.status === "PENDENTE_MANUAL" && (
@@ -73,7 +90,20 @@ export default function RequestActions({ request }: { request: any }) {
                                 <DialogDescription>
                                     Informe o motivo da recusa. A usuária receberá esta notificação.
                                 </DialogDescription>
-                            </DialogHeader>
+             (request.status === "APROVADA_MANUAL" || request.status === "AUTO_APROVADA") && !request.auth_user_id && (
+                <Button 
+                    onClick={handleResendEmail} 
+                    disabled={loading} 
+                    variant="outline"
+                    className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                >
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <Mail className="mr-2 h-4 w-4" />
+                    Reenviar Email de Primeiro Acesso
+                </Button>
+            )}
+
+            {               </DialogHeader>
                             <Textarea
                                 placeholder="Motivo da recusa..."
                                 value={rejectReason}
