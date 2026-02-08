@@ -31,7 +31,6 @@ export async function verifyFirstAccessToken(token: string) {
             userId: user.id
         }
     } catch (error) {
-        console.error("Erro ao verificar token:", error)
         return { valid: false, error: "Erro ao verificar token" }
     }
 }
@@ -62,7 +61,6 @@ export async function setUserPassword(token: string, password: string) {
         })
         
         if (authError) {
-            console.error("Erro ao criar usuário:", authError)
             return { success: false, error: "Erro ao criar conta: " + authError.message }
         }
         
@@ -78,7 +76,6 @@ export async function setUserPassword(token: string, password: string) {
         
         return { success: true }
     } catch (error) {
-        console.error("Erro ao definir senha:", error)
         return { success: false, error: "Erro ao processar solicitação" }
     }
 }

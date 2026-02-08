@@ -50,7 +50,6 @@ export default function FirstAccessPage({ params }: PageProps) {
         setTimeout(() => router.push('/login'), 3000)
       }
     } catch (error) {
-      console.error('Erro ao verificar token:', error)
       toast.error('Erro ao verificar o token')
       setTimeout(() => router.push('/login'), 3000)
     } finally {
@@ -130,7 +129,6 @@ export default function FirstAccessPage({ params }: PageProps) {
         toast.error(result.error || 'Erro ao definir senha')
       }
     } catch (error) {
-      console.error('Erro ao definir senha:', error)
       toast.error('Erro ao processar sua solicitação')
     } finally {
       setSubmitting(false)

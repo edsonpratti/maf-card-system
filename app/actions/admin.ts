@@ -14,20 +14,13 @@ async function createAuditLog(
     metadata: any = {}
 ) {
     const supabase = getServiceSupabase()
-    console.log("📝 Criando log de auditoria:", { adminUserId, action, targetUserId, metadata })
     
-    const { data, error } = await supabase.from("admin_audit_logs").insert({
+    await supabase.from("admin_audit_logs").insert({
         admin_user_id: adminUserId,
         action,
         target_user_id: targetUserId,
         metadata,
     }).select()
-    
-    if (error) {
-        console.error("❌ Erro ao criar log:", error)
-    } else {
-        console.log("✅ Log criado com sucesso:", data)
-    }
 }
 
 export async function getRequests(filterStatus?: string) {
@@ -46,7 +39,6 @@ export async function getRequests(filterStatus?: string) {
     const { data, error } = await query
 
     if (error) {
-        console.error(error)
         return []
     }
 
@@ -79,7 +71,6 @@ export async function updateRequestStatus(id: string, newStatus: string, reason?
         .eq("id", id)
 
     if (error) {
-        console.error(error)
         return { success: false, message: error.message }
     }
 
@@ -269,13 +260,7 @@ export async function getAuditLogs(filters?: {
     const { data, error } = await query
 
     if (error) {
-        console.error("Error fetching audit logs:", error)
         return []
-    }
-
-    console.log("📊 Logs encontrados:", data?.length || 0)
-    if (data && data.length > 0) {
-        console.log("Primeiro log:", data[0])
     }
 
     return data || []
@@ -284,7 +269,6 @@ export async function getAuditLogs(filters?: {
 export async function createTestLog() {
     const user = await verifyAdminAccess()
     
-    console.log("🧪 Criando log de teste...")
     await createAuditLog(
         user.id,
         "TESTE_SISTEMA",
@@ -313,7 +297,6 @@ export async function getRegisteredStudents() {
         .order("created_at", { ascending: false })
 
     if (error) {
-        console.error("Error fetching registered students:", error)
         return []
     }
 

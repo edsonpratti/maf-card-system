@@ -65,7 +65,6 @@ export default function SolicitationForm() {
                 toast.info(result.message)
             }
         } catch (error) {
-            console.error(error)
             toast.error("Erro ao verificar CPF")
             setCpfStatus("initial")
         }
@@ -93,7 +92,7 @@ export default function SolicitationForm() {
             // Focus on number field automatically for better UX
             form.setFocus("address.number")
         } catch (error) {
-            console.error("Erro ao buscar CEP:", error)
+            // Silently fail CEP lookup
         }
     }
 
@@ -143,7 +142,6 @@ export default function SolicitationForm() {
                 toast.error(result.message)
             }
         } catch (error) {
-            console.error(error)
             toast.error("Erro ao enviar solicitação")
         } finally {
             setLoading(false)

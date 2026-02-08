@@ -165,12 +165,10 @@ export async function submitApplication(prevState: any, formData: FormData) {
                 })
 
             if (uploadError) {
-                console.error("Upload error:", uploadError)
                 return { success: false, message: "Erro ao fazer upload do certificado." }
             }
             certificatePath = uploadData?.path
         } catch (err) {
-            console.error("Unexpected upload error:", err)
             return { success: false, message: "Erro inesperado ao enviar certificado." }
         }
     } else {
@@ -202,7 +200,6 @@ export async function submitApplication(prevState: any, formData: FormData) {
     })
 
     if (error) {
-        console.error(error)
         return { success: false, message: "Erro ao salvar dados." }
     }
 
