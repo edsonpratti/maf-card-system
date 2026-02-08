@@ -188,7 +188,8 @@ export async function submitApplication(prevState: any, formData: FormData) {
         }
     }
 
-    // Inserdata: insertedData, error } = await supabase.from("users_cards").insert({
+    // Insert
+    const { data: insertedData, error } = await supabase.from("users_cards").insert({
         name: rawData.name,
         cpf: cpfClean,
         cpf_hash: cpfClean,
@@ -206,7 +207,6 @@ export async function submitApplication(prevState: any, formData: FormData) {
     // If auto-approved, send first access email
     if (status === "AUTO_APROVADA" && insertedData) {
         await sendFirstAccessEmail(insertedData.id, rawData.email as string, rawData.name as string)
-        return { success: false, message: "Erro ao salvar dados." }
     }
 
     return { success: true, message: "Solicitação enviada com sucesso!", status }

@@ -90,20 +90,7 @@ export default function RequestActions({ request }: { request: any }) {
                                 <DialogDescription>
                                     Informe o motivo da recusa. A usuária receberá esta notificação.
                                 </DialogDescription>
-             (request.status === "APROVADA_MANUAL" || request.status === "AUTO_APROVADA") && !request.auth_user_id && (
-                <Button 
-                    onClick={handleResendEmail} 
-                    disabled={loading} 
-                    variant="outline"
-                    className="border-blue-600 text-blue-600 hover:bg-blue-50"
-                >
-                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    <Mail className="mr-2 h-4 w-4" />
-                    Reenviar Email de Primeiro Acesso
-                </Button>
-            )}
-
-            {               </DialogHeader>
+                            </DialogHeader>
                             <Textarea
                                 placeholder="Motivo da recusa..."
                                 value={rejectReason}
@@ -118,6 +105,19 @@ export default function RequestActions({ request }: { request: any }) {
                         </DialogContent>
                     </Dialog>
                 </>
+            )}
+
+            {(request.status === "APROVADA_MANUAL" || request.status === "AUTO_APROVADA") && !request.auth_user_id && (
+                <Button 
+                    onClick={handleResendEmail} 
+                    disabled={loading} 
+                    variant="outline"
+                    className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                >
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <Mail className="mr-2 h-4 w-4" />
+                    Reenviar Email de Primeiro Acesso
+                </Button>
             )}
 
             {/* Other actions like Revoke could go here */}
