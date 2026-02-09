@@ -5,6 +5,7 @@ import { getRegisteredStudents } from "@/app/actions/admin"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { RegisteredStudentsFilters } from "@/components/admin/registered-students-filters"
+import StudentActions from "@/components/admin/student-actions"
 
 type Student = {
     id: string
@@ -18,6 +19,7 @@ type Student = {
     certificate_file_path: string | null
     card_pdf_path: string | null
     validation_token: string | null
+    auth_user_id: string | null
     created_at: string
     issued_at: string | null
     updated_at: string
@@ -106,12 +108,13 @@ export default function AlunasCadastradasPage() {
                             <TableHead>Cadastro</TableHead>
                             <TableHead>Aprovação</TableHead>
                             <TableHead>Atualização</TableHead>
+                            <TableHead>Ações</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={13} className="text-center h-24">
+                                <TableCell colSpan={14} className="text-center h-24">
                                     Carregando...
                                 </TableCell>
                             </TableRow>
@@ -181,11 +184,14 @@ export default function AlunasCadastradasPage() {
                                     <TableCell className="whitespace-nowrap">
                                         {new Date(student.updated_at).toLocaleDateString('pt-BR')}
                                     </TableCell>
+                                    <TableCell className="whitespace-nowrap">
+                                        <StudentActions student={student} />
+                                    </TableCell>
                                 </TableRow>
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={13} className="text-center h-24">
+                                <TableCell colSpan={14} className="text-center h-24">
                                     {searchTerm || searchCPF || status !== "ALL"
                                         ? "Nenhuma aluna encontrada com os filtros aplicados."
                                         : "Nenhuma aluna cadastrada e autorizada no sistema."}

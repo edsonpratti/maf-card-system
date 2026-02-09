@@ -1,6 +1,6 @@
-# Sistema de Carteirinha MAF
+# MAF Pro
 
-Este é um sistema completo para emissão e validação da Carteirinha de Habilitada MAF, construído com Next.js, Shadcn/ui e Supabase.
+Este é um sistema integrado de gestão profissional MAF, incluindo carteira profissional digital, construído com Next.js, Shadcn/ui e Supabase.
 
 ## Funcionalidades
 

@@ -55,7 +55,7 @@ export default async function PortalLayout({
           <div className="flex items-center gap-6">
             <Link href="/portal" className="flex items-center gap-2 font-bold text-xl">
               <Home className="h-5 w-5" />
-              MAF Habilitada
+              MAF Pro
             </Link>
           </div>
           <div className="flex items-center gap-4">
@@ -77,7 +77,7 @@ export default async function PortalLayout({
       <footer className="border-t py-6 md:py-0">
         <div className="container flex flex-col items-center justify-between gap-4 md:h-16 md:flex-row">
           <p className="text-sm text-muted-foreground">
-            © 2024 MAF Habilitada. Todos os direitos reservados.
+            © 2024 MAF Pro. Todos os direitos reservados.
           </p>
         </div>
       </footer>

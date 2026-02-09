@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Carteirinha MAF",
-  description: "Sistema de emissão e validação de carteirinhas",
+  title: "MAF Pro",
+  description: "Sistema integrado de gestão profissional MAF",
 };
 
 export default function RootLayout({

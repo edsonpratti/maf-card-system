@@ -4,34 +4,36 @@ import { getRequests } from "@/app/actions/admin"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { RequestFilters } from "@/components/admin/request-filters"
 
 export default async function SolicitacoesPage({
     searchParams,
 }: {
-    searchParams: { status?: string }
+    searchParams: { 
+        status?: string
+        name?: string
+        cpf?: string
+        startDate?: string
+        endDate?: string
+    }
 }) {
-    const status = searchParams.status || "ALL"
-    const requests = await getRequests(status)
+    const filters = {
+        status: searchParams.status || "ALL",
+        name: searchParams.name,
+        cpf: searchParams.cpf,
+        startDate: searchParams.startDate,
+        endDate: searchParams.endDate,
+    }
+    
+    const requests = await getRequests(filters)
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold">Solicitações</h1>
-                <div className="space-x-2">
-                    <Button asChild variant="outline" size="sm">
-                        <Link href="/admin/solicitacoes?status=ALL">Todas</Link>
-                    </Button>
-                    <Button asChild variant="outline" size="sm">
-                        <Link href="/admin/solicitacoes?status=PENDENTE_MANUAL">Pendentes</Link>
-                    </Button>
-                    <Button asChild variant="outline" size="sm">
-                        <Link href="/admin/solicitacoes?status=APROVADA_MANUAL">Aprovadas</Link>
-                    </Button>
-                    <Button asChild variant="outline" size="sm">
-                        <Link href="/admin/solicitacoes?status=RECUSADA">Recusadas</Link>
-                    </Button>
-                </div>
             </div>
+
+            <RequestFilters />
 
             <div className="border rounded-md">
                 <Table>

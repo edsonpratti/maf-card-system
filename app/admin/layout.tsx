@@ -13,7 +13,7 @@ export default async function AdminLayout({
         <div className="flex h-screen bg-muted/40">
             <aside className="hidden w-64 flex-col border-r bg-background lg:flex">
                 <div className="flex h-14 items-center border-b px-6 font-bold text-lg">
-                    MAF Admin
+                    MAF Pro Admin
                 </div>
                 <nav className="flex-1 overflow-auto py-4">
                     <ul className="grid gap-1 px-4 text-sm font-medium">

@@ -154,8 +154,8 @@ export default function SolicitationForm() {
     return (
         <Card className="w-full max-w-2xl mx-auto">
             <CardHeader>
-                <CardTitle>Solicitação de Carteirinha</CardTitle>
-                <CardDescription>Preencha os dados abaixo para solicitar sua carteirinha.</CardDescription>
+                <CardTitle>Solicitação de Carteira Profissional</CardTitle>
+                <CardDescription>Preencha os dados abaixo para solicitar sua carteira profissional.</CardDescription>
             </CardHeader>
             <CardContent>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

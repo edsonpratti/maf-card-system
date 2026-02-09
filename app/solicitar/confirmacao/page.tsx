@@ -31,7 +31,7 @@ export default function ConfirmacaoPage({
                                     Aprovação Automática
                                 </h3>
                                 <p className="text-sm text-green-700 dark:text-green-300">
-                                    Seu CPF foi encontrado em nossa base de alunas! Sua carteirinha foi aprovada automaticamente.
+                                    Seu CPF foi encontrado em nossa base de alunas! Sua carteira profissional foi aprovada automaticamente.
                                 </p>
                             </div>
 
@@ -51,7 +51,7 @@ export default function ConfirmacaoPage({
                                     </li>
                                     <li className="flex gap-2">
                                         <span className="font-semibold min-w-6">3.</span>
-                                        <span>Após criar sua senha, você poderá acessar o portal e visualizar sua carteirinha profissional digital.</span>
+                                        <span>Após criar sua senha, você poderá acessar o MAF Pro e visualizar sua carteira profissional digital.</span>
                                     </li>
                                 </ul>
                             </div>

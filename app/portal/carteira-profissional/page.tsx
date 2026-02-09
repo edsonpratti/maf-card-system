@@ -58,14 +58,14 @@ export default async function CarteiraPage() {
                 </Button>
                 <h1 className="text-3xl font-bold">Carteira Profissional</h1>
                 <p className="text-muted-foreground mt-2">
-                    Gerencie sua carteirinha de habilitada MAF
+                    Gerencie sua carteira profissional MAF Pro
                 </p>
             </div>
 
             <Card>
                 <CardHeader>
                     <CardTitle>Minha Solicitação</CardTitle>
-                    <CardDescription>Acompanhe o status da sua carteirinha.</CardDescription>
+                    <CardDescription>Acompanhe o status da sua carteira profissional.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {userCard ? (
@@ -121,9 +121,9 @@ export default async function CarteiraPage() {
                         </>
                     ) : (
                         <div className="bg-yellow-50 p-4 rounded-md text-sm text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
-                            <p className="font-medium mb-2">Você ainda não possui uma solicitação de carteirinha.</p>
+                            <p className="font-medium mb-2">Você ainda não possui uma solicitação de carteira profissional.</p>
                             <Button asChild variant="default" size="sm" className="mt-2">
-                                <a href="/solicitar">Solicitar Carteirinha</a>
+                                <a href="/solicitar">Solicitar Carteira Profissional</a>
                             </Button>
                         </div>
                     )}

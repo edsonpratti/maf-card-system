@@ -24,7 +24,13 @@ async function createAuditLog(
     }).select()
 }
 
-export async function getRequests(filterStatus?: string) {
+export async function getRequests(filters?: {
+    status?: string
+    name?: string
+    cpf?: string
+    startDate?: string
+    endDate?: string
+}) {
     await verifyAdminAccess()
     
     const supabase = getServiceSupabase()
@@ -33,8 +39,28 @@ export async function getRequests(filterStatus?: string) {
         .select("*")
         .order("created_at", { ascending: false })
 
-    if (filterStatus && filterStatus !== "ALL") {
-        query = query.eq("status", filterStatus)
+    if (filters?.status && filters.status !== "ALL") {
+        query = query.eq("status", filters.status)
+    }
+
+    if (filters?.name) {
+        query = query.ilike("name", `%${filters.name}%`)
+    }
+
+    if (filters?.cpf) {
+        query = query.ilike("cpf", `%${filters.cpf}%`)
+    }
+
+    if (filters?.startDate) {
+        query = query.gte("created_at", filters.startDate)
+    }
+
+    if (filters?.endDate) {
+        // Adiciona 1 dia e subtrai 1 segundo para incluir todo o dia final
+        const endDateTime = new Date(filters.endDate)
+        endDateTime.setDate(endDateTime.getDate() + 1)
+        endDateTime.setSeconds(endDateTime.getSeconds() - 1)
+        query = query.lte("created_at", endDateTime.toISOString())
     }
 
     const { data, error } = await query
@@ -375,4 +401,160 @@ export async function getRegisteredStudents() {
     }
 
     return data || []
+}
+export async function resendPasswordResetEmail(id: string) {
+    const user = await verifyAdminAccess()
+    const supabase = getServiceSupabase()
+    
+    // Buscar dados do usuário
+    const { data: userData, error: userError } = await supabase
+        .from("users_cards")
+        .select("id, email, name, auth_user_id, status")
+        .eq("id", id)
+        .single()
+    
+    if (userError || !userData) {
+        console.error("Erro ao buscar usuário:", userError)
+        return { success: false, message: "Usuário não encontrado" }
+    }
+    
+    // Verificar se o usuário já tem conta criada
+    if (!userData.auth_user_id) {
+        return { 
+            success: false, 
+            message: "Usuário ainda não criou conta. Use 'Reenviar Email de Primeiro Acesso' ao invés disso." 
+        }
+    }
+    
+    // Importar função de recuperação de senha
+    const crypto = await import("crypto")
+    const { Resend } = await import("resend")
+    const { resendPasswordEmailTemplate } = await import("@/lib/email-templates-admin")
+    
+    const resend = new Resend(process.env.RESEND_API_KEY)
+    
+    try {
+        // Gerar token de reset
+        const resetToken = crypto.randomBytes(32).toString("hex")
+        const expiresAt = new Date()
+        expiresAt.setMinutes(expiresAt.getMinutes() + 30) // 30 minutos
+        
+        // Salvar token no banco
+        const { error: tokenError } = await supabase
+            .from("password_reset_tokens")
+            .insert({
+                user_id: userData.auth_user_id,
+                token: resetToken,
+                expires_at: expiresAt.toISOString(),
+                used: false
+            })
+        
+        if (tokenError) {
+            console.error("Erro ao criar token:", tokenError)
+            return { success: false, message: "Erro ao gerar token de recuperação" }
+        }
+        
+        // Enviar email
+        const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/recuperar-senha/${resetToken}`
+        
+        const { data: emailData, error: emailError } = await resend.emails.send({
+            from: process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev",
+            to: userData.email,
+            subject: "Redefinição de Senha - MAF Card System",
+            html: resendPasswordEmailTemplate(userData.name, resetLink),
+        })
+        
+        if (emailError) {
+            console.error("Erro ao enviar email:", emailError)
+            return { success: false, message: "Erro ao enviar email" }
+        }
+        
+        // Registrar no log
+        await createAuditLog(user.id, "RESEND_PASSWORD_RESET", id, {
+            email: userData.email,
+            emailId: emailData?.id
+        })
+        
+        return { success: true, message: "Email de redefinição de senha enviado com sucesso!" }
+        
+    } catch (error) {
+        console.error("Erro ao reenviar email de senha:", error)
+        return { success: false, message: "Erro ao processar solicitação" }
+    }
+}
+
+export async function resendCardDownloadEmail(id: string) {
+    const user = await verifyAdminAccess()
+    const supabase = getServiceSupabase()
+    
+    // Buscar dados do usuário
+    const { data: userData, error: userError } = await supabase
+        .from("users_cards")
+        .select("id, email, name, card_number, status, auth_user_id")
+        .eq("id", id)
+        .single()
+    
+    if (userError || !userData) {
+        console.error("Erro ao buscar usuário:", userError)
+        return { success: false, message: "Usuário não encontrado" }
+    }
+    
+    // Verificar se o cartão está aprovado
+    if (userData.status !== "APROVADA_MANUAL" && userData.status !== "AUTO_APROVADA") {
+        return { 
+            success: false, 
+            message: "Apenas carteirinhas aprovadas podem receber o email de download" 
+        }
+    }
+    
+    // Verificar se tem número de carteirinha
+    if (!userData.card_number) {
+        return { 
+            success: false, 
+            message: "Carteirinha sem número gerado. Entre em contato com o suporte técnico." 
+        }
+    }
+    
+    // Verificar se o usuário já tem conta criada
+    if (!userData.auth_user_id) {
+        return { 
+            success: false, 
+            message: "Usuário ainda não criou conta. Use 'Reenviar Email de Primeiro Acesso' primeiro." 
+        }
+    }
+    
+    const { Resend } = await import("resend")
+    const { cardDownloadEmailTemplate } = await import("@/lib/email-templates-admin")
+    
+    const resend = new Resend(process.env.RESEND_API_KEY)
+    
+    try {
+        // Link para o portal onde a aluna pode fazer login e baixar
+        const downloadLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/portal/carteira-profissional`
+        
+        const { data: emailData, error: emailError } = await resend.emails.send({
+            from: process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev",
+            to: userData.email,
+            subject: "Download da sua Carteirinha Profissional - MAF Card System",
+            html: cardDownloadEmailTemplate(userData.name, downloadLink, userData.card_number),
+        })
+        
+        if (emailError) {
+            console.error("Erro ao enviar email:", emailError)
+            return { success: false, message: "Erro ao enviar email" }
+        }
+        
+        // Registrar no log
+        await createAuditLog(user.id, "RESEND_CARD_DOWNLOAD", id, {
+            email: userData.email,
+            cardNumber: userData.card_number,
+            emailId: emailData?.id
+        })
+        
+        return { success: true, message: "Email de download da carteirinha enviado com sucesso!" }
+        
+    } catch (error) {
+        console.error("Erro ao reenviar email de download:", error)
+        return { success: false, message: "Erro ao processar solicitação" }
+    }
 }

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { CreditCard, ArrowRight, CheckCircle2, Clock, XCircle, Users } from "lucide-react"
+import { CreditCard, ArrowRight, CheckCircle2, Clock, XCircle, Users, GraduationCap, HelpCircle, Shield } from "lucide-react"
 
 export default async function PortalPage() {
     const cookieStore = await cookies()
@@ -55,12 +55,12 @@ export default async function PortalPage() {
     return (
         <div className="container py-10">
             <div className="mb-8">
-                <h1 className="text-3xl font-bold mb-2">Bem-vinda ao Portal</h1>
+                <h1 className="text-3xl font-bold mb-2">Bem-vinda ao MAF Pro</h1>
                 <p className="text-muted-foreground">Acesse as funcionalidades disponíveis</p>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {/* Card de Carteirinha Profissional */}
+                {/* MAF Pro ID - Carteira Profissional */}
                 <Link href="/portal/carteira-profissional" className="block group">
                     <Card className="transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer h-full">
                         <CardHeader>
@@ -75,46 +75,106 @@ export default async function PortalPage() {
                                     </Badge>
                                 )}
                             </div>
-                            <CardTitle className="text-xl">Carteirinha Profissional</CardTitle>
+                            <CardTitle className="text-xl">MAF Pro ID</CardTitle>
                             <CardDescription>
                                 {userCard 
-                                    ? "Acompanhe sua solicitação e acesse sua carteirinha"
-                                    : "Solicite sua carteirinha profissional"
+                                    ? "Acompanhe sua solicitação e acesse sua carteira profissional"
+                                    : "Solicite sua carteira profissional"
                                 }
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="flex items-center text-sm font-medium text-blue-600 dark:text-blue-400 group-hover:gap-3 transition-all">
-                                Acessar
+                                Acessar módulo
                                 <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                             </div>
                         </CardContent>
                     </Card>
                 </Link>
 
-                {/* Card MAF Community */}
+                {/* MAF Pro Community */}
                 <Card className="h-full opacity-60 cursor-not-allowed">
                     <CardHeader>
                         <div className="flex items-start justify-between mb-4">
                             <div className="p-3 rounded-lg bg-gray-400">
                                 <Users className="h-8 w-8 text-white" />
                             </div>
-                            <Badge variant="secondary">Em breve...</Badge>
+                            <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300">Em breve</Badge>
                         </div>
-                        <CardTitle className="text-xl">MAF Community</CardTitle>
+                        <CardTitle className="text-xl">MAF Pro Community</CardTitle>
                         <CardDescription>
-                            A rede social das habilitadas do MAF
+                            Rede social e feed para conexão entre profissionais
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex items-center text-sm font-medium text-gray-400">
-                            Em desenvolvimento
-                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            Este módulo estará disponível em breve
+                        </p>
                     </CardContent>
                 </Card>
 
-                {/* Espaço para futuros cards */}
-                {/* Adicione novos cards de funcionalidades aqui */}
+                {/* MAF Pro Academy */}
+                <Card className="h-full opacity-60 cursor-not-allowed">
+                    <CardHeader>
+                        <div className="flex items-start justify-between mb-4">
+                            <div className="p-3 rounded-lg bg-gray-400">
+                                <GraduationCap className="h-8 w-8 text-white" />
+                            </div>
+                            <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300">Em breve</Badge>
+                        </div>
+                        <CardTitle className="text-xl">MAF Pro Academy</CardTitle>
+                        <CardDescription>
+                            Conteúdos educativos, vídeos e materiais de aprendizagem
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground">
+                            Este módulo estará disponível em breve
+                        </p>
+                    </CardContent>
+                </Card>
+
+                {/* MAF Pro Support */}
+                <Card className="h-full opacity-60 cursor-not-allowed">
+                    <CardHeader>
+                        <div className="flex items-start justify-between mb-4">
+                            <div className="p-3 rounded-lg bg-gray-400">
+                                <HelpCircle className="h-8 w-8 text-white" />
+                            </div>
+                            <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300">Em breve</Badge>
+                        </div>
+                        <CardTitle className="text-xl">MAF Pro Support</CardTitle>
+                        <CardDescription>
+                            Dúvidas, orientações e avisos importantes
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground">
+                            Este módulo estará disponível em breve
+                        </p>
+                    </CardContent>
+                </Card>
+
+                {/* MAF Pro Admin */}
+                <Card className="h-full opacity-60 cursor-not-allowed">
+                    <CardHeader>
+                        <div className="flex items-start justify-between mb-4">
+                            <div className="p-3 rounded-lg bg-gray-400">
+                                <Shield className="h-8 w-8 text-white" />
+                            </div>
+                            <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300">Restrito</Badge>
+                        </div>
+                        <CardTitle className="text-xl">MAF Pro Admin</CardTitle>
+                        <CardDescription>
+                            Governança e gestão do sistema (acesso administrativo)
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground">
+                            Acesso restrito a administradores
+                        </p>
+                    </CardContent>
+                </Card>
             </div>
         </div>
     )
