@@ -65,8 +65,8 @@ export async function solicitarRecuperacaoSenha(email: string): Promise<Recupera
         const resetToken = crypto.randomBytes(32).toString("hex")
         const expiresAt = new Date(Date.now() + 30 * 60 * 1000) // 30 minutos
 
-        // 4. Salvar token no banco (criar tabela se não existir)
-        const { error: insertError } = await supabase
+        // 4. Salvar token no banco (usar admin para bypass RLS)
+        const { error: insertError } = await supabaseAdmin
             .from("password_reset_tokens")
             .insert({
                 user_id: user.id,
@@ -127,7 +127,7 @@ export async function validarTokenRecuperacao(token: string): Promise<{
     message?: string
 }> {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseAdmin
             .from("password_reset_tokens")
             .select("*")
             .eq("token", token)
@@ -202,9 +202,9 @@ export async function redefinirSenha(token: string, novaSenha: string): Promise<
         }
 
         // 4. Marcar token como usado
-        await supabase
+        await supabaseAdmin
             .from("password_reset_tokens")
-            .update({ used: true })
+            .update({ used: true, used_at: new Date().toISOString() })
             .eq("token", token)
 
         return {
