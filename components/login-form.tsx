@@ -8,8 +8,10 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 export default function LoginForm({ admin = false }: { admin?: boolean }) {
+    const [resetPassword, setResetPassword] = useState(false)
     const [loading, setLoading] = useState(false)
     const router = useRouter()
 
@@ -43,6 +45,78 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
         } finally {
             setLoading(false)
         }
+    const handleForgotPassword = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        setLoading(true)
+        const formData = newresetPassword ? "Recuperar Senha" : (admin ? "Admin Login" : "Login da Aluna")}</CardTitle>
+                <CardDescription>
+                    {resetPassword 
+                        ? "Digite seu e-mail para receber o link de recuperação." 
+                        : "Entre com suas credenciais."}
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                {resetPassword ? (
+                    <form onSubmit={handleForgotPassword} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="email">E-mail</Label>
+                            <Input id="email" name="email" type="email" required />
+                        </div>
+                        <div className="flex gap-2">
+                            <Button 
+                                type="button" 
+                                variant="outline" 
+                                className="w-full" 
+                                onClick={() => setResetPassword(false)}
+                                disabled={loading}
+                            >
+                                Voltar
+                            </Button>
+                            <Button type="submit" className="w-full" disabled={loading}>
+                                {loading ? "Enviando..." : "Enviar"}
+                            </Button>
+                        </div>
+                    </form>
+                ) : (
+                    <form onSubmit={handleLogin} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="email">E-mail</Label>
+                            <Input id="email" name="email" type="email" required />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="password">Senha</Label>
+                            <Input id="password" name="password" type="password" required />
+                        </div>
+                        {!admin && (
+                            <div className="text-right">
+                                <button
+                                    type="button"
+                                    onClick={() => setResetPassword(true)}
+                                    className="text-sm text-blue-600 hover:underline"
+                                >
+                                    Esqueceu sua senha?
+                                </button>
+                            </div>
+                        )}
+                        <Button type="submit" className="w-full" disabled={loading}>
+                            {loading ? "Entrando..." : "Entrar"}
+                        </Button>
+                        {!admin && (
+                            <div className="text-center pt-4 border-t">
+                                <p className="text-sm text-gray-600">
+                                    Nova por aqui?{" "}
+                                    <Link href="/solicitar" className="text-blue-600 hover:underline font-medium">
+                                        Faça seu cadastro
+                                    </Link>
+                                </p>
+                            </div>
+                        )}
+                    </form>
+                )}
+            setLoading(false)
+        }
+    }
+
     }
 
     return (

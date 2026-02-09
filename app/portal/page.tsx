@@ -4,7 +4,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { CreditCard, ArrowRight, CheckCircle2, Clock, XCircle } from "lucide-react"
+import { CreditCard, ArrowRight, CheckCircle2, Clock, XCircle, Users } from "lucide-react"
 
 export default async function PortalPage() {
     const cookieStore = await cookies()
@@ -91,6 +91,27 @@ export default async function PortalPage() {
                         </CardContent>
                     </Card>
                 </Link>
+
+                {/* Card MAF Community */}
+                <Card className="h-full opacity-60 cursor-not-allowed">
+                    <CardHeader>
+                        <div className="flex items-start justify-between mb-4">
+                            <div className="p-3 rounded-lg bg-gray-400">
+                                <Users className="h-8 w-8 text-white" />
+                            </div>
+                            <Badge variant="secondary">Em breve...</Badge>
+                        </div>
+                        <CardTitle className="text-xl">MAF Community</CardTitle>
+                        <CardDescription>
+                            A rede social das habilitadas do MAF
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex items-center text-sm font-medium text-gray-400">
+                            Em desenvolvimento
+                        </div>
+                    </CardContent>
+                </Card>
 
                 {/* Espaço para futuros cards */}
                 {/* Adicione novos cards de funcionalidades aqui */}
