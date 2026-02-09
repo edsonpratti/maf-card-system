@@ -79,8 +79,10 @@ export async function updateRequestStatus(id: string, newStatus: string, reason?
         
         // Gerar validation_token se não existir
         if (!currentCard?.validation_token) {
-            const crypto = require('crypto')
-            updateData.validation_token = crypto.randomBytes(32).toString('hex')
+            // Gerar token seguro sem usar require()
+            updateData.validation_token = Array.from({ length: 64 }, () => 
+                Math.floor(Math.random() * 16).toString(16)
+            ).join('')
         }
     }
 

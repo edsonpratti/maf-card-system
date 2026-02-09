@@ -66,17 +66,30 @@ export async function GET(
             qrToken: userCard.validation_token,
         })
 
+        // Sanitizar o nome do arquivo
+        const safeCardNumber = userCard.card_number.replace(/[^a-zA-Z0-9-]/g, '_')
+
         // Retornar o PDF como download
         return new NextResponse(pdfBuffer, {
+            status: 200,
             headers: {
                 'Content-Type': 'application/pdf',
-                'Content-Disposition': `attachment; filename="cartao-maf-${userCard.card_number}.pdf"`,
+                'Content-Disposition': `attachment; filename="cartao-maf-${safeCardNumber}.pdf"`,
+                'Content-Length': pdfBuffer.length.toString(),
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0',
             },
         })
-    } catch (error) {
+    } catch (error: any) {
         console.error("Erro ao gerar PDF:", error)
+        console.error("Stack:", error?.stack)
+        console.error("Message:", error?.message)
         return NextResponse.json(
-            { error: "Erro ao gerar o PDF do cartão" },
+            { 
+                error: "Erro ao gerar o PDF do cartão",
+                details: error?.message || 'Erro desconhecido'
+            },
             { status: 500 }
         )
     }

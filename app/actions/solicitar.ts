@@ -151,8 +151,10 @@ export async function submitApplication(prevState: any, formData: FormData) {
         const randomPart = Math.random().toString(36).substring(2, 8)
         cardNumber = `MAF-${timestamp}-${randomPart}`.toUpperCase()
         
-        const crypto = require('crypto')
-        validationToken = crypto.randomBytes(32).toString('hex')
+        // Gerar token seguro sem usar require()
+        validationToken = Array.from({ length: 64 }, () => 
+            Math.floor(Math.random() * 16).toString(16)
+        ).join('')
     }
 
     // Handle File Upload
