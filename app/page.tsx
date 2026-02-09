@@ -41,15 +41,19 @@ export default function Home() {
       } else if (data.user) {
         const isAdmin = data.user.user_metadata?.is_admin === true || data.user.app_metadata?.is_admin === true
         
+        // Impedir que admins façam login pela página inicial (área de alunas)
+        if (isAdmin) {
+          toast.error("Acesso negado. Administradores devem utilizar o login específico em /admin/login")
+          await supabase.auth.signOut()
+          setLoading(false)
+          return
+        }
+        
         toast.success("Login realizado com sucesso!")
         // Aguarda os cookies serem salvos antes de redirecionar
         await new Promise(resolve => setTimeout(resolve, 500))
         
-        if (isAdmin) {
-          window.location.href = "/admin/dashboard"
-        } else {
-          window.location.href = "/portal"
-        }
+        window.location.href = "/portal"
       }
     } catch (error) {
       console.error("Erro no login:", error)
@@ -187,6 +191,16 @@ export default function Home() {
                         className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-teal-400 focus:ring-teal-400/20"
                         required
                       />
+                    </div>
+
+                    <div className="text-right">
+                      <button
+                        type="button"
+                        onClick={() => router.push('/login')}
+                        className="text-sm text-teal-400 hover:text-teal-300 hover:underline transition-colors"
+                      >
+                        Esqueceu sua senha?
+                      </button>
                     </div>
 
                     <Button
