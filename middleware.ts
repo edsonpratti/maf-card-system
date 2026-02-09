@@ -58,6 +58,30 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Redirecionar usuários autenticados da home para o portal
+  if (request.nextUrl.pathname === '/') {
+    if (user) {
+      const isAdmin = user.user_metadata?.is_admin === true || user.app_metadata?.is_admin === true
+      if (isAdmin) {
+        return NextResponse.redirect(new URL('/admin/dashboard', request.url))
+      } else {
+        return NextResponse.redirect(new URL('/portal', request.url))
+      }
+    }
+  }
+
+  // Redirecionar usuários autenticados da página de login para o portal
+  if (request.nextUrl.pathname === '/login') {
+    if (user) {
+      const isAdmin = user.user_metadata?.is_admin === true || user.app_metadata?.is_admin === true
+      if (isAdmin) {
+        return NextResponse.redirect(new URL('/admin/dashboard', request.url))
+      } else {
+        return NextResponse.redirect(new URL('/portal', request.url))
+      }
+    }
+  }
+
   // Proteger rotas /portal (exige autenticação de aluna)
   if (request.nextUrl.pathname.startsWith('/portal')) {
     if (!user) {

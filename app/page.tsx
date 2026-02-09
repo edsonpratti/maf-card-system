@@ -8,24 +8,61 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { CreditCard, Globe, BookOpen, Shield } from "lucide-react"
 import { toast } from "sonner"
+import { supabase } from "@/lib/supabase"
+import { useRouter } from "next/navigation"
+import RegisterModal from "@/components/register-modal"
 
 export default function Home() {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState<"login" | "register">("login")
   const [loginData, setLoginData] = useState({ email: "", password: "" })
-  const [registerData, setRegisterData] = useState({ name: "", email: "", password: "" })
+  const [loading, setLoading] = useState(false)
+  const [registerModalOpen, setRegisterModalOpen] = useState(false)
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Mock - substituir com lógica real
-    toast.info("Função de login em desenvolvimento")
-    console.log("Login:", loginData)
+    setLoading(true)
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: loginData.email,
+        password: loginData.password,
+      })
+
+      if (error) {
+        // Mensagens de erro mais descritivas
+        if (error.message.includes('Invalid login credentials')) {
+          toast.error("Email ou senha incorretos")
+        } else if (error.message.includes('Email not confirmed')) {
+          toast.error("Email não confirmado. Verifique sua caixa de entrada.")
+        } else {
+          toast.error("Erro ao fazer login: " + error.message)
+        }
+      } else if (data.user) {
+        const isAdmin = data.user.user_metadata?.is_admin === true || data.user.app_metadata?.is_admin === true
+        
+        toast.success("Login realizado com sucesso!")
+        // Aguarda os cookies serem salvos antes de redirecionar
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        if (isAdmin) {
+          window.location.href = "/admin/dashboard"
+        } else {
+          window.location.href = "/portal"
+        }
+      }
+    } catch (error) {
+      console.error("Erro no login:", error)
+      toast.error("Erro inesperado ao fazer login")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleRegisterSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    // Mock - substituir com lógica real
-    toast.info("Função de cadastro em desenvolvimento")
-    console.log("Register:", registerData)
+    // Abrir modal de cadastro completo
+    setRegisterModalOpen(true)
   }
 
   return (
@@ -155,8 +192,9 @@ export default function Home() {
                     <Button
                       type="submit"
                       className="w-full bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white font-semibold py-6 shadow-lg shadow-teal-500/20 transition-all hover:shadow-teal-500/30"
+                      disabled={loading}
                     >
-                      Entrar no MAF Pro
+                      {loading ? "Entrando..." : "Entrar no MAF Pro"}
                     </Button>
 
                     <p className="text-xs text-gray-400 text-center leading-relaxed">
@@ -165,49 +203,10 @@ export default function Home() {
                   </form>
                 ) : (
                   <form onSubmit={handleRegisterSubmit} className="space-y-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="register-name" className="text-gray-200">
-                        Nome completo
-                      </Label>
-                      <Input
-                        id="register-name"
-                        type="text"
-                        placeholder="Seu nome completo"
-                        value={registerData.name}
-                        onChange={(e) => setRegisterData({ ...registerData, name: e.target.value })}
-                        className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-teal-400 focus:ring-teal-400/20"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="register-email" className="text-gray-200">
-                        E-mail
-                      </Label>
-                      <Input
-                        id="register-email"
-                        type="email"
-                        placeholder="seu@email.com"
-                        value={registerData.email}
-                        onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
-                        className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-teal-400 focus:ring-teal-400/20"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="register-password" className="text-gray-200">
-                        Senha
-                      </Label>
-                      <Input
-                        id="register-password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={registerData.password}
-                        onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-                        className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-teal-400 focus:ring-teal-400/20"
-                        required
-                      />
+                    <div className="space-y-4 text-center py-8">
+                      <p className="text-gray-200">
+                        Para criar sua conta no MAF Pro, você precisará preencher um formulário completo com seus dados e enviar seu certificado de habilitação no Método Amanda Fernandes.
+                      </p>
                     </div>
 
                     <Button
@@ -234,6 +233,9 @@ export default function Home() {
           © 2026 MAF Pro — O ecossistema oficial das habilitadas no Método Amanda Fernandes
         </p>
       </footer>
+
+      {/* Modal de Cadastro */}
+      <RegisterModal open={registerModalOpen} onOpenChange={setRegisterModalOpen} />
     </div>
   )
 }

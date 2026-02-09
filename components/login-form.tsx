@@ -25,25 +25,47 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
         const password = formData.get("password") as string
 
         try {
-            const { error } = await supabase.auth.signInWithPassword({
+            const { data, error } = await supabase.auth.signInWithPassword({
                 email,
                 password,
             })
 
             if (error) {
-                toast.error("Erro ao fazer login: " + error.message)
-            } else {
+                // Mensagens de erro mais descritivas
+                if (error.message.includes('Invalid login credentials')) {
+                    toast.error("Email ou senha incorretos")
+                } else if (error.message.includes('Email not confirmed')) {
+                    toast.error("Email não confirmado. Verifique sua caixa de entrada.")
+                } else {
+                    toast.error("Erro ao fazer login: " + error.message)
+                }
+            } else if (data.user) {
+                const isUserAdmin = data.user.user_metadata?.is_admin === true || data.user.app_metadata?.is_admin === true
+                
+                // Verificar se está tentando acessar a área correta
+                if (admin && !isUserAdmin) {
+                    toast.error("Acesso negado. Esta área é exclusiva para administradores.")
+                    await supabase.auth.signOut()
+                    setLoading(false)
+                    return
+                }
+                
                 toast.success("Login realizado com sucesso!")
                 // Aguarda os cookies serem salvos antes de redirecionar
                 await new Promise(resolve => setTimeout(resolve, 500))
+                
                 if (admin) {
+                    window.location.href = "/admin/dashboard"
+                } else if (isUserAdmin) {
+                    // Se um admin faz login pela página de aluna, redireciona para admin
                     window.location.href = "/admin/dashboard"
                 } else {
                     window.location.href = "/portal"
                 }
             }
-        } catch {
-            toast.error("Erro inesperado")
+        } catch (error) {
+            console.error("Erro no login:", error)
+            toast.error("Erro inesperado ao fazer login")
         } finally {
             setLoading(false)
         }
