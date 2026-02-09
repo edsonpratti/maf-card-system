@@ -62,8 +62,26 @@ export async function updateRequestStatus(id: string, newStatus: string, reason?
 
     if (newStatus === "APROVADA_MANUAL" || newStatus === "AUTO_APROVADA") {
         updateData.issued_at = new Date().toISOString()
-        // Generate card number, token, PDF here or via trigger
-        // For now, simple update
+        
+        // Buscar o registro para verificar se já tem card_number e validation_token
+        const { data: currentCard } = await supabase
+            .from("users_cards")
+            .select("card_number, validation_token")
+            .eq("id", id)
+            .single()
+        
+        // Gerar card_number se não existir
+        if (!currentCard?.card_number) {
+            const timestamp = Date.now().toString(36)
+            const randomPart = Math.random().toString(36).substring(2, 8)
+            updateData.card_number = `MAF-${timestamp}-${randomPart}`.toUpperCase()
+        }
+        
+        // Gerar validation_token se não existir
+        if (!currentCard?.validation_token) {
+            const crypto = require('crypto')
+            updateData.validation_token = crypto.randomBytes(32).toString('hex')
+        }
     }
 
     const { error } = await supabase

@@ -140,8 +140,19 @@ export async function submitApplication(prevState: any, formData: FormData) {
         .single()
 
     let status = "PENDENTE_MANUAL"
+    let cardNumber = null
+    let validationToken = null
+    
     if (student) {
         status = "AUTO_APROVADA"
+        
+        // Gerar card_number e validation_token para aprovação automática
+        const timestamp = Date.now().toString(36)
+        const randomPart = Math.random().toString(36).substring(2, 8)
+        cardNumber = `MAF-${timestamp}-${randomPart}`.toUpperCase()
+        
+        const crypto = require('crypto')
+        validationToken = crypto.randomBytes(32).toString('hex')
     }
 
     // Handle File Upload
@@ -189,7 +200,7 @@ export async function submitApplication(prevState: any, formData: FormData) {
     }
 
     // Insert
-    const { data: insertedData, error } = await supabase.from("users_cards").insert({
+    const insertData: any = {
         name: rawData.name,
         cpf: cpfClean,
         cpf_hash: cpfClean,
@@ -198,7 +209,16 @@ export async function submitApplication(prevState: any, formData: FormData) {
         address_json: rawData.address,
         status,
         certificate_file_path: certificatePath || null,
-    }).select().single()
+    }
+    
+    // Adicionar card_number e validation_token se aprovado automaticamente
+    if (status === "AUTO_APROVADA") {
+        insertData.card_number = cardNumber
+        insertData.validation_token = validationToken
+        insertData.issued_at = new Date().toISOString()
+    }
+    
+    const { data: insertedData, error } = await supabase.from("users_cards").insert(insertData).select().single()
 
     if (error) {
         return { success: false, message: "Erro ao salvar dados." }
@@ -209,5 +229,10 @@ export async function submitApplication(prevState: any, formData: FormData) {
         await sendFirstAccessEmail(insertedData.id, rawData.email as string, rawData.name as string)
     }
 
-    return { success: true, message: "Solicitação enviada com sucesso!", status }
+    return { 
+        success: true, 
+        message: "Solicitação enviada com sucesso!", 
+        status,
+        userId: insertedData.id 
+    }
 }

@@ -88,25 +88,34 @@ export default async function CarteiraPage() {
                                 <p className="text-sm"><span className="font-medium">Email:</span> {userCard.email}</p>
                             </div>
 
-                            {userCard.status === 'approved' && userCard.qr_code_token && (
-                                <Button asChild variant="default" className="w-full">
-                                    <a href={`/validar/${userCard.qr_code_token}`} target="_blank" rel="noopener noreferrer">
-                                        <Download className="mr-2 h-4 w-4" />
-                                        Visualizar Carteirinha
-                                    </a>
-                                </Button>
+                            {(userCard.status === 'AUTO_APROVADA' || userCard.status === 'APROVADA_MANUAL') && (
+                                <div className="space-y-2">
+                                    <Button asChild variant="default" className="w-full">
+                                        <a href={`/api/cartao/${userCard.id}`} download>
+                                            <Download className="mr-2 h-4 w-4" />
+                                            Baixar Cartão PDF
+                                        </a>
+                                    </Button>
+                                    {userCard.validation_token && (
+                                        <Button asChild variant="outline" className="w-full">
+                                            <a href={`/validar/${userCard.validation_token}`} target="_blank" rel="noopener noreferrer">
+                                                Validar Carteirinha Online
+                                            </a>
+                                        </Button>
+                                    )}
+                                </div>
                             )}
 
-                            {userCard.status === 'pending' && (
+                            {userCard.status === 'PENDENTE_MANUAL' && (
                                 <div className="bg-blue-50 p-4 rounded-md text-sm text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
                                     <p>Sua solicitação está em análise. Você receberá um e-mail quando for aprovada.</p>
                                 </div>
                             )}
 
-                            {userCard.status === 'rejected' && userCard.admin_notes && (
+                            {userCard.status === 'RECUSADA' && userCard.rejection_reason && (
                                 <div className="bg-red-50 p-4 rounded-md text-sm text-red-800 dark:bg-red-900/20 dark:text-red-400">
                                     <p className="font-medium mb-1">Motivo da rejeição:</p>
-                                    <p>{userCard.admin_notes}</p>
+                                    <p>{userCard.rejection_reason}</p>
                                 </div>
                             )}
                         </>

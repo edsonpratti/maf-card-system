@@ -201,6 +201,30 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                         <CardDescription>Certificado enviado pela usuária</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        {/* PDF do Cartão (se aprovado) */}
+                        {(request.status === 'AUTO_APROVADA' || request.status === 'APROVADA_MANUAL') && 
+                         request.card_number && request.validation_token && (
+                            <div className="rounded-md border p-4 bg-green-50 dark:bg-green-900/20">
+                                <p className="text-sm font-medium mb-3 text-green-700 dark:text-green-400">
+                                    Cartão Aprovado
+                                </p>
+                                <div className="space-y-2">
+                                    <Button asChild variant="default" className="w-full">
+                                        <a href={`/api/admin/cartao/${request.id}`} download>
+                                            <Download className="mr-2 h-4 w-4" />
+                                            Baixar Cartão PDF
+                                        </a>
+                                    </Button>
+                                    <Button asChild variant="outline" className="w-full">
+                                        <a href={`/validar/${request.validation_token}`} target="_blank" rel="noopener noreferrer">
+                                            <FileCheck className="mr-2 h-4 w-4" />
+                                            Validar Cartão Online
+                                        </a>
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                        
                         {request.certificate_file_path ? (
                             <div className="space-y-3">
                                 <div className="rounded-md border p-4 bg-muted/50">

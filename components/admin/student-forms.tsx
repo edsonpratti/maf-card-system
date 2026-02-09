@@ -8,7 +8,11 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 
-export function AddStudentForm() {
+interface StudentFormProps {
+    onSuccess?: () => void
+}
+
+export function AddStudentForm({ onSuccess }: StudentFormProps) {
     const [loading, setLoading] = useState(false)
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -20,6 +24,7 @@ export function AddStudentForm() {
             if (res.success) {
                 toast.success(res.message)
                 e.currentTarget.reset()
+                onSuccess?.()
             } else {
                 toast.error(res.message)
             }
@@ -48,7 +53,7 @@ export function AddStudentForm() {
     )
 }
 
-export function ImportCSVForm() {
+export function ImportCSVForm({ onSuccess }: StudentFormProps) {
     const [loading, setLoading] = useState(false)
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -60,6 +65,7 @@ export function ImportCSVForm() {
             if (res.success) {
                 toast.success(res.message)
                 e.currentTarget.reset()
+                onSuccess?.()
             } else {
                 toast.error(res.message)
             }

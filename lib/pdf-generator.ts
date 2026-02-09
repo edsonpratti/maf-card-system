@@ -8,71 +8,112 @@ export async function generateCardPDF(data: {
     qrToken: string
 }) {
     const pdfDoc = await PDFDocument.create()
-    const page = pdfDoc.addPage([600, 400])
+    // Tamanho de cartão de crédito: 85.6mm x 53.98mm = ~243 x 153 pontos
+    const page = pdfDoc.addPage([243, 153])
     const { width, height } = page.getSize()
 
-    const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
+    const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica)
 
-    // Draw background (Mocking a design with colors)
-    page.drawRectangle({
-        x: 0,
-        y: 0,
-        width,
-        height,
-        color: rgb(0.9, 0.95, 1),
+    // Gradiente simulado: preto no topo, transição para laranja/dourado
+    // Como pdf-lib não suporta gradientes nativamente, vamos criar camadas de retângulos
+    const gradientSteps = 50
+    for (let i = 0; i < gradientSteps; i++) {
+        const ratio = i / gradientSteps
+        // Transição de preto (0,0,0) para laranja/dourado (0.95, 0.6, 0.2)
+        const r = 0 + ratio * 0.95
+        const g = 0 + ratio * 0.6
+        const b = 0 + ratio * 0.2
+        
+        page.drawRectangle({
+            x: 0,
+            y: height - (i + 1) * (height / gradientSteps),
+            width,
+            height: height / gradientSteps + 1,
+            color: rgb(r, g, b),
+        })
+    }
+
+    // Logo "MAF" no canto superior esquerdo (simplificado como texto)
+    page.drawText('MAF', {
+        x: 10,
+        y: height - 20,
+        size: 12,
+        font: fontBold,
+        color: rgb(1, 1, 1),
     })
 
-    // Draw Header
-    page.drawText('Carteirinha de Habilitada MAF', {
-        x: 50,
-        y: height - 60,
-        size: 28,
-        font,
-        color: rgb(0, 0, 0.6),
+    // "LEVEL" no canto superior direito
+    page.drawText('LEVEL', {
+        x: width - 50,
+        y: height - 12,
+        size: 6,
+        font: fontRegular,
+        color: rgb(0.7, 0.7, 0.7),
     })
 
-    // Draw Name
-    page.drawText(`Nome: ${data.name}`, {
-        x: 50,
-        y: height - 120,
-        size: 18,
-        font,
-        color: rgb(0, 0, 0),
+    // "Habilitada MAF" no canto superior direito
+    page.drawText('Habilitada MAF', {
+        x: width - 80,
+        y: height - 22,
+        size: 8,
+        font: fontBold,
+        color: rgb(1, 1, 1),
     })
 
-    // Draw CPF
-    page.drawText(`CPF: ${data.cpf}`, {
-        x: 50,
-        y: height - 150,
-        size: 18,
-        font,
-        color: rgb(0, 0, 0),
+    // Nome completo no centro (destaque)
+    const nameSize = 14
+    const nameWidth = fontBold.widthOfTextAtSize(data.name, nameSize)
+    page.drawText(data.name, {
+        x: Math.max(10, (width - nameWidth) / 2),
+        y: height / 2 + 10,
+        size: nameSize,
+        font: fontBold,
+        color: rgb(1, 1, 1),
     })
 
-    // Draw Card Number
-    page.drawText(`Carteira Nº: ${data.cardNumber}`, {
-        x: 50,
-        y: height - 180,
-        size: 18,
-        font,
-        color: rgb(0, 0, 0),
+    // CPF abaixo do nome
+    const cpfText = `CPF: ${data.cpf}`
+    page.drawText(cpfText, {
+        x: 10,
+        y: height / 2 - 10,
+        size: 8,
+        font: fontRegular,
+        color: rgb(0.9, 0.9, 0.9),
     })
 
-    // Generate QR Code
-    // Use toBuffer for server-side generation
+    // "MINT NUMBER" e código único na parte inferior
+    page.drawText('CÓDIGO ÚNICO', {
+        x: 10,
+        y: 30,
+        size: 6,
+        font: fontRegular,
+        color: rgb(0.7, 0.7, 0.7),
+    })
+
+    page.drawText(data.cardNumber, {
+        x: 10,
+        y: 18,
+        size: 10,
+        font: fontBold,
+        color: rgb(1, 1, 1),
+    })
+
+    // QR Code no canto inferior direito (menor)
     const qrBuffer = await QRCode.toBuffer(
-        `${process.env.NEXT_PUBLIC_APP_URL}/validar/${data.qrToken}`
+        `${process.env.NEXT_PUBLIC_APP_URL}/validar/${data.qrToken}`,
+        { width: 200, margin: 1 }
     )
     const qrImage = await pdfDoc.embedPng(qrBuffer)
 
     page.drawImage(qrImage, {
-        x: width - 150,
-        y: 50,
-        width: 100,
-        height: 100,
+        x: width - 45,
+        y: 5,
+        width: 40,
+        height: 40,
     })
 
-    // Serialize the PDFDocument to bytes (a Uint8Array)
+    // Serializar o PDF
     const pdfBytes = await pdfDoc.save()
     return Buffer.from(pdfBytes)
 }

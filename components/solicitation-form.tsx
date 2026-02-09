@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { studentSchema, type StudentFormData } from "@/lib/validators"
@@ -14,6 +15,7 @@ import { Loader2 } from "lucide-react"
 import { formatCEP, formatPhone } from "@/lib/utils"
 
 export default function SolicitationForm() {
+    const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [cpfStatus, setCpfStatus] = useState<"initial" | "found" | "not_found" | "checking">("initial")
 
@@ -137,7 +139,8 @@ export default function SolicitationForm() {
             const result = await submitApplication(null, formData)
             if (result.success) {
                 toast.success(result.message)
-                // Redirect or show success state
+                // Redirect to confirmation page with status
+                router.push(`/solicitar/confirmacao?status=${result.status}`)
             } else {
                 toast.error(result.message)
             }
