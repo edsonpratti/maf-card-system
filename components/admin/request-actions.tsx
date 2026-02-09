@@ -55,18 +55,15 @@ export default function RequestActions({ request }: { request: any }) {
     const handleResendEmail = async () => {
         if (!confirm("Reenviar email de primeiro acesso para esta usuária?")) return
         setLoading(true)
-        console.log("🔍 Reenviando email para request:", request)
-        console.log("📧 ID sendo enviado:", request.id)
         try {
             const res = await resendFirstAccessEmail(request.id)
-            console.log("📬 Resultado do reenvio:", res)
             if (res.success) {
                 toast.success(res.message)
             } else {
                 toast.error(res.message)
             }
         } catch (error) {
-            console.error("❌ Erro ao reenviar:", error)
+            console.error("Erro ao reenviar email:", error)
             toast.error("Erro ao reenviar email")
         } finally {
             setLoading(false)

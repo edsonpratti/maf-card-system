@@ -120,37 +120,20 @@ export async function resendFirstAccessEmail(id: string) {
     
     const supabase = getServiceSupabase()
     
-    console.log("🔍 Tentando reenviar email para ID:", id)
-    
-    // First, try to get ALL columns to see what exists
-    const { data: checkData, error: checkError } = await supabase
-        .from("users_cards")
-        .select("*")
-        .eq("id", id)
-        .single()
-    
-    console.log("📊 Verificação completa:", { checkData, checkError })
-    
-    // Get user data (without auth_user_id first to test)
+    // Get user data
     const { data: userData, error } = await supabase
         .from("users_cards")
-        .select("id, email, name, status")
+        .select("id, email, name, status, auth_user_id")
         .eq("id", id)
         .single()
     
-    console.log("📊 Resultado da consulta básica:", { userData, error })
-    
     if (error || !userData) {
-        console.error("❌ Erro na consulta:", error)
-        return { success: false, message: `Usuário não encontrado. Erro: ${error?.message || 'desconhecido'}` }
+        console.error("Erro ao buscar usuário para reenvio:", error)
+        return { success: false, message: "Usuário não encontrado" }
     }
     
-    // Check if auth_user_id exists in the record
-    const hasAuthUserId = checkData && 'auth_user_id' in checkData
-    console.log("🔑 auth_user_id existe?", hasAuthUserId, "Valor:", checkData?.auth_user_id)
-    
-    // Check if already has auth account (only if column exists)
-    if (hasAuthUserId && checkData.auth_user_id) {
+    // Check if already has auth account
+    if (userData.auth_user_id) {
         return { success: false, message: "Usuário já possui conta criada. Use 'Esqueci minha senha' na tela de login." }
     }
     
