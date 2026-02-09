@@ -45,10 +45,38 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
         } finally {
             setLoading(false)
         }
+    }
+
     const handleForgotPassword = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setLoading(true)
-        const formData = newresetPassword ? "Recuperar Senha" : (admin ? "Admin Login" : "Login da Aluna")}</CardTitle>
+        const formData = new FormData(e.currentTarget)
+        const email = formData.get("email") as string
+
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/auth/callback`,
+            })
+
+            if (error) {
+                toast.error("Erro ao enviar e-mail: " + error.message)
+            } else {
+                toast.success("E-mail de recuperação enviado! Verifique sua caixa de entrada.")
+                setResetPassword(false)
+            }
+        } catch {
+            toast.error("Erro inesperado")
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    return (
+        <Card className="w-full max-w-sm mx-auto mt-20">
+            <CardHeader>
+                <CardTitle>
+                    {resetPassword ? "Recuperar Senha" : (admin ? "Admin Login" : "Login da Aluna")}
+                </CardTitle>
                 <CardDescription>
                     {resetPassword 
                         ? "Digite seu e-mail para receber o link de recuperação." 
@@ -113,32 +141,6 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
                         )}
                     </form>
                 )}
-            setLoading(false)
-        }
-    }
-
-    }
-
-    return (
-        <Card className="w-full max-w-sm mx-auto mt-20">
-            <CardHeader>
-                <CardTitle>{admin ? "Admin Login" : "Login da Aluna"}</CardTitle>
-                <CardDescription>Entre com suas credenciais.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <form onSubmit={handleLogin} className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="email">E-mail</Label>
-                        <Input id="email" name="email" type="email" required />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="password">Senha</Label>
-                        <Input id="password" name="password" type="password" required />
-                    </div>
-                    <Button type="submit" className="w-full" disabled={loading}>
-                        {loading ? "Entrando..." : "Entrar"}
-                    </Button>
-                </form>
             </CardContent>
         </Card>
     )
