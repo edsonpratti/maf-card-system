@@ -60,7 +60,7 @@ export async function sendFirstAccessEmail(userId: string, email: string, name: 
             if (error) {
                 console.error("❌ Erro ao enviar email via Resend:", error)
                 console.error("❌ Detalhes do erro:", JSON.stringify(error, null, 2))
-                // Fallback: log the link for de`Erro ao enviar email: ${error.message || JSON.stringify(error)}` }
+                return { success: false, error: `Erro ao enviar email: ${error.message || JSON.stringify(error)}` }
             }
             
             console.log("✅ Email enviado com sucesso via Resend! ID:", data?.id)
@@ -68,32 +68,14 @@ export async function sendFirstAccessEmail(userId: string, email: string, name: 
             
         } catch (emailError: any) {
             console.error("❌ Exceção ao enviar email:", emailError)
-            console.error("❌ Stack:", emailError?.stack
-                `)
-                return { success: false, error: "Erro ao enviar email. Verifique as configurações do Resend." }
-            }
-            
-            console.log("Email enviado com sucesso via Resend:", data?.id)
-            return { success: true, link: accessLink }
-            
-        } catch (emailError) {
-            console.error("Excfalse, error: `Exceção ao enviar: ${emailError?.message || 'desconhecido'}` }
+            console.error("❌ Stack:", emailError?.stack)
+            return { success: false, error: `Exceção ao enviar: ${emailError?.message || 'desconhecido'}` }
         }
         
     } catch (error: any) {
         console.error("❌ Erro geral ao enviar email:", error)
         console.error("❌ Stack:", error?.stack)
-        return { success: false, error: `Erro ao enviar email: ${error?.message || 'Erro desconhecido'}`
-            Link: ${accessLink}
-            Expira em: ${expiresAt.toLocaleString('pt-BR')}
-            ===========================================================
-            `)
-            return { success: true, link: accessLink } // Still return success for development
-        }
-        
-    } catch (error) {
-        console.error("Erro ao enviar email:", error)
-        return { success: false, error: "Erro ao enviar email de primeiro acesso" }
+        return { success: false, error: `Erro ao enviar email: ${error?.message || 'Erro desconhecido'}` }
     }
 }
 
