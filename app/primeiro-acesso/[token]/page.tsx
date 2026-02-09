@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { verifyFirstAccessToken, setUserPassword } from '@/app/actions/first-access'
@@ -203,9 +204,8 @@ export default function FirstAccessPage({ params }: PageProps) {
 
             <div className="space-y-2">
               <Label htmlFor="password">Nova Senha</Label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 value={password}
                 onChange={(e) => handlePasswordChange(e.target.value)}
                 placeholder="Digite sua senha"
@@ -240,9 +240,8 @@ export default function FirstAccessPage({ params }: PageProps) {
 
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirmar Senha</Label>
-              <Input
+              <PasswordInput
                 id="confirmPassword"
-                type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Digite a senha novamente"

@@ -4,11 +4,13 @@ import { useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { solicitarRecuperacaoSenha } from "@/app/actions/recuperar-senha"
 
 export default function LoginForm({ admin = false }: { admin?: boolean }) {
     const [resetPassword, setResetPassword] = useState(false)
@@ -54,18 +56,16 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
         const email = formData.get("email") as string
 
         try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${window.location.origin}/auth/callback`,
-            })
+            const result = await solicitarRecuperacaoSenha(email)
 
-            if (error) {
-                toast.error("Erro ao enviar e-mail: " + error.message)
-            } else {
-                toast.success("E-mail de recuperação enviado! Verifique sua caixa de entrada.")
+            if (result.success) {
+                toast.success(result.message)
                 setResetPassword(false)
+            } else {
+                toast.error(result.message)
             }
         } catch {
-            toast.error("Erro inesperado")
+            toast.error("Erro inesperado ao enviar email de recuperação.")
         } finally {
             setLoading(false)
         }
@@ -113,7 +113,7 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="password">Senha</Label>
-                            <Input id="password" name="password" type="password" required />
+                            <PasswordInput id="password" name="password" required />
                         </div>
                         {!admin && (
                             <div className="text-right">
