@@ -120,6 +120,8 @@ export async function resendFirstAccessEmail(id: string) {
     
     const supabase = getServiceSupabase()
     
+    console.log("🔍 Tentando reenviar email para ID:", id)
+    
     // Get user data
     const { data: userData, error } = await supabase
         .from("users_cards")
@@ -127,7 +129,10 @@ export async function resendFirstAccessEmail(id: string) {
         .eq("id", id)
         .single()
     
+    console.log("📊 Resultado da consulta:", { userData, error })
+    
     if (error || !userData) {
+        console.error("❌ Erro na consulta:", error)
         return { success: false, message: "Usuário não encontrado" }
     }
     
