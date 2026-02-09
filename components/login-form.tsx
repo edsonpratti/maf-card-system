@@ -50,14 +50,19 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
                     return
                 }
                 
+                // Impedir que admins façam login pela página de alunas
+                if (!admin && isUserAdmin) {
+                    toast.error("Acesso negado. Administradores devem utilizar o login específico em /admin/login")
+                    await supabase.auth.signOut()
+                    setLoading(false)
+                    return
+                }
+                
                 toast.success("Login realizado com sucesso!")
                 // Aguarda os cookies serem salvos antes de redirecionar
                 await new Promise(resolve => setTimeout(resolve, 500))
                 
                 if (admin) {
-                    window.location.href = "/admin/dashboard"
-                } else if (isUserAdmin) {
-                    // Se um admin faz login pela página de aluna, redireciona para admin
                     window.location.href = "/admin/dashboard"
                 } else {
                     window.location.href = "/portal"
