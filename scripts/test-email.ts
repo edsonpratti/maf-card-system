@@ -12,7 +12,7 @@ async function testEmail() {
     
     // Check environment variables
     const apiKey = process.env.RESEND_API_KEY
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'mafpro@amandafernandes.com'
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
     
     console.log("✅ RESEND_API_KEY:", apiKey ? `${apiKey.substring(0, 10)}...` : "❌ NÃO CONFIGURADA")

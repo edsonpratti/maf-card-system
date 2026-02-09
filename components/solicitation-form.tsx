@@ -18,6 +18,7 @@ export default function SolicitationForm() {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [cpfStatus, setCpfStatus] = useState<"initial" | "found" | "not_found" | "checking">("initial")
+    const [cepLoading, setCepLoading] = useState(false)
 
 
     const form = useForm<StudentFormData>({
@@ -78,6 +79,7 @@ export default function SolicitationForm() {
         const cep = e.target.value.replace(/\D/g, "")
         if (cep.length !== 8) return
 
+        setCepLoading(true)
         try {
             const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`)
             const data = await response.json()
@@ -93,8 +95,11 @@ export default function SolicitationForm() {
             form.setValue("address.state", data.uf)
             // Focus on number field automatically for better UX
             form.setFocus("address.number")
+            toast.success("Endereço encontrado!")
         } catch (error) {
-            // Silently fail CEP lookup
+            toast.error("Erro ao buscar CEP. Preencha os dados manualmente.")
+        } finally {
+            setCepLoading(false)
         }
     }
 
@@ -216,40 +221,65 @@ export default function SolicitationForm() {
                     {/* Address Fields Simplified */}
                     <div className="space-y-2">
                         <Label htmlFor="cep">CEP</Label>
-                        <Input
-                            id="cep"
-                            {...form.register("address.cep")}
-                            placeholder="00000-000"
-                            onChange={(e) => {
-                                e.target.value = formatCEP(e.target.value)
-                                form.register("address.cep").onChange(e)
-                            }}
-                            onBlur={(e) => {
-                                form.register("address.cep").onBlur(e)
-                                handleCEPBlur(e)
-                            }}
-                        />
+                        <div className="relative">
+                            <Input
+                                id="cep"
+                                {...form.register("address.cep")}
+                                placeholder="00000-000"
+                                disabled={cepLoading}
+                                onChange={(e) => {
+                                    e.target.value = formatCEP(e.target.value)
+                                    form.register("address.cep").onChange(e)
+                                }}
+                                onBlur={(e) => {
+                                    form.register("address.cep").onBlur(e)
+                                    handleCEPBlur(e)
+                                }}
+                            />
+                            {cepLoading && (
+                                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                            )}
+                        </div>
+                        {cepLoading && (
+                            <p className="text-sm text-muted-foreground">Buscando endereço...</p>
+                        )}
                     </div>
 
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="street">Rua</Label>
-                            <Input id="street" {...form.register("address.street")} />
+                            <Input 
+                                id="street" 
+                                {...form.register("address.street")} 
+                                disabled={cepLoading}
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="number">Número</Label>
-                            <Input id="number" {...form.register("address.number")} />
+                            <Input 
+                                id="number" 
+                                {...form.register("address.number")} 
+                                disabled={cepLoading}
+                            />
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="neighborhood">Bairro</Label>
-                            <Input id="neighborhood" {...form.register("address.neighborhood")} />
+                            <Input 
+                                id="neighborhood" 
+                                {...form.register("address.neighborhood")} 
+                                disabled={cepLoading}
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="city">Cidade</Label>
-                            <Input id="city" {...form.register("address.city")} />
+                            <Input 
+                                id="city" 
+                                {...form.register("address.city")} 
+                                disabled={cepLoading}
+                            />
                         </div>
                     </div>
                     <div className="space-y-2">
@@ -258,6 +288,7 @@ export default function SolicitationForm() {
                             id="state"
                             {...form.register("address.state")}
                             maxLength={2}
+                            disabled={cepLoading}
                             onChange={(e) => {
                                 e.target.value = e.target.value.toUpperCase()
                                 form.register("address.state").onChange(e)

@@ -90,7 +90,7 @@ export async function solicitarRecuperacaoSenha(email: string): Promise<Recupera
 
         // 6. Enviar email via Resend
         const { error: emailError } = await resend.emails.send({
-            from: process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev",
+            from: process.env.RESEND_FROM_EMAIL || "mafpro@amandafernandes.com",
             to: email,
             subject: "🔒 Recuperação de Senha - MAF Card System",
             html: passwordResetEmailTemplate(name, resetLink, expiresAt)

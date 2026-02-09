@@ -458,7 +458,7 @@ export async function resendPasswordResetEmail(id: string) {
         const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/recuperar-senha/${resetToken}`
         
         const { data: emailData, error: emailError } = await resend.emails.send({
-            from: process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev",
+            from: process.env.RESEND_FROM_EMAIL || "mafpro@amandafernandes.com",
             to: userData.email,
             subject: "Redefinição de Senha - MAF Card System",
             html: resendPasswordEmailTemplate(userData.name, resetLink),
@@ -533,7 +533,7 @@ export async function resendCardDownloadEmail(id: string) {
         const downloadLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/portal/carteira-profissional`
         
         const { data: emailData, error: emailError } = await resend.emails.send({
-            from: process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev",
+            from: process.env.RESEND_FROM_EMAIL || "mafpro@amandafernandes.com",
             to: userData.email,
             subject: "Download da sua Carteirinha Profissional - MAF Card System",
             html: cardDownloadEmailTemplate(userData.name, downloadLink, userData.card_number),

@@ -44,14 +44,14 @@ export async function sendFirstAccessEmail(userId: string, email: string, name: 
         console.log("📮 Tentando enviar email via Resend...")
         console.log("🔧 Configurações:", {
             apiKey: process.env.RESEND_API_KEY ? "Configurada" : "❌ NÃO CONFIGURADA",
-            from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
+            from: process.env.RESEND_FROM_EMAIL || 'mafpro@amandafernandes.com',
             to: email
         })
         
         // Send email via Resend
         try {
             const { data, error } = await resend.emails.send({
-                from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
+                from: process.env.RESEND_FROM_EMAIL || 'mafpro@amandafernandes.com',
                 to: email,
                 subject: '🎉 Carteirinha Aprovada - Defina sua Senha | MAF Card System',
                 html: firstAccessEmailTemplate(name, accessLink, expiresAt)
