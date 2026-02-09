@@ -9,12 +9,16 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function sendFirstAccessEmail(userId: string, email: string, name: string) {
     try {
+        console.log("📧 Iniciando envio de email para:", { userId, email, name })
+        
         const supabase = getServiceSupabase()
         
         // Generate a secure token
         const token = crypto.randomBytes(32).toString('hex')
         const expiresAt = new Date()
         expiresAt.setHours(expiresAt.getHours() + 48) // 48 hours to set password
+        
+        console.log("🔑 Token gerado, salvando no banco...")
         
         // Save token to database
         const { error: updateError } = await supabase
@@ -26,13 +30,23 @@ export async function sendFirstAccessEmail(userId: string, email: string, name: 
             .eq("id", userId)
         
         if (updateError) {
-            console.error("Erro ao salvar token:", updateError)
+            console.error("❌ Erro ao salvar token:", updateError)
             return { success: false, error: "Erro ao gerar token de acesso" }
         }
+        
+        console.log("✅ Token salvo com sucesso")
         
         // Generate the link
         const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
         const accessLink = `${baseUrl}/primeiro-acesso/${token}`
+        
+        console.log("🔗 Link gerado:", accessLink)
+        console.log("📮 Tentando enviar email via Resend...")
+        console.log("🔧 Configurações:", {
+            apiKey: process.env.RESEND_API_KEY ? "Configurada" : "❌ NÃO CONFIGURADA",
+            from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
+            to: email
+        })
         
         // Send email via Resend
         try {
@@ -44,15 +58,17 @@ export async function sendFirstAccessEmail(userId: string, email: string, name: 
             })
             
             if (error) {
-                console.error("Erro ao enviar email via Resend:", error)
-                // Fallback: log the link for development
-                console.log(`
-                ===== EMAIL DE PRIMEIRO ACESSO (FALLBACK) =====
-                Para: ${email}
-                Nome: ${name}
-                Link: ${accessLink}
-                Expira em: ${expiresAt.toLocaleString('pt-BR')}
-                ===============================================
+                console.error("❌ Erro ao enviar email via Resend:", error)
+                console.error("❌ Detalhes do erro:", JSON.stringify(error, null, 2))
+                // Fallback: log the link for de`Erro ao enviar email: ${error.message || JSON.stringify(error)}` }
+            }
+            
+            console.log("✅ Email enviado com sucesso via Resend! ID:", data?.id)
+            return { success: true, link: accessLink }
+            
+        } catch (emailError: any) {
+            console.error("❌ Exceção ao enviar email:", emailError)
+            console.error("❌ Stack:", emailError?.stack
                 `)
                 return { success: false, error: "Erro ao enviar email. Verifique as configurações do Resend." }
             }
@@ -61,12 +77,13 @@ export async function sendFirstAccessEmail(userId: string, email: string, name: 
             return { success: true, link: accessLink }
             
         } catch (emailError) {
-            console.error("Exceção ao enviar email:", emailError)
-            // Fallback for development
-            console.log(`
-            ===== EMAIL DE PRIMEIRO ACESSO (MODO DESENVOLVIMENTO) =====
-            Para: ${email}
-            Nome: ${name}
+            console.error("Excfalse, error: `Exceção ao enviar: ${emailError?.message || 'desconhecido'}` }
+        }
+        
+    } catch (error: any) {
+        console.error("❌ Erro geral ao enviar email:", error)
+        console.error("❌ Stack:", error?.stack)
+        return { success: false, error: `Erro ao enviar email: ${error?.message || 'Erro desconhecido'}`
             Link: ${accessLink}
             Expira em: ${expiresAt.toLocaleString('pt-BR')}
             ===========================================================
