@@ -1,119 +1,199 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { CreditCard, Globe, BookOpen, Shield } from "lucide-react"
+import { CreditCard, Globe, BookOpen, Shield, ChevronDown, Menu } from "lucide-react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 export default function Home() {
   const router = useRouter()
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-[#0a0e27] via-[#0d1235] to-[#0a0e27]">
-      {/* Gradientes radiais de fundo */}
+    <div className="min-h-screen relative overflow-hidden bg-[#0a1628]">
+      {/* Efeito de Aurora/Brilho */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-teal-500/10 rounded-full blur-3xl" />
+        {/* Arco de luz principal */}
+        <div className="absolute top-[30%] left-1/2 -translate-x-1/2 w-[1200px] h-[600px]">
+          <div className="absolute inset-0 bg-gradient-to-t from-emerald-500/20 via-cyan-500/10 to-transparent rounded-[100%] blur-3xl" />
+          <div className="absolute inset-0 bg-gradient-to-t from-emerald-400/10 via-teal-500/5 to-transparent rounded-[100%] blur-2xl transform scale-90" />
+        </div>
+        {/* Brilho sutil no topo */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-radial from-blue-500/5 to-transparent blur-3xl" />
+        {/* Grade de fundo sutil */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:100px_100px]" />
       </div>
 
-      <main className="relative z-10 container mx-auto px-4 py-12 lg:py-20">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center max-w-7xl mx-auto">
-          
-          {/* Coluna Esquerda - Hero */}
-          <div className="space-y-8">
-            <div className="space-y-6">
-              <Badge variant="outline" className="border-blue-400/30 bg-blue-500/10 text-blue-300 px-4 py-1.5 text-sm font-medium">
-                Plataforma Oficial
-              </Badge>
-              
-              <h1 className="text-5xl lg:text-6xl xl:text-7xl font-bold text-white tracking-tight">
-                MAF Pro
-              </h1>
-              
-              <p className="text-xl text-gray-300 leading-relaxed max-w-xl">
-                O ecossistema oficial das habilitadas no Método Amanda Fernandes.
-              </p>
-              
-              <p className="text-gray-400 leading-relaxed max-w-xl">
-                Aqui você centraliza sua identidade profissional, acessa conteúdos exclusivos e participa da comunidade profissional do método.
-              </p>
+      {/* Header/Navigation */}
+      <header className="relative z-20 w-full">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            {/* Logo */}
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">M</span>
+              </div>
+              <span className="text-white font-semibold text-xl">MAF Pro</span>
             </div>
 
-            {/* Grid de Features 2x2 */}
-            <div className="grid grid-cols-2 gap-4 max-w-xl">
-              <Card className="bg-white/5 backdrop-blur-sm border-white/10 p-6 space-y-3 hover:bg-white/10 transition-colors">
-                <CreditCard className="h-8 w-8 text-teal-400" />
-                <p className="text-sm font-medium text-white leading-tight">
-                  Carteira Profissional de Habilitada
-                </p>
-              </Card>
+            {/* Navigation Desktop */}
+            <nav className="hidden lg:flex items-center">
+              <div className="flex items-center bg-white/5 backdrop-blur-md rounded-full px-2 py-1 border border-white/10">
+                <Link 
+                  href="/" 
+                  className="px-5 py-2 bg-emerald-500 text-white rounded-full text-sm font-medium transition-all"
+                >
+                  Home
+                </Link>
+                <Link 
+                  href="#recursos" 
+                  className="px-5 py-2 text-gray-300 hover:text-white text-sm font-medium transition-colors flex items-center gap-1"
+                >
+                  Recursos <ChevronDown className="w-3 h-3" />
+                </Link>
+                <Link 
+                  href="#sobre" 
+                  className="px-5 py-2 text-gray-300 hover:text-white text-sm font-medium transition-colors flex items-center gap-1"
+                >
+                  Sobre <ChevronDown className="w-3 h-3" />
+                </Link>
+                <Link 
+                  href="#metodo" 
+                  className="px-5 py-2 text-gray-300 hover:text-white text-sm font-medium transition-colors flex items-center gap-1"
+                >
+                  Método <ChevronDown className="w-3 h-3" />
+                </Link>
+                <Link 
+                  href="#contato" 
+                  className="px-5 py-2 text-gray-300 hover:text-white text-sm font-medium transition-colors"
+                >
+                  Contato
+                </Link>
+              </div>
+            </nav>
 
-              <Card className="bg-white/5 backdrop-blur-sm border-white/10 p-6 space-y-3 hover:bg-white/10 transition-colors">
-                <Globe className="h-8 w-8 text-blue-400" />
-                <p className="text-sm font-medium text-white leading-tight">
-                  Comunidade Profissional Fechada
-                </p>
-              </Card>
-
-              <Card className="bg-white/5 backdrop-blur-sm border-white/10 p-6 space-y-3 hover:bg-white/10 transition-colors">
-                <BookOpen className="h-8 w-8 text-purple-400" />
-                <p className="text-sm font-medium text-white leading-tight">
-                  Biblioteca de Materiais Oficiais
-                </p>
-              </Card>
-
-              <Card className="bg-white/5 backdrop-blur-sm border-white/10 p-6 space-y-3 hover:bg-white/10 transition-colors">
-                <Shield className="h-8 w-8 text-green-400" />
-                <p className="text-sm font-medium text-white leading-tight">
-                  Acesso Validado e Seguro
-                </p>
-              </Card>
+            {/* CTA Button */}
+            <div className="flex items-center gap-4">
+              <Button 
+                onClick={() => router.push('/login')}
+                className="hidden sm:flex bg-emerald-500 hover:bg-emerald-600 text-white font-medium px-6 py-2 rounded-full transition-all shadow-lg shadow-emerald-500/25"
+              >
+                Acessar Portal
+              </Button>
+              <button className="lg:hidden text-white p-2">
+                <Menu className="w-6 h-6" />
+              </button>
             </div>
           </div>
+        </div>
+      </header>
 
-          {/* Coluna Direita - Botões de Ação */}
-          <div className="w-full max-w-md mx-auto lg:mx-0 lg:ml-auto">
-            <Card className="bg-white/10 backdrop-blur-md border-white/20 shadow-2xl p-8">
-              <div className="space-y-6">
-                <div className="text-center space-y-2">
-                  <h2 className="text-2xl font-bold text-white">Bem-vinda!</h2>
-                  <p className="text-gray-300">
-                    Escolha uma opção para continuar
-                  </p>
-                </div>
+      {/* Hero Section */}
+      <main className="relative z-10">
+        <div className="container mx-auto px-6 pt-20 pb-32 lg:pt-32 lg:pb-40">
+          <div className="max-w-4xl mx-auto text-center space-y-8">
+            {/* Badge */}
+            <Badge className="bg-white/10 backdrop-blur-sm border border-white/20 text-emerald-400 px-4 py-2 text-sm font-medium rounded-full">
+              O Futuro Começa com o MAF Pro
+            </Badge>
 
-                <div className="space-y-4 pt-4">
-                  <Button
-                    onClick={() => router.push('/login')}
-                    className="w-full bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white font-semibold py-6 text-lg shadow-lg shadow-teal-500/20 transition-all hover:shadow-teal-500/30"
-                  >
-                    ENTRAR
-                  </Button>
+            {/* Main Headline */}
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white tracking-tight leading-[1.1]">
+              Sua carreira{" "}
+              <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                profissional
+              </span>
+              <br />
+              em outro nível
+            </h1>
 
-                  <Button
-                    onClick={() => router.push('/solicitar')}
-                    variant="outline"
-                    className="w-full border-2 border-teal-400/50 bg-white/5 hover:bg-white/10 text-white font-semibold py-6 text-lg transition-all"
-                  >
-                    CRIAR CONTA
-                  </Button>
-                </div>
+            {/* Subtitle */}
+            <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
+              O ecossistema oficial das habilitadas no Método Amanda Fernandes. 
+              Centralize sua identidade profissional, acesse conteúdos exclusivos 
+              e faça parte da comunidade.
+            </p>
 
-                <p className="text-xs text-gray-400 text-center leading-relaxed pt-4">
-                  Acesso exclusivo para habilitadas no Método Amanda Fernandes.
-                </p>
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+              <Button 
+                onClick={() => router.push('/solicitar')}
+                className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-8 py-6 text-lg rounded-full transition-all shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/40 hover:scale-105"
+              >
+                Começar Agora
+              </Button>
+              <Button 
+                onClick={() => router.push('/login')}
+                variant="outline"
+                className="w-full sm:w-auto border-2 border-white/20 bg-white/5 hover:bg-white/10 text-white font-semibold px-8 py-6 text-lg rounded-full transition-all backdrop-blur-sm"
+              >
+                Já tenho conta
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Features Section */}
+        <div className="container mx-auto px-6 pb-20">
+          <div className="text-center mb-12">
+            <p className="text-gray-500 text-sm uppercase tracking-wider font-medium">
+              Recursos Exclusivos
+            </p>
+          </div>
+
+          {/* Feature Icons */}
+          <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12 lg:gap-16">
+            <div className="flex flex-col items-center gap-3 group cursor-pointer">
+              <div className="w-16 h-16 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl flex items-center justify-center group-hover:bg-white/10 group-hover:border-emerald-500/30 transition-all">
+                <CreditCard className="w-7 h-7 text-gray-400 group-hover:text-emerald-400 transition-colors" />
               </div>
-            </Card>
+              <span className="text-gray-400 text-sm font-medium group-hover:text-white transition-colors">Carteira Digital</span>
+            </div>
+
+            <div className="flex flex-col items-center gap-3 group cursor-pointer">
+              <div className="w-16 h-16 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl flex items-center justify-center group-hover:bg-white/10 group-hover:border-emerald-500/30 transition-all">
+                <Shield className="w-7 h-7 text-gray-400 group-hover:text-emerald-400 transition-colors" />
+              </div>
+              <span className="text-gray-400 text-sm font-medium group-hover:text-white transition-colors">Acesso Seguro</span>
+            </div>
+
+            <div className="flex flex-col items-center gap-3 group cursor-pointer">
+              <div className="w-16 h-16 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl flex items-center justify-center group-hover:bg-white/10 group-hover:border-emerald-500/30 transition-all">
+                <Globe className="w-7 h-7 text-gray-400 group-hover:text-emerald-400 transition-colors" />
+              </div>
+              <span className="text-gray-400 text-sm font-medium group-hover:text-white transition-colors">Comunidade</span>
+            </div>
+
+            <div className="flex flex-col items-center gap-3 group cursor-pointer">
+              <div className="w-16 h-16 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl flex items-center justify-center group-hover:bg-white/10 group-hover:border-emerald-500/30 transition-all">
+                <BookOpen className="w-7 h-7 text-gray-400 group-hover:text-emerald-400 transition-colors" />
+              </div>
+              <span className="text-gray-400 text-sm font-medium group-hover:text-white transition-colors">Biblioteca</span>
+            </div>
           </div>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 py-8 mt-20 border-t border-white/10">
-        <p className="text-center text-sm text-gray-400">
-          © 2026 MAF Pro — O ecossistema oficial das habilitadas no Método Amanda Fernandes
-        </p>
+      <footer className="relative z-10 py-8 border-t border-white/5">
+        <div className="container mx-auto px-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-sm text-gray-500">
+              © 2026 MAF Pro — O ecossistema oficial das habilitadas no Método Amanda Fernandes
+            </p>
+            <div className="flex items-center gap-6">
+              <Link href="#" className="text-sm text-gray-500 hover:text-gray-300 transition-colors">
+                Termos
+              </Link>
+              <Link href="#" className="text-sm text-gray-500 hover:text-gray-300 transition-colors">
+                Privacidade
+              </Link>
+              <Link href="#" className="text-sm text-gray-500 hover:text-gray-300 transition-colors">
+                Suporte
+              </Link>
+            </div>
+          </div>
+        </div>
       </footer>
     </div>
   )

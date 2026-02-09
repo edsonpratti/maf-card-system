@@ -65,8 +65,12 @@ export async function solicitarRecuperacaoSenha(email: string): Promise<Recupera
         const resetToken = crypto.randomBytes(32).toString("hex")
         const expiresAt = new Date(Date.now() + 30 * 60 * 1000) // 30 minutos
 
+        console.log("Gerando token para user_id:", user.id, "email:", email)
+        console.log("Token gerado:", resetToken)
+        console.log("Expira em:", expiresAt)
+
         // 4. Salvar token no banco (usar admin para bypass RLS)
-        const { error: insertError } = await supabaseAdmin
+        const { data: insertData, error: insertError } = await supabaseAdmin
             .from("password_reset_tokens")
             .insert({
                 user_id: user.id,
@@ -75,6 +79,9 @@ export async function solicitarRecuperacaoSenha(email: string): Promise<Recupera
                 expires_at: expiresAt.toISOString(),
                 used: false
             })
+            .select()
+
+        console.log("Resultado insert token:", { insertData, insertError })
 
         if (insertError) {
             console.error("Erro ao salvar token:", insertError)
@@ -87,6 +94,8 @@ export async function solicitarRecuperacaoSenha(email: string): Promise<Recupera
         // 5. Montar link de recuperação
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
         const resetLink = `${siteUrl}/recuperar-senha/${resetToken}`
+
+        console.log("Link de recuperação:", resetLink)
 
         // 6. Enviar email via Resend
         const { error: emailError } = await resend.emails.send({
@@ -127,6 +136,8 @@ export async function validarTokenRecuperacao(token: string): Promise<{
     message?: string
 }> {
     try {
+        console.log("Validando token:", token)
+        
         const { data, error } = await supabaseAdmin
             .from("password_reset_tokens")
             .select("*")
@@ -134,17 +145,28 @@ export async function validarTokenRecuperacao(token: string): Promise<{
             .eq("used", false)
             .single()
 
-        if (error || !data) {
+        console.log("Resultado da consulta:", { data, error })
+
+        if (error) {
+            console.error("Erro ao buscar token:", error)
+            return { valid: false, message: "Token inválido ou expirado." }
+        }
+
+        if (!data) {
+            console.log("Token não encontrado no banco")
             return { valid: false, message: "Token inválido ou expirado." }
         }
 
         const now = new Date()
         const expiresAt = new Date(data.expires_at)
 
+        console.log("Verificando expiração:", { now, expiresAt, expired: now > expiresAt })
+
         if (now > expiresAt) {
             return { valid: false, message: "Token expirado. Solicite um novo link." }
         }
 
+        console.log("Token válido para email:", data.email)
         return { valid: true, email: data.email }
 
     } catch (error) {
