@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { PasswordInput } from "@/components/ui/password-input"
@@ -9,7 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner"
 import { validarTokenRecuperacao, redefinirSenha } from "@/app/actions/recuperar-senha"
 
-export default function RecuperarSenhaPage({ params }: { params: { token: string } }) {
+export default function RecuperarSenhaPage({ params }: { params: Promise<{ token: string }> }) {
+    const resolvedParams = use(params)
+    const token = resolvedParams.token
+    
     const [loading, setLoading] = useState(false)
     const [validating, setValidating] = useState(true)
     const [tokenValid, setTokenValid] = useState(false)
@@ -18,7 +21,8 @@ export default function RecuperarSenhaPage({ params }: { params: { token: string
 
     useEffect(() => {
         const validateToken = async () => {
-            const result = await validarTokenRecuperacao(params.token)
+            console.log("Validando token:", token)
+            const result = await validarTokenRecuperacao(token)
             
             if (result.valid && result.email) {
                 setTokenValid(true)
@@ -31,8 +35,10 @@ export default function RecuperarSenhaPage({ params }: { params: { token: string
             setValidating(false)
         }
 
-        validateToken()
-    }, [params.token])
+        if (token) {
+            validateToken()
+        }
+    }, [token])
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -56,7 +62,7 @@ export default function RecuperarSenhaPage({ params }: { params: { token: string
         }
 
         try {
-            const result = await redefinirSenha(params.token, novaSenha)
+            const result = await redefinirSenha(token, novaSenha)
 
             if (result.success) {
                 toast.success(result.message)
