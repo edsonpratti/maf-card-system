@@ -8,11 +8,12 @@ import { studentSchema, type StudentFormData } from "@/lib/validators"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { toast } from "sonner"
 import { checkCPFExists, submitApplication } from "@/app/actions/solicitar"
 import { Loader2 } from "lucide-react"
 import { formatCEP, formatPhone } from "@/lib/utils"
+import Link from "next/link"
 
 export default function SolicitationForm() {
     const router = useRouter()
@@ -157,18 +158,15 @@ export default function SolicitationForm() {
     }
 
     return (
-        <Card className="w-full max-w-2xl mx-auto">
-            <CardHeader>
-                <CardTitle>Solicitação de Carteira Profissional</CardTitle>
-                <CardDescription>Preencha os dados abaixo para solicitar sua carteira profissional.</CardDescription>
-            </CardHeader>
-            <CardContent>
+        <Card className="w-full max-w-2xl mx-auto bg-white/5 backdrop-blur-md border-white/10 shadow-2xl">
+            <CardContent className="pt-6">
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <div className="space-y-2">
-                        <Label htmlFor="cpf">CPF</Label>
+                        <Label htmlFor="cpf" className="text-gray-300">CPF</Label>
                         <Input
                             id="cpf"
                             placeholder="000.000.000-00"
+                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20"
                             {...cpfRegister}
                             onBlur={(e) => {
                                 cpfRegister.onBlur(e)
@@ -176,57 +174,64 @@ export default function SolicitationForm() {
                             }}
                         />
                         {form.formState.errors.cpf && (
-                            <p className="text-sm text-red-500">{form.formState.errors.cpf.message}</p>
+                            <p className="text-sm text-red-400">{form.formState.errors.cpf.message}</p>
                         )}
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="name">Nome Completo</Label>
+                        <Label htmlFor="name" className="text-gray-300">Nome Completo</Label>
                         <Input
                             id="name"
                             {...form.register("name")}
                             readOnly={cpfStatus === "found"}
-                            className={cpfStatus === "found" ? "bg-muted" : ""}
+                            className={`bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 ${cpfStatus === "found" ? "bg-white/10 text-gray-400" : ""}`}
                         />
                         {form.formState.errors.name && (
-                            <p className="text-sm text-red-500">{form.formState.errors.name.message}</p>
+                            <p className="text-sm text-red-400">{form.formState.errors.name.message}</p>
                         )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="whatsapp">WhatsApp</Label>
+                            <Label htmlFor="whatsapp" className="text-gray-300">WhatsApp</Label>
                             <Input
                                 id="whatsapp"
                                 {...form.register("whatsapp")}
                                 placeholder="(00) 00000-0000"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20"
                                 onChange={(e) => {
                                     e.target.value = formatPhone(e.target.value)
                                     form.register("whatsapp").onChange(e)
                                 }}
                             />
                             {form.formState.errors.whatsapp && (
-                                <p className="text-sm text-red-500">{form.formState.errors.whatsapp.message}</p>
+                                <p className="text-sm text-red-400">{form.formState.errors.whatsapp.message}</p>
                             )}
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="email">E-mail</Label>
-                            <Input id="email" type="email" {...form.register("email")} />
+                            <Label htmlFor="email" className="text-gray-300">E-mail</Label>
+                            <Input 
+                                id="email" 
+                                type="email" 
+                                {...form.register("email")} 
+                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20"
+                            />
                             {form.formState.errors.email && (
-                                <p className="text-sm text-red-500">{form.formState.errors.email.message}</p>
+                                <p className="text-sm text-red-400">{form.formState.errors.email.message}</p>
                             )}
                         </div>
                     </div>
 
                     {/* Address Fields Simplified */}
                     <div className="space-y-2">
-                        <Label htmlFor="cep">CEP</Label>
+                        <Label htmlFor="cep" className="text-gray-300">CEP</Label>
                         <div className="relative">
                             <Input
                                 id="cep"
                                 {...form.register("address.cep")}
                                 placeholder="00000-000"
                                 disabled={cepLoading}
+                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50"
                                 onChange={(e) => {
                                     e.target.value = formatCEP(e.target.value)
                                     form.register("address.cep").onChange(e)
@@ -237,58 +242,63 @@ export default function SolicitationForm() {
                                 }}
                             />
                             {cepLoading && (
-                                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-emerald-400" />
                             )}
                         </div>
                         {cepLoading && (
-                            <p className="text-sm text-muted-foreground">Buscando endereço...</p>
+                            <p className="text-sm text-gray-400">Buscando endereço...</p>
                         )}
                     </div>
 
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="street">Rua</Label>
+                            <Label htmlFor="street" className="text-gray-300">Rua</Label>
                             <Input 
                                 id="street" 
                                 {...form.register("address.street")} 
                                 disabled={cepLoading}
+                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="number">Número</Label>
+                            <Label htmlFor="number" className="text-gray-300">Número</Label>
                             <Input 
                                 id="number" 
                                 {...form.register("address.number")} 
                                 disabled={cepLoading}
+                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50"
                             />
                         </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="neighborhood">Bairro</Label>
+                            <Label htmlFor="neighborhood" className="text-gray-300">Bairro</Label>
                             <Input 
                                 id="neighborhood" 
                                 {...form.register("address.neighborhood")} 
                                 disabled={cepLoading}
+                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="city">Cidade</Label>
+                            <Label htmlFor="city" className="text-gray-300">Cidade</Label>
                             <Input 
                                 id="city" 
                                 {...form.register("address.city")} 
                                 disabled={cepLoading}
+                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50"
                             />
                         </div>
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="state">Estado (UF)</Label>
+                        <Label htmlFor="state" className="text-gray-300">Estado (UF)</Label>
                         <Input
                             id="state"
                             {...form.register("address.state")}
                             maxLength={2}
                             disabled={cepLoading}
+                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50"
                             onChange={(e) => {
                                 e.target.value = e.target.value.toUpperCase()
                                 form.register("address.state").onChange(e)
@@ -297,19 +307,38 @@ export default function SolicitationForm() {
                     </div>
 
                     {cpfStatus === "not_found" && (
-                        <div className="space-y-2 border p-4 rounded-md bg-yellow-50 dark:bg-yellow-900/20">
-                            <Label htmlFor="certificate">Upload do Certificado (Obrigatório)</Label>
-                            <Input id="certificate" type="file" accept=".pdf,.jpg,.png" required />
-                            <p className="text-xs text-muted-foreground">
+                        <div className="space-y-2 border border-yellow-500/30 p-4 rounded-lg bg-yellow-500/10">
+                            <Label htmlFor="certificate" className="text-yellow-400">Upload do Certificado (Obrigatório)</Label>
+                            <Input 
+                                id="certificate" 
+                                type="file" 
+                                accept=".pdf,.jpg,.png" 
+                                required 
+                                className="bg-white/5 border-white/10 text-white file:bg-emerald-500 file:text-white file:border-0 file:rounded-md file:px-3 file:py-1 file:mr-3 file:cursor-pointer"
+                            />
+                            <p className="text-xs text-yellow-400/80">
                                 Como seu CPF não foi encontrado automaticamente, precisamos validar seu certificado manualmente.
                             </p>
                         </div>
                     )}
 
-                    <Button type="submit" className="w-full" disabled={loading}>
+                    <Button 
+                        type="submit" 
+                        className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-5 rounded-full shadow-lg shadow-emerald-500/25 transition-all hover:shadow-emerald-500/40" 
+                        disabled={loading}
+                    >
                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         {cpfStatus === "found" ? "Solicitar Carteirinha Automática" : "Enviar Solicitação para Análise"}
                     </Button>
+
+                    <div className="text-center pt-4 border-t border-white/10">
+                        <p className="text-sm text-gray-400">
+                            Já tem uma conta?{" "}
+                            <Link href="/login" className="text-emerald-400 hover:text-emerald-300 hover:underline font-medium transition-colors">
+                                Faça login
+                            </Link>
+                        </p>
+                    </div>
                 </form>
             </CardContent>
         </Card>

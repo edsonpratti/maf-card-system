@@ -99,35 +99,46 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
     }
 
     return (
-        <Card className="w-full max-w-sm mx-auto mt-20">
-            <CardHeader>
-                <CardTitle>
-                    {resetPassword ? "Recuperar Senha" : (admin ? "Admin Login" : "Login da Aluna")}
+        <Card className="w-full max-w-sm mx-auto bg-white/5 backdrop-blur-md border-white/10 shadow-2xl">
+            <CardHeader className="text-center">
+                <CardTitle className="text-white text-2xl">
+                    {resetPassword ? "Recuperar Senha" : (admin ? "Admin Login" : "Bem-vinda de volta!")}
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-gray-400">
                     {resetPassword 
                         ? "Digite seu e-mail para receber o link de recuperação." 
-                        : "Entre com suas credenciais."}
+                        : "Entre com suas credenciais para acessar o portal."}
                 </CardDescription>
             </CardHeader>
             <CardContent>
                 {resetPassword ? (
                     <form onSubmit={handleForgotPassword} className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="email">E-mail</Label>
-                            <Input id="email" name="email" type="email" required />
+                            <Label htmlFor="email" className="text-gray-300">E-mail</Label>
+                            <Input 
+                                id="email" 
+                                name="email" 
+                                type="email" 
+                                required 
+                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20"
+                                placeholder="seu@email.com"
+                            />
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 pt-2">
                             <Button 
                                 type="button" 
                                 variant="outline" 
-                                className="w-full" 
+                                className="w-full border-white/20 bg-white/5 hover:bg-white/10 text-white" 
                                 onClick={() => setResetPassword(false)}
                                 disabled={loading}
                             >
                                 Voltar
                             </Button>
-                            <Button type="submit" className="w-full" disabled={loading}>
+                            <Button 
+                                type="submit" 
+                                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white" 
+                                disabled={loading}
+                            >
                                 {loading ? "Enviando..." : "Enviar"}
                             </Button>
                         </div>
@@ -135,32 +146,49 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
                 ) : (
                     <form onSubmit={handleLogin} className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="email">E-mail</Label>
-                            <Input id="email" name="email" type="email" required />
+                            <Label htmlFor="email" className="text-gray-300">E-mail</Label>
+                            <Input 
+                                id="email" 
+                                name="email" 
+                                type="email" 
+                                required 
+                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20"
+                                placeholder="seu@email.com"
+                            />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="password">Senha</Label>
-                            <PasswordInput id="password" name="password" required />
+                            <Label htmlFor="password" className="text-gray-300">Senha</Label>
+                            <PasswordInput 
+                                id="password" 
+                                name="password" 
+                                required 
+                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20"
+                                placeholder="••••••••"
+                            />
                         </div>
                         {!admin && (
                             <div className="text-right">
                                 <button
                                     type="button"
                                     onClick={() => setResetPassword(true)}
-                                    className="text-sm text-blue-600 hover:underline"
+                                    className="text-sm text-emerald-400 hover:text-emerald-300 hover:underline transition-colors"
                                 >
                                     Esqueceu sua senha?
                                 </button>
                             </div>
                         )}
-                        <Button type="submit" className="w-full" disabled={loading}>
+                        <Button 
+                            type="submit" 
+                            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-5 rounded-full shadow-lg shadow-emerald-500/25 transition-all hover:shadow-emerald-500/40" 
+                            disabled={loading}
+                        >
                             {loading ? "Entrando..." : "Entrar"}
                         </Button>
                         {!admin && (
-                            <div className="text-center pt-4 border-t">
-                                <p className="text-sm text-gray-600">
+                            <div className="text-center pt-4 border-t border-white/10">
+                                <p className="text-sm text-gray-400">
                                     Nova por aqui?{" "}
-                                    <Link href="/solicitar" className="text-blue-600 hover:underline font-medium">
+                                    <Link href="/solicitar" className="text-emerald-400 hover:text-emerald-300 hover:underline font-medium transition-colors">
                                         Faça seu cadastro
                                     </Link>
                                 </p>
