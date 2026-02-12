@@ -6,8 +6,8 @@ import { SurveySubmission } from '@/lib/types/survey-types';
 export async function POST(
     request: NextRequest,
     { params }: { params: Promise<{ code: string }> }
-    const { code } = await params
 ) {
+    const { code } = await params
     try {
         const body: SurveySubmission = await request.json();
         const supabase = getServiceSupabase();

@@ -6,8 +6,8 @@ import { CreateQuestionData, UpdateQuestionData } from '@/lib/types/survey-types
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
-    const { id } = await params
 ) {
+    const { id } = await params
     try {
         const supabase = getServiceSupabase();
 
@@ -33,8 +33,8 @@ export async function GET(
 export async function POST(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
-    const { id } = await params
 ) {
+    const { id } = await params
     try {
         const body: CreateQuestionData = await request.json();
         const supabase = getServiceSupabase();
@@ -80,8 +80,8 @@ export async function POST(
 export async function PUT(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
-    const { id } = await params
 ) {
+    const { id } = await params
     try {
         const body: { questions: Array<{ id: string; order_index: number }> } = await request.json();
         const supabase = getServiceSupabase();

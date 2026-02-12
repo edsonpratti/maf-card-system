@@ -5,8 +5,8 @@ import { getServiceSupabase } from '@/lib/supabase';
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ code: string }> }
-    const { code } = await params
 ) {
+    const { code } = await params
     try {
         const supabase = getServiceSupabase();
 
