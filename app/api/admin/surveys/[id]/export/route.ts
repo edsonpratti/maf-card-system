@@ -5,8 +5,9 @@ import { convertToCSV } from '@/lib/utils/survey-utils';
 // GET /api/admin/surveys/[id]/export - Export survey responses as CSV
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
     try {
         const supabase = getServiceSupabase();
 
@@ -14,14 +15,14 @@ export async function GET(
         const { data: survey } = await supabase
             .from('surveys')
             .select('name')
-            .eq('id', params.id)
+            .eq('id', id)
             .single();
 
         // Get questions
         const { data: questions } = await supabase
             .from('survey_questions')
             .select('*')
-            .eq('survey_id', params.id)
+            .eq('survey_id', id)
             .order('order_index', { ascending: true });
 
         // Get responses with answers
@@ -35,7 +36,7 @@ export async function GET(
                     answer_value
                 )
             `)
-            .eq('survey_id', params.id)
+            .eq('survey_id', id)
             .not('completed_at', 'is', null);
 
         if (!questions || !responses) {

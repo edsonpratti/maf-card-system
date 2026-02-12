@@ -5,7 +5,8 @@ import { SurveySubmission } from '@/lib/types/survey-types';
 // POST /api/public/surveys/[code]/submit - Submit survey responses (public)
 export async function POST(
     request: NextRequest,
-    { params }: { params: { code: string } }
+    { params }: { params: Promise<{ code: string }> }
+    const { code } = await params
 ) {
     try {
         const body: SurveySubmission = await request.json();
@@ -15,7 +16,7 @@ export async function POST(
         const { data: survey, error: surveyError } = await supabase
             .from('surveys')
             .select('id, status, start_date, end_date')
-            .eq('code', params.code)
+            .eq('code', code)
             .single();
 
         if (surveyError || !survey) {

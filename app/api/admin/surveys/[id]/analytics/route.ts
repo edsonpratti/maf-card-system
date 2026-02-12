@@ -5,14 +5,15 @@ import { processChoiceAnalytics, processLinearScaleAnalytics } from '@/lib/utils
 // GET /api/admin/surveys/[id]/analytics - Get analytics data for a survey
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
     try {
         const supabase = getServiceSupabase();
 
         // Get survey summary stats
         const { data: summaryData } = await supabase
-            .rpc('get_survey_analytics', { survey_id_param: params.id })
+            .rpc('get_survey_analytics', { survey_id_param: id })
             .single();
 
         // Get all responses with answers
@@ -27,7 +28,7 @@ export async function GET(
                     answer_value
                 )
             `)
-            .eq('survey_id', params.id)
+            .eq('survey_id', id)
             .not('completed_at', 'is', null);
 
         if (responsesError) {
@@ -39,7 +40,7 @@ export async function GET(
         const { data: questions, error: questionsError } = await supabase
             .from('survey_questions')
             .select('*')
-            .eq('survey_id', params.id)
+            .eq('survey_id', id)
             .order('order_index', { ascending: true });
 
         if (questionsError) {

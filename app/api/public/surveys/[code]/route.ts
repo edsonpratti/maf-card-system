@@ -4,7 +4,8 @@ import { getServiceSupabase } from '@/lib/supabase';
 // GET /api/public/surveys/[code] - Get active survey by code (public)
 export async function GET(
     request: NextRequest,
-    { params }: { params: { code: string } }
+    { params }: { params: Promise<{ code: string }> }
+    const { code } = await params
 ) {
     try {
         const supabase = getServiceSupabase();
@@ -13,7 +14,7 @@ export async function GET(
         const { data: survey, error: surveyError } = await supabase
             .from('surveys')
             .select('*')
-            .eq('code', params.code)
+            .eq('code', code)
             .single();
 
         if (surveyError || !survey) {

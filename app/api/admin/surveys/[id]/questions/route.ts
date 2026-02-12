@@ -5,7 +5,8 @@ import { CreateQuestionData, UpdateQuestionData } from '@/lib/types/survey-types
 // GET /api/admin/surveys/[id]/questions - Get all questions for a survey
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
+    const { id } = await params
 ) {
     try {
         const supabase = getServiceSupabase();
@@ -13,7 +14,7 @@ export async function GET(
         const { data, error } = await supabase
             .from('survey_questions')
             .select('*')
-            .eq('survey_id', params.id)
+            .eq('survey_id', id)
             .order('order_index', { ascending: true });
 
         if (error) {
@@ -31,7 +32,8 @@ export async function GET(
 // POST /api/admin/surveys/[id]/questions - Create new question
 export async function POST(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
+    const { id } = await params
 ) {
     try {
         const body: CreateQuestionData = await request.json();
@@ -41,7 +43,7 @@ export async function POST(
         const { data: maxOrder } = await supabase
             .from('survey_questions')
             .select('order_index')
-            .eq('survey_id', params.id)
+            .eq('survey_id', id)
             .order('order_index', { ascending: false })
             .limit(1)
             .single();
@@ -51,7 +53,7 @@ export async function POST(
         const { data, error } = await supabase
             .from('survey_questions')
             .insert({
-                survey_id: params.id,
+                survey_id: id,
                 order_index: nextOrderIndex,
                 title: body.title,
                 subtitle: body.subtitle || null,
@@ -77,7 +79,8 @@ export async function POST(
 // PUT /api/admin/surveys/[id]/questions - Update multiple questions (for reordering)
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
+    const { id } = await params
 ) {
     try {
         const body: { questions: Array<{ id: string; order_index: number }> } = await request.json();
@@ -89,7 +92,7 @@ export async function PUT(
                 .from('survey_questions')
                 .update({ order_index: q.order_index })
                 .eq('id', q.id)
-                .eq('survey_id', params.id)
+                .eq('survey_id', id)
         );
 
         await Promise.all(updates);
