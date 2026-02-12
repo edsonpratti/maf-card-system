@@ -33,9 +33,10 @@ export default function QuestionBuilder({
         const newQuestions = [...questions]
         const targetIndex = direction === 'up' ? index - 1 : index + 1
 
-        // Swap
-        [newQuestions[index], newQuestions[targetIndex]] =
-            [newQuestions[targetIndex], newQuestions[index]]
+        // Swap using temporary variable
+        const temp = newQuestions[index]
+        newQuestions[index] = newQuestions[targetIndex]
+        newQuestions[targetIndex] = temp
 
         // Update order_index
         newQuestions.forEach((q, i) => {
