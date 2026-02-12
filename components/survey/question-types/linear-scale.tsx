@@ -1,0 +1,47 @@
+'use client'
+
+import { Button } from '@/components/ui/button'
+
+interface LinearScaleQuestionProps {
+    min: number
+    max: number
+    minLabel?: string
+    maxLabel?: string
+    value: number | null
+    onChange: (value: number) => void
+}
+
+export default function LinearScaleQuestion({
+    min,
+    max,
+    minLabel,
+    maxLabel,
+    value,
+    onChange
+}: LinearScaleQuestionProps) {
+    const values = Array.from({ length: max - min + 1 }, (_, i) => min + i)
+
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+                {values.map((val) => (
+                    <Button
+                        key={val}
+                        type="button"
+                        variant={value === val ? 'default' : 'outline'}
+                        className="flex-1 min-w-[60px] h-14 text-lg font-semibold"
+                        onClick={() => onChange(val)}
+                    >
+                        {val}
+                    </Button>
+                ))}
+            </div>
+            {(minLabel || maxLabel) && (
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <span>{minLabel || ''}</span>
+                    <span>{maxLabel || ''}</span>
+                </div>
+            )}
+        </div>
+    )
+}

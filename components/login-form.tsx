@@ -41,7 +41,7 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
                 }
             } else if (data.user) {
                 const isUserAdmin = data.user.user_metadata?.is_admin === true || data.user.app_metadata?.is_admin === true
-                
+
                 // Verificar se está tentando acessar a área correta
                 if (admin && !isUserAdmin) {
                     toast.error("Acesso negado. Esta área é exclusiva para administradores.")
@@ -49,7 +49,7 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
                     setLoading(false)
                     return
                 }
-                
+
                 // Impedir que admins façam login pela página de alunas
                 if (!admin && isUserAdmin) {
                     toast.error("Acesso negado. Administradores devem utilizar o login específico em /admin/login")
@@ -57,11 +57,11 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
                     setLoading(false)
                     return
                 }
-                
+
                 toast.success("Login realizado com sucesso!")
                 // Aguarda os cookies serem salvos antes de redirecionar
                 await new Promise(resolve => setTimeout(resolve, 500))
-                
+
                 if (admin) {
                     window.location.href = "/admin/dashboard"
                 } else {
@@ -105,8 +105,8 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
                     {resetPassword ? "Recuperar Senha" : (admin ? "Admin Login" : "Bem-vinda de volta!")}
                 </CardTitle>
                 <CardDescription className="text-gray-400">
-                    {resetPassword 
-                        ? "Digite seu e-mail para receber o link de recuperação." 
+                    {resetPassword
+                        ? "Digite seu e-mail para receber o link de recuperação."
                         : "Entre com suas credenciais para acessar o portal."}
                 </CardDescription>
             </CardHeader>
@@ -115,28 +115,28 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
                     <form onSubmit={handleForgotPassword} className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="email" className="text-gray-300">E-mail</Label>
-                            <Input 
-                                id="email" 
-                                name="email" 
-                                type="email" 
-                                required 
+                            <Input
+                                id="email"
+                                name="email"
+                                type="email"
+                                required
                                 className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20"
                                 placeholder="seu@email.com"
                             />
                         </div>
                         <div className="flex gap-2 pt-2">
-                            <Button 
-                                type="button" 
-                                variant="outline" 
-                                className="w-full border-white/20 bg-white/5 hover:bg-white/10 text-white" 
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full border-white/20 bg-white/5 hover:bg-white/10 text-white"
                                 onClick={() => setResetPassword(false)}
                                 disabled={loading}
                             >
                                 Voltar
                             </Button>
-                            <Button 
-                                type="submit" 
-                                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white" 
+                            <Button
+                                type="submit"
+                                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white"
                                 disabled={loading}
                             >
                                 {loading ? "Enviando..." : "Enviar"}
@@ -147,21 +147,21 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
                     <form onSubmit={handleLogin} className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="email" className="text-gray-300">E-mail</Label>
-                            <Input 
-                                id="email" 
-                                name="email" 
-                                type="email" 
-                                required 
+                            <Input
+                                id="email"
+                                name="email"
+                                type="email"
+                                required
                                 className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20"
                                 placeholder="seu@email.com"
                             />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="password" className="text-gray-300">Senha</Label>
-                            <PasswordInput 
-                                id="password" 
-                                name="password" 
-                                required 
+                            <PasswordInput
+                                id="password"
+                                name="password"
+                                required
                                 className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20"
                                 placeholder="••••••••"
                             />
@@ -177,9 +177,9 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
                                 </button>
                             </div>
                         )}
-                        <Button 
-                            type="submit" 
-                            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-5 rounded-full shadow-lg shadow-emerald-500/25 transition-all hover:shadow-emerald-500/40" 
+                        <Button
+                            type="submit"
+                            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-5 rounded-full shadow-lg shadow-emerald-500/25 transition-all hover:shadow-emerald-500/40"
                             disabled={loading}
                         >
                             {loading ? "Entrando..." : "Entrar"}
