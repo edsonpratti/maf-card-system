@@ -16,8 +16,9 @@ import QuestionBuilder from '@/components/admin/question-builder'
 import QuestionForm from '@/components/admin/question-form'
 import { canPublishSurvey } from '@/lib/utils/survey-utils'
 
-export default function EditSurveyPage({ params }: { params: { id: string } }) {
+export default function EditSurveyPage({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter()
+    const [surveyId, setSurveyId] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [survey, setSurvey] = useState<Survey | null>(null)
@@ -26,13 +27,25 @@ export default function EditSurveyPage({ params }: { params: { id: string } }) {
     const [editingQuestion, setEditingQuestion] = useState<SurveyQuestion | undefined>()
 
     useEffect(() => {
-        loadSurvey()
-        loadQuestions()
-    }, [params.id])
+        const initializePage = async () => {
+            const { id } = await params
+            setSurveyId(id)
+        }
+        initializePage()
+    }, [params])
+
+    useEffect(() => {
+        if (surveyId) {
+            loadSurvey()
+            loadQuestions()
+        }
+    }, [surveyId])
 
     const loadSurvey = async () => {
+        if (!surveyId) return
+
         try {
-            const response = await fetch(`/api/admin/surveys/${params.id}`)
+            const response = await fetch(`/api/admin/surveys/${surveyId}`)
             if (response.ok) {
                 const data = await response.json()
                 setSurvey(data)
@@ -49,8 +62,10 @@ export default function EditSurveyPage({ params }: { params: { id: string } }) {
     }
 
     const loadQuestions = async () => {
+        if (!surveyId) return
+
         try {
-            const response = await fetch(`/api/admin/surveys/${params.id}/questions`)
+            const response = await fetch(`/api/admin/surveys/${surveyId}/questions`)
             if (response.ok) {
                 const data = await response.json()
                 setQuestions(data)
@@ -61,11 +76,11 @@ export default function EditSurveyPage({ params }: { params: { id: string } }) {
     }
 
     const handleSaveSurvey = async () => {
-        if (!survey) return
+        if (!survey || !surveyId) return
 
         try {
             setSaving(true)
-            const response = await fetch(`/api/admin/surveys/${params.id}`, {
+            const response = await fetch(`/api/admin/surveys/${surveyId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -91,7 +106,7 @@ export default function EditSurveyPage({ params }: { params: { id: string } }) {
     }
 
     const handlePublish = async () => {
-        if (!survey) return
+        if (!survey || !surveyId) return
 
         const validation = canPublishSurvey(survey, questions)
         if (!validation.valid) {
@@ -101,7 +116,7 @@ export default function EditSurveyPage({ params }: { params: { id: string } }) {
 
         try {
             setSaving(true)
-            const response = await fetch(`/api/admin/surveys/${params.id}`, {
+            const response = await fetch(`/api/admin/surveys/${surveyId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: 'active' })
@@ -135,9 +150,10 @@ export default function EditSurveyPage({ params }: { params: { id: string } }) {
 
     const handleDeleteQuestion = async (questionId: string) => {
         if (!confirm('Tem certeza que deseja excluir esta pergunta?')) return
+        if (!surveyId) return
 
         try {
-            const response = await fetch(`/api/admin/surveys/${params.id}/questions/${questionId}`, {
+            const response = await fetch(`/api/admin/surveys/${surveyId}/questions/${questionId}`, {
                 method: 'DELETE'
             })
 
@@ -154,8 +170,10 @@ export default function EditSurveyPage({ params }: { params: { id: string } }) {
     }
 
     const handleDuplicateQuestion = async (question: SurveyQuestion) => {
+        if (!surveyId) return
+
         try {
-            const response = await fetch(`/api/admin/surveys/${params.id}/questions`, {
+            const response = await fetch(`/api/admin/surveys/${surveyId}/questions`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -180,10 +198,12 @@ export default function EditSurveyPage({ params }: { params: { id: string } }) {
     }
 
     const handleReorderQuestions = async (reorderedQuestions: SurveyQuestion[]) => {
+        if (!surveyId) return
+
         setQuestions(reorderedQuestions)
 
         try {
-            const response = await fetch(`/api/admin/surveys/${params.id}/questions`, {
+            const response = await fetch(`/api/admin/surveys/${surveyId}/questions`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -272,7 +292,7 @@ export default function EditSurveyPage({ params }: { params: { id: string } }) {
                             <Label htmlFor="status">Status</Label>
                             <Select
                                 value={survey.status}
-                                onValueChange={(value) => setSurvey({ ...survey, status: value as SurveyStatus })}
+                                onValueChange={(value: string) => setSurvey({ ...survey, status: value as SurveyStatus })}
                             >
                                 <SelectTrigger>
                                     <SelectValue />
@@ -336,7 +356,7 @@ export default function EditSurveyPage({ params }: { params: { id: string } }) {
 
                 {showQuestionForm ? (
                     <QuestionForm
-                        surveyId={params.id}
+                        surveyId={surveyId || ''}
                         question={editingQuestion}
                         onSave={handleQuestionSaved}
                         onCancel={() => {

@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Users, FileText, Database, Shield, LogOut, UserCheck } from "lucide-react"
+import { Users, FileText, Database, Shield, LogOut, UserCheck, Home, ClipboardList } from "lucide-react"
 import { adminLogout, getCurrentAdmin } from "@/app/actions/admin"
 
 export default async function DashboardLayout({
@@ -17,6 +17,21 @@ export default async function DashboardLayout({
                 </div>
                 <nav className="flex-1 overflow-auto py-4">
                     <ul className="grid gap-1 px-4 text-sm font-medium">
+                        <li>
+                            <Link
+                                href="/admin"
+                                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                            >
+                                <Home className="h-4 w-4" />
+                                Início
+                            </Link>
+                        </li>
+
+                        <li className="mt-4 mb-2">
+                            <div className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                MAF Pro ID
+                            </div>
+                        </li>
                         <li>
                             <Link
                                 href="/admin/dashboard"
@@ -52,6 +67,27 @@ export default async function DashboardLayout({
                                 <Users className="h-4 w-4" />
                                 Base de Alunas
                             </Link>
+                        </li>
+
+                        <li className="mt-4 mb-2">
+                            <div className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                MAF Pro Quiz
+                            </div>
+                        </li>
+                        <li>
+                            <Link
+                                href="/admin/enquetes"
+                                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                            >
+                                <ClipboardList className="h-4 w-4" />
+                                Enquetes
+                            </Link>
+                        </li>
+
+                        <li className="mt-4 mb-2">
+                            <div className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                Sistema
+                            </div>
                         </li>
                         <li>
                             <Link

@@ -11,20 +11,33 @@ import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Toolti
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF6B9D'];
 
-export default function SurveyResultsPage({ params }: { params: { id: string } }) {
+export default function SurveyResultsPage({ params }: { params: Promise<{ id: string }> }) {
+    const [surveyId, setSurveyId] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
     const [survey, setSurvey] = useState<Survey | null>(null)
     const [analytics, setAnalytics] = useState<any>(null)
     const [exporting, setExporting] = useState(false)
 
     useEffect(() => {
-        loadSurvey()
-        loadAnalytics()
-    }, [params.id])
+        const initializePage = async () => {
+            const { id } = await params
+            setSurveyId(id)
+        }
+        initializePage()
+    }, [params])
+
+    useEffect(() => {
+        if (surveyId) {
+            loadSurvey()
+            loadAnalytics()
+        }
+    }, [surveyId])
 
     const loadSurvey = async () => {
+        if (!surveyId) return
+
         try {
-            const response = await fetch(`/api/admin/surveys/${params.id}`)
+            const response = await fetch(`/api/admin/surveys/${surveyId}`)
             if (response.ok) {
                 const data = await response.json()
                 setSurvey(data)
@@ -35,9 +48,11 @@ export default function SurveyResultsPage({ params }: { params: { id: string } }
     }
 
     const loadAnalytics = async () => {
+        if (!surveyId) return
+
         try {
             setLoading(true)
-            const response = await fetch(`/api/admin/surveys/${params.id}/analytics`)
+            const response = await fetch(`/api/admin/surveys/${surveyId}/analytics`)
             if (response.ok) {
                 const data = await response.json()
                 setAnalytics(data)
@@ -53,9 +68,11 @@ export default function SurveyResultsPage({ params }: { params: { id: string } }
     }
 
     const handleExport = async () => {
+        if (!surveyId) return
+
         try {
             setExporting(true)
-            const response = await fetch(`/api/admin/surveys/${params.id}/export`)
+            const response = await fetch(`/api/admin/surveys/${surveyId}/export`)
             if (response.ok) {
                 const blob = await response.blob()
                 const url = window.URL.createObjectURL(blob)
