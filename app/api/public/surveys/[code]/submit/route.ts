@@ -12,14 +12,24 @@ export async function POST(
         const body: SurveySubmission = await request.json();
         const supabase = getServiceSupabase();
 
-        // Get survey
-        const { data: survey, error: surveyError } = await supabase
+        // Get survey by code or id (fallback)
+        const { data: surveyByCode } = await supabase
             .from('surveys')
             .select('id, status, start_date, end_date')
             .eq('code', code)
             .single();
 
-        if (surveyError || !survey) {
+        const { data: surveyById } = !surveyByCode
+            ? await supabase
+                .from('surveys')
+                .select('id, status, start_date, end_date')
+                .eq('id', code)
+                .single()
+            : { data: null };
+
+        const survey = surveyByCode || surveyById;
+
+        if (!survey) {
             return NextResponse.json({ message: 'Enquete não encontrada' }, { status: 404 });
         }
 

@@ -237,6 +237,8 @@ export default function EditSurveyPage({ params }: { params: Promise<{ id: strin
         return null
     }
 
+    const publicIdentifier = survey.code?.trim() || survey.id
+
     return (
         <div className="space-y-6 max-w-5xl mx-auto">
             {/* Header */}
@@ -255,7 +257,7 @@ export default function EditSurveyPage({ params }: { params: Promise<{ id: strin
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <Link href={`/enquete/${survey.code}`} target="_blank">
+                    <Link href={`/enquete/${publicIdentifier}`} target="_blank">
                         <Button variant="outline">
                             <Eye className="h-4 w-4 mr-2" />
                             Visualizar

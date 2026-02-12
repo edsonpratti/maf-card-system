@@ -10,14 +10,24 @@ export async function GET(
     try {
         const supabase = getServiceSupabase();
 
-        // Get survey
-        const { data: survey, error: surveyError } = await supabase
+        // Get survey by code or id (fallback)
+        const { data: surveyByCode } = await supabase
             .from('surveys')
             .select('*')
             .eq('code', code)
             .single();
 
-        if (surveyError || !survey) {
+        const { data: surveyById } = !surveyByCode
+            ? await supabase
+                .from('surveys')
+                .select('*')
+                .eq('id', code)
+                .single()
+            : { data: null };
+
+        const survey = surveyByCode || surveyById;
+
+        if (!survey) {
             return NextResponse.json({ error: 'Survey not found' }, { status: 404 });
         }
 

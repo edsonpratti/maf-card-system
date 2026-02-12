@@ -150,8 +150,10 @@ export default function EnquetesPage() {
                 </Card>
             ) : (
                 <div className="grid gap-4">
-                    {filteredSurveys.map(survey => (
-                        <Card key={survey.id}>
+                    {filteredSurveys.map(survey => {
+                        const publicIdentifier = survey.code?.trim() || survey.id
+                        return (
+                            <Card key={survey.id}>
                             <CardHeader>
                                 <div className="flex items-start justify-between">
                                     <div className="flex-1">
@@ -192,13 +194,13 @@ export default function EnquetesPage() {
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            onClick={() => copyPublicLink(survey.code)}
+                                            onClick={() => copyPublicLink(publicIdentifier)}
                                         >
                                             <Copy className="h-4 w-4 mr-2" />
                                             Copiar Link
                                         </Button>
                                     )}
-                                    <Link href={`/enquete/${survey.code}`} target="_blank">
+                                    <Link href={`/enquete/${publicIdentifier}`} target="_blank">
                                         <Button variant="outline" size="sm">
                                             <Eye className="h-4 w-4 mr-2" />
                                             Visualizar
@@ -216,7 +218,8 @@ export default function EnquetesPage() {
                                 </div>
                             </CardContent>
                         </Card>
-                    ))}
+                        )
+                    })}
                 </div>
             )}
         </div>
