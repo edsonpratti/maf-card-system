@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -11,7 +11,8 @@ import { generateSessionId, validateAnswer } from '@/lib/utils/survey-utils'
 import SurveyQuestionRenderer from '@/components/survey/survey-question-renderer'
 import { toast } from 'sonner'
 
-export default function PublicSurveyPage({ params }: { params: { code: string } }) {
+export default function PublicSurveyPage({ params }: { params: Promise<{ code: string }> }) {
+    const { code } = use(params)
     const router = useRouter()
     const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
@@ -24,7 +25,7 @@ export default function PublicSurveyPage({ params }: { params: { code: string } 
     useEffect(() => {
         loadSurvey()
         // Load saved answers from localStorage
-        const saved = localStorage.getItem(`survey_${params.code}`)
+        const saved = localStorage.getItem(`survey_${code}`)
         if (saved) {
             try {
                 const savedAnswers = JSON.parse(saved)
@@ -33,12 +34,12 @@ export default function PublicSurveyPage({ params }: { params: { code: string } 
                 console.error('Error loading saved answers:', e)
             }
         }
-    }, [params.code])
+    }, [code])
 
     const loadSurvey = async () => {
         try {
             setLoading(true)
-            const response = await fetch(`/api/public/surveys/${params.code}`)
+            const response = await fetch(`/api/public/surveys/${code}`)
 
             if (!response.ok) {
                 if (response.status === 404) {
@@ -75,7 +76,7 @@ export default function PublicSurveyPage({ params }: { params: { code: string } 
 
         // Save to localStorage
         const answersObj = Object.fromEntries(newAnswers)
-        localStorage.setItem(`survey_${params.code}`, JSON.stringify(answersObj))
+        localStorage.setItem(`survey_${code}`, JSON.stringify(answersObj))
     }
 
     const canGoNext = () => {
@@ -126,7 +127,7 @@ export default function PublicSurveyPage({ params }: { params: { code: string } 
                 }))
             }
 
-            const response = await fetch(`/api/public/surveys/${params.code}/submit`, {
+            const response = await fetch(`/api/public/surveys/${code}/submit`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(submission)
@@ -134,9 +135,9 @@ export default function PublicSurveyPage({ params }: { params: { code: string } 
 
             if (response.ok) {
                 // Clear localStorage
-                localStorage.removeItem(`survey_${params.code}`)
+                localStorage.removeItem(`survey_${code}`)
                 // Redirect to thank you page
-                router.push(`/enquete/${params.code}/obrigado`)
+                router.push(`/enquete/${code}/obrigado`)
             } else {
                 const error = await response.json()
                 toast.error(error.message || 'Erro ao enviar respostas')
