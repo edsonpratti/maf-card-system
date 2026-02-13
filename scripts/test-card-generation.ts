@@ -1,5 +1,4 @@
-import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
-import QRCode from "qrcode"
+import { generateCardPNG } from '../lib/pdf-generator'
 import { writeFileSync } from 'fs'
 import { join } from 'path'
 
@@ -9,6 +8,7 @@ async function generateTestCardPDF(data: {
     cardNumber: string
     qrToken: string
     certificationDate?: string | null
+    photoPath?: string | null
 }) {
     try {
         const pdfDoc = await PDFDocument.create()
@@ -59,6 +59,31 @@ async function generateTestCardPDF(data: {
             font: fontRegular,
             color: rgb(1, 1, 1),
         })
+
+        // Foto circular pequena como avatar, centralizada horizontal e verticalmente
+        if (data.photoPath) {
+            // Para teste, vamos criar uma imagem simples (círculo colorido)
+            // Em produção, isso seria baixado do Supabase
+            const photoSize = 50
+            const photoX = width / 2 - photoSize / 2
+            const photoY = height / 2 - photoSize / 2
+
+            // Círculo branco de fundo (borda)
+            page.drawCircle({
+                x: photoX + photoSize / 2,
+                y: photoY + photoSize / 2,
+                size: photoSize / 2 + 3,
+                color: rgb(1, 1, 1),
+            })
+
+            // Círculo azul para simular foto (já circular por natureza)
+            page.drawCircle({
+                x: photoX + photoSize / 2,
+                y: photoY + photoSize / 2,
+                size: photoSize / 2,
+                color: rgb(0.2, 0.5, 0.8),
+            })
+        }
 
         // Nome completo à esquerda (em preto sobre fundo branco)
         const nameSize = 15
@@ -168,25 +193,26 @@ async function testCardGeneration() {
             cpf: '000.000.000-00',
             cardNumber: 'MAF-MLF8M9GR-4XQHZR',
             qrToken: 'test-token-123456',
-            certificationDate: '2020-01-01'
+            certificationDate: '2020-01-01',
+            photoPath: null // Sem foto para teste
         }
 
-        const pdfBuffer = await generateTestCardPDF(testData)
+        const pngBuffer = await generateCardPNG(testData)
 
-        const outputPath = join(process.cwd(), 'test-card-output.pdf')
-        writeFileSync(outputPath, pdfBuffer)
+        const outputPath = join(process.cwd(), 'test-card-output.png')
+        writeFileSync(outputPath, pngBuffer)
 
-        console.log('✅ PDF gerado com sucesso!')
+        console.log('✅ PNG gerado com sucesso!')
         console.log(`📄 Arquivo salvo em: ${outputPath}`)
-        console.log(`📊 Tamanho: ${(pdfBuffer.length / 1024).toFixed(2)} KB`)
+        console.log(`📊 Tamanho: ${(pngBuffer.length / 1024).toFixed(2)} KB`)
         console.log('\n🔍 Abra o arquivo para verificar:')
-        console.log('   - Gradiente diagonal (azul escuro → turquesa)')
-        console.log('   - Nome e informações posicionados à esquerda')
-        console.log('   - QR Code no canto inferior direito')
-        console.log('   - Logo MAF no canto superior direito')
+        console.log('   - Baseado exatamente no modelo1.jpeg')
+        console.log('   - Foto circular adicionada dinamicamente (não incluída no teste)')
+        console.log('   - QR Code adicionado no canto inferior direito')
+        console.log('   - Todos os textos e layout fixos do modelo preservados')
 
     } catch (error) {
-        console.error('❌ Erro ao gerar PDF:', error)
+        console.error('❌ Erro ao gerar PNG:', error)
         process.exit(1)
     }
 }

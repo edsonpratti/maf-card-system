@@ -49,6 +49,7 @@ const menuItems = [
         section: "Gestão",
         items: [
             { href: "/admin/usuarios", icon: UserCheck, label: "Usuários" },
+            { href: "/admin/admin-users", icon: UserCheck, label: "Usuário ADMIN" },
             { href: "/admin/logs", icon: Database, label: "Logs de Auditoria" },
         ]
     }

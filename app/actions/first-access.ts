@@ -3,7 +3,7 @@
 import { getServiceSupabase } from "@/lib/supabase"
 import crypto from "crypto"
 import { Resend } from "resend"
-import { firstAccessEmailTemplate, welcomeEmailTemplate } from "@/lib/email-templates"
+import { welcomeEmailTemplate } from "@/lib/email-templates"
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -85,11 +85,11 @@ export async function sendWelcomeEmail(userId: string, email: string, name: stri
 }
 
 /**
- * Função legada mantida para compatibilidade
- * Usada quando admin aprova manualmente uma carteirinha
+ * Função usada quando admin aprova manualmente uma carteirinha
+ * Envia email de notificação informando que foi aprovada
  */
-export async function sendFirstAccessEmail(userId: string, email: string, name: string) {
-    return sendWelcomeEmail(userId, email, name, "AUTO_APROVADA")
+export async function sendApprovalNotificationEmail(userId: string, email: string, name: string) {
+    return sendWelcomeEmail(userId, email, name, "APROVADA_MANUAL")
 }
 
 export async function verifyFirstAccessToken(token: string) {

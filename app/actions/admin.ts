@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 import { createServerClient } from "@supabase/ssr"
 import { redirect } from "next/navigation"
-import { sendFirstAccessEmail } from "./first-access"
+import { sendApprovalNotificationEmail, sendWelcomeEmail } from "./first-access"
 
 async function createAuditLog(
     adminUserId: string,
@@ -121,17 +121,10 @@ export async function updateRequestStatus(id: string, newStatus: string, reason?
         return { success: false, message: error.message }
     }
 
-    // If approved, send first access email
+    // If approved, send approval notification email
     if (newStatus === "APROVADA_MANUAL" || newStatus === "AUTO_APROVADA") {
-        const { data: userData } = await supabase
-            .from("users_cards")
-            .select("id, email, name")
-            .eq("id", id)
-            .single()
-
-        if (userData && userData.email && userData.name) {
-            await sendFirstAccessEmail(userData.id, userData.email, userData.name)
-        }
+        // Não enviar email de primeiro acesso novamente após aprovação manual
+        // O email correto de aprovação é enviado em approveMafProIdAccess
     }
 
     // Log action
@@ -168,8 +161,8 @@ export async function resendFirstAccessEmail(id: string) {
         return { success: false, message: "Apenas carteirinhas aprovadas podem receber o email de primeiro acesso" }
     }
 
-    // Resend email
-    const result = await sendFirstAccessEmail(userData.id, userData.email, userData.name)
+    // Resend email - using sendWelcomeEmail with AUTO_APROVADA status since user is already approved
+    const result = await sendWelcomeEmail(userData.id, userData.email, userData.name, userData.status)
 
     if (result.success) {
         // Log action
@@ -389,12 +382,11 @@ export async function getRegisteredStudents(includeDisabled: boolean = true) {
 
     const supabase = getServiceSupabase()
 
-    // Busca usuários que têm conta ativa (definiram senha - auth_user_id existe)
-    // Independente do status da carteirinha (aprovada, pendente, etc)
+    // Busca TODOS os usuários cadastrados (independente de terem definido senha)
+    // O campo auth_user_id indica se já criaram conta (definiram senha)
     let query = supabase
         .from("users_cards")
         .select("*")
-        .not("auth_user_id", "is", null)
         .order("created_at", { ascending: false })
 
     // Se não incluir desabilitados, filtrar
@@ -538,8 +530,8 @@ export async function resendCardDownloadEmail(id: string) {
     const resend = new Resend(process.env.RESEND_API_KEY)
 
     try {
-        // Link para o portal onde a aluna pode fazer login e baixar
-        const downloadLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/portal/carteira-profissional`
+        // Link direto para download do PDF
+        const downloadLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/cartao/${userData.id}`
 
         const { data: emailData, error: emailError } = await resend.emails.send({
             from: process.env.RESEND_FROM_EMAIL || "mafpro@amandafernandes.com",
@@ -869,7 +861,7 @@ export async function createUserManually(data: {
     // Enviar email de primeiro acesso se solicitado
     if (data.sendEmail) {
         try {
-            await sendFirstAccessEmail(newUser.id, data.email, data.name)
+            await sendWelcomeEmail(newUser.id, data.email, data.name, "AUTO_APROVADA")
         } catch (emailError) {
             console.error("Erro ao enviar email:", emailError)
             // Não falha a criação se o email falhar
@@ -950,8 +942,8 @@ export async function approveMafProIdAccess(userId: string) {
             .eq("id", userId)
     }
 
-    // Enviar email de notificação se o usuário já tem conta criada
-    if (userData.auth_user_id && userData.email && userData.name) {
+    // Enviar email de notificação sempre (independente de auth_user_id)
+    if (userData.email && userData.name) {
         try {
             const { Resend } = await import("resend")
             const { mafProIdApprovedEmailTemplate } = await import("@/lib/email-templates")
@@ -987,7 +979,6 @@ export async function approveMafProIdAccess(userId: string) {
 
     return {
         success: true,
-        message: "Acesso ao MAF Pro ID aprovado com sucesso!" +
-            (userData.auth_user_id ? " Email de notificação enviado." : " Usuário receberá notificação ao criar a conta.")
+        message: "Acesso ao MAF Pro ID aprovado com sucesso! Email de notificação enviado."
     }
 }

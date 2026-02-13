@@ -76,15 +76,19 @@ export default function ConfirmacaoPage({
                                 <ul className="space-y-2 text-sm text-muted-foreground">
                                     <li className="flex gap-2">
                                         <span className="font-semibold min-w-6">1.</span>
-                                        <span>Nossa equipe irá analisar seu certificado e documentação enviada.</span>
+                                        <span>Você receberá um e-mail com instruções para criar sua senha e acessar o portal do MAF Pro.</span>
                                     </li>
                                     <li className="flex gap-2">
                                         <span className="font-semibold min-w-6">2.</span>
-                                        <span>Você receberá um e-mail informando o resultado da análise (aprovação ou solicitação de correções).</span>
+                                        <span>Clique no link do e-mail e defina sua senha de acesso ao portal.</span>
                                     </li>
                                     <li className="flex gap-2">
                                         <span className="font-semibold min-w-6">3.</span>
-                                        <span>Após aprovação, você receberá o link de primeiro acesso para criar sua senha e acessar o portal.</span>
+                                        <span>O download da sua carteirinha profissional ficará condicionado à validação do administrador.</span>
+                                    </li>
+                                    <li className="flex gap-2">
+                                        <span className="font-semibold min-w-6">4.</span>
+                                        <span>Após a validação, você poderá acessar o portal e baixar sua carteira profissional digital.</span>
                                     </li>
                                 </ul>
                             </div>
@@ -116,7 +120,7 @@ export default function ConfirmacaoPage({
                             </Link>
                         </Button>
                         <Button asChild variant="outline" className="flex-1">
-                            <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer">
+                            <a href="https://wa.me/5528999153511?text=Oi%2C%20fiz%20meu%20cadastro%20no%20MAF%20Pro%20e%20tenho%20dúvidas" target="_blank" rel="noopener noreferrer">
                                 <MessageCircle className="mr-2 h-4 w-4" />
                                 Falar no WhatsApp
                             </a>

@@ -194,3 +194,23 @@ export async function getStudentById(id: string) {
     
     return data
 }
+
+/**
+ * Busca todos os alunos da base
+ */
+export async function getStudentsBase() {
+    await verifyAdminAccess()
+    
+    const supabase = getServiceSupabase()
+    const { data, error } = await supabase
+        .from("students_base")
+        .select("*")
+        .order("created_at", { ascending: false })
+    
+    if (error) {
+        console.error("Erro ao buscar alunos da base:", error)
+        return []
+    }
+    
+    return data || []
+}

@@ -4,7 +4,7 @@
  */
 
 import { Resend } from "resend"
-import { firstAccessEmailTemplate } from "../lib/email-templates"
+import { welcomeEmailTemplate } from "../lib/email-templates"
 
 async function testEmail() {
     console.log("🔍 Testando configuração de email...")
@@ -49,7 +49,7 @@ async function testEmail() {
             from: fromEmail,
             to: testEmail,
             subject: '🧪 TESTE - Carteirinha Aprovada - Defina sua Senha | MAF Card System',
-            html: firstAccessEmailTemplate(testName, testLink, expiresAt)
+            html: welcomeEmailTemplate(testName, testLink, expiresAt, true)
         })
         
         if (error) {

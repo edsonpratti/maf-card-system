@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from "react"
 import { AddStudentForm, ImportCSVForm } from "@/components/admin/student-forms"
-import { getServiceSupabase } from "@/lib/supabase"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { deleteStudent, updateStudent } from "@/app/actions/base-alunas"
+import { deleteStudent, updateStudent, getStudentsBase } from "@/app/actions/base-alunas"
 import { Trash2, Pencil, Check, X } from "lucide-react"
 import { StudentBaseFilters } from "@/components/admin/student-base-filters"
 import { toast } from "sonner"
@@ -48,13 +47,9 @@ export default function BaseAlunasPage() {
 
     async function loadStudents() {
         setLoading(true)
-        const supabase = getServiceSupabase()
-        const { data } = await supabase
-            .from("students_base")
-            .select("*")
-            .order("created_at", { ascending: false })
-        setStudents(data || [])
-        setFilteredStudents(data || [])
+        const data = await getStudentsBase()
+        setStudents(data)
+        setFilteredStudents(data)
         setLoading(false)
     }
 

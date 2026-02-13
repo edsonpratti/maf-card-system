@@ -21,6 +21,13 @@ async function getCertificateUrl(filePath: string | null) {
     return data?.signedUrl || null
 }
 
+async function getPhotoUrl(filePath: string | null) {
+    if (!filePath) return null
+    const supabase = getServiceSupabase()
+    const { data } = await supabase.storage.from("photos").createSignedUrl(filePath, 3600)
+    return data?.signedUrl || null
+}
+
 export default async function RequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
     const request = await getRequestDetail(id)
@@ -31,6 +38,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
 
     const address = request.address_json as any
     const certificateUrl = await getCertificateUrl(request.certificate_file_path)
+    const photoUrl = await getPhotoUrl(request.photo_path)
 
     return (
         <div className="space-y-6">
@@ -72,12 +80,27 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                     </CardHeader>
                     <CardContent className="grid gap-6 md:grid-cols-2">
                         <div className="space-y-4">
-                            <div>
-                                <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                                    <FileCheck className="h-4 w-4" />
-                                    Nome Completo
-                                </p>
-                                <p className="text-lg font-semibold">{request.name}</p>
+                            <div className="flex items-center gap-4">
+                                {photoUrl ? (
+                                    <img
+                                        src={photoUrl}
+                                        alt={`Foto de ${request.name}`}
+                                        className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
+                                    />
+                                ) : (
+                                    <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                                        <span className="text-gray-500 text-lg font-semibold">
+                                            {request.name?.charAt(0)?.toUpperCase() || '?'}
+                                        </span>
+                                    </div>
+                                )}
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                                        <FileCheck className="h-4 w-4" />
+                                        Nome Completo
+                                    </p>
+                                    <p className="text-lg font-semibold">{request.name}</p>
+                                </div>
                             </div>
                             <div>
                                 <p className="text-sm font-medium text-muted-foreground">CPF</p>

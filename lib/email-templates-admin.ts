@@ -171,7 +171,7 @@ export function cardDownloadEmailTemplate(name: string, downloadLink: string, ca
                 <tr>
                   <td style="padding: 16px;">
                     <p style="margin: 0; color: #1e3a8a; font-size: 14px; line-height: 1.6;">
-                      💡 <strong>Dica:</strong> Você também pode acessar sua carteirinha a qualquer momento através do portal, fazendo login no sistema.
+                      💡 <strong>Dica:</strong> O download começará automaticamente ao clicar no botão. Você também pode acessar sua carteirinha a qualquer momento através do portal, fazendo login no sistema.
                     </p>
                   </td>
                 </tr>

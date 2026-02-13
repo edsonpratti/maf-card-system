@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { updateRequestStatus, deleteRequest, resendFirstAccessEmail } from "@/app/actions/admin"
+import { updateRequestStatus, deleteRequest, resendFirstAccessEmail, resendCardDownloadEmail } from "@/app/actions/admin"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -70,6 +70,24 @@ export default function RequestActions({ request }: { request: any }) {
         }
     }
 
+    const handleResendCard = async () => {
+        if (!confirm("Reenviar link de download do cartão para esta usuária?")) return
+        setLoading(true)
+        try {
+            const res = await resendCardDownloadEmail(request.id)
+            if (res.success) {
+                toast.success(res.message)
+            } else {
+                toast.error(res.message)
+            }
+        } catch (error) {
+            console.error("Erro ao reenviar cartão:", error)
+            toast.error("Erro ao reenviar cartão")
+        } finally {
+            setLoading(false)
+        }
+    }
+
     return (
         <div className="flex gap-4">
             {request.status === "PENDENTE_MANUAL" && (
@@ -108,16 +126,30 @@ export default function RequestActions({ request }: { request: any }) {
                 </>
             )}
 
-            {(request.status === "APROVADA_MANUAL" || request.status === "AUTO_APROVADA") && !request.auth_user_id && (
-                <Button 
-                    onClick={handleResendEmail} 
-                    disabled={loading} 
-                    variant="outline-info"
-                >
-                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    <Mail className="mr-2 h-4 w-4" />
-                    Reenviar Email de Primeiro Acesso
-                </Button>
+
+            {(request.status === "APROVADA_MANUAL" || request.status === "AUTO_APROVADA") && (
+                <>
+                    {!request.auth_user_id && (
+                        <Button 
+                            onClick={handleResendEmail} 
+                            disabled={loading} 
+                            variant="outline-info"
+                        >
+                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            <Mail className="mr-2 h-4 w-4" />
+                            Reenviar Email de Primeiro Acesso
+                        </Button>
+                    )}
+                    <Button 
+                        onClick={handleResendCard} 
+                        disabled={loading} 
+                        variant="outline-success"
+                    >
+                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <Mail className="mr-2 h-4 w-4" />
+                        Reenviar Cartão
+                    </Button>
+                </>
             )}
 
             {/* Other actions like Revoke could go here */}

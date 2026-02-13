@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { CreditCard, ArrowRight, CheckCircle2, Clock, XCircle, Users, GraduationCap, HelpCircle, Shield, Lock } from "lucide-react"
+import { isAdmin } from "@/lib/auth"
 
 export default async function PortalPage() {
     const cookieStore = await cookies()
@@ -64,10 +65,13 @@ export default async function PortalPage() {
         RECUSADA: 'destructive'
     }
 
-    // Verificar se o MAF Pro ID está aprovado (novo campo)
+    // Verificar se o MAF Pro ID está aprovado
     const hasMafProIdAccess = userCard?.maf_pro_id_approved === true
     const isPending = userCard?.status === 'PENDENTE_MANUAL' && !hasMafProIdAccess
     const isRejected = userCard?.status === 'RECUSADA'
+
+    // Verificar se o usuário é administrador
+    const userIsAdmin = await isAdmin()
 
     return (
         <div className="container py-6 sm:py-8 lg:py-10 px-4 sm:px-6">
@@ -241,26 +245,34 @@ export default async function PortalPage() {
                     </CardContent>
                 </Card>
 
-                {/* MAF Pro Admin */}
-                <Card className="h-full opacity-60 cursor-not-allowed">
-                    <CardHeader className="p-4 sm:p-6">
-                        <div className="flex items-start justify-between mb-3 sm:mb-4">
-                            <div className="p-2 sm:p-3 rounded-lg bg-gray-400">
-                                <Shield className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
-                            </div>
-                            <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300 text-xs">Restrito</Badge>
-                        </div>
-                        <CardTitle className="text-lg sm:text-xl">MAF Pro Admin</CardTitle>
-                        <CardDescription className="text-sm">
-                            Governança e gestão do sistema (acesso administrativo)
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-4 sm:p-6 pt-0">
-                        <p className="text-xs sm:text-sm text-muted-foreground">
-                            Acesso restrito a administradores
-                        </p>
-                    </CardContent>
-                </Card>
+                {/* MAF Pro Admin - Apenas para administradores */}
+                {userIsAdmin && (
+                    <Link href="/admin" className="block group">
+                        <Card className="transition-all duration-300 hover:shadow-lg hover:scale-[1.02] sm:hover:scale-105 cursor-pointer h-full border-blue-200 bg-blue-50/30">
+                            <CardHeader className="p-4 sm:p-6">
+                                <div className="flex items-start justify-between mb-3 sm:mb-4">
+                                    <div className="p-2 sm:p-3 rounded-lg bg-blue-500">
+                                        <Shield className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
+                                    </div>
+                                    <Badge variant="default" className="flex items-center gap-1 text-xs bg-blue-500">
+                                        <Lock className="h-3 w-3" />
+                                        <span>Admin</span>
+                                    </Badge>
+                                </div>
+                                <CardTitle className="text-lg sm:text-xl">MAF Pro Admin</CardTitle>
+                                <CardDescription className="text-sm">
+                                    Governança e gestão do sistema (acesso administrativo)
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="p-4 sm:p-6 pt-0">
+                                <div className="flex items-center text-sm font-medium text-blue-600 dark:text-blue-400 group-hover:gap-3 transition-all">
+                                    <span>Acessar painel</span>
+                                    <ArrowRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </Link>
+                )}
             </div>
         </div>
     )

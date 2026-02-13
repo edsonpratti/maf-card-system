@@ -1,5 +1,144 @@
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
 import QRCode from "qrcode"
+import sharp from "sharp"
+import { createCanvas } from "canvas"
+
+// Função auxiliar para gerar texto com fundo integrado (mais confiável)
+async function createTextWithBackground(text: string, options: { fontSize: number; fontWeight?: string }): Promise<Buffer> {
+    const fontWeight = options.fontWeight === 'bold' ? 'font-weight="bold"' : ''
+    const width = Math.max(400, text.length * options.fontSize * 0.6)
+    const height = options.fontSize + 20
+
+    const svg = `
+        <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+            <rect width="${width}" height="${height}" fill="rgba(0,0,0,0.9)" rx="5" ry="5" />
+            <text x="15" y="${options.fontSize + 5}"
+                  font-family="Arial"
+                  font-size="${options.fontSize}"
+                  ${fontWeight}
+                  fill="white">${text}</text>
+        </svg>
+    `
+
+    // Converter SVG para PNG usando Sharp
+    const pngBuffer = await sharp(Buffer.from(svg)).png().toBuffer()
+    return pngBuffer
+}
+
+export async function generateCardPNG(data: {
+    name: string
+    cpf: string
+    cardNumber: string
+    qrToken: string
+    photoPath?: string | null
+    certificationDate?: string | null
+}) {
+    try {
+        // Dimensões do modelo: 1063 × 591 pixels
+        const width = 1063
+        const height = 591
+
+        // Carregar o modelo1.jpeg como base
+        const fs = await import('fs')
+        const path = await import('path')
+        const modeloPath = path.join(process.cwd(), 'public', 'modelo1.jpeg')
+        const modeloBuffer = fs.readFileSync(modeloPath)
+
+        // Usar o modelo como base - isso garante que seja exatamente igual
+        let baseImage = sharp(modeloBuffer)
+            .resize(width, height, {
+                fit: 'cover',
+                position: 'center',
+                withoutEnlargement: false
+            })
+
+        // Import getServiceSupabase to download photo
+        const { getServiceSupabase } = data.photoPath ? await import('@/lib/supabase') : { getServiceSupabase: null }
+
+        // Adicionar foto se existir (posição baseada no modelo)
+        if (data.photoPath) {
+            try {
+                const supabase = getServiceSupabase()
+                const { data: photoData, error: photoError } = await supabase.storage
+                    .from('photos')
+                    .download(data.photoPath)
+
+                if (!photoError && photoData) {
+                    const photoBuffer = await photoData.arrayBuffer()
+                    const originalBuffer = Buffer.from(photoBuffer)
+
+                    const photoSize = 180 // Ajustar tamanho baseado no modelo
+
+                    // Criar máscara circular
+                    const maskBuffer = await sharp({
+                        create: {
+                            width: photoSize,
+                            height: photoSize,
+                            channels: 4,
+                            background: { r: 0, g: 0, b: 0, alpha: 0 } // Fundo transparente
+                        }
+                    })
+                    .composite([{
+                        input: Buffer.from(`<svg width="${photoSize}" height="${photoSize}"><circle cx="${photoSize/2}" cy="${photoSize/2}" r="${photoSize/2}" fill="white"/></svg>`),
+                        blend: 'over'
+                    }])
+                    .png()
+                    .toBuffer()
+
+                    // Processar imagem com máscara circular
+                    const circularBuffer = await sharp(originalBuffer)
+                        .resize(photoSize, photoSize, {
+                            fit: 'cover',
+                            position: 'center',
+                            withoutEnlargement: false,
+                            kernel: 'nearest'
+                        })
+                        .composite([{
+                            input: maskBuffer,
+                            blend: 'dest-in'
+                        }])
+                        .png()
+                        .toBuffer()
+
+                    // Posicionar a foto baseada no modelo (lado direito)
+                    baseImage = baseImage.composite([{
+                        input: circularBuffer,
+                        top: Math.floor(height / 2 - photoSize / 2),
+                        left: Math.floor(width * 0.68 - photoSize / 2) // Ajustar posição baseada no modelo
+                    }])
+                }
+            } catch (photoErr) {
+                console.error('Erro ao carregar foto:', photoErr)
+            }
+        }
+
+        // Gerar QR Code
+        try {
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://maf-card-system.vercel.app'
+            const qrBuffer = await QRCode.toBuffer(`${baseUrl}/validar/${data.qrToken}`, {
+                width: 192,
+                margin: 2,
+                errorCorrectionLevel: 'M',
+                type: 'png'
+            })
+
+            baseImage = baseImage.composite([{
+                input: qrBuffer,
+                top: height - 232,
+                left: width - 232
+            }])
+        } catch (qrError) {
+            console.error('Erro ao gerar QR Code:', qrError)
+        }
+
+        // Exportar como PNG
+        const pngBuffer = await baseImage.png().toBuffer()
+        return pngBuffer
+    } catch (error) {
+        console.error('Erro em generateCardPNG:', error)
+        throw error
+    }
+}
 
 export async function generateCardPDF(data: {
     name: string
@@ -62,7 +201,7 @@ export async function generateCardPDF(data: {
             color: rgb(1, 1, 1),
         })
 
-        // Foto circular GRANDE sobrepondo a divisão entre as seções
+        // Foto circular pequena como avatar, centralizada horizontal e verticalmente
         if (data.photoPath) {
             try {
                 const supabase = getServiceSupabase()
@@ -72,29 +211,48 @@ export async function generateCardPDF(data: {
 
                 if (!photoError && photoData) {
                     const photoBuffer = await photoData.arrayBuffer()
-                    let photoImage
+                    const originalBuffer = Buffer.from(photoBuffer)
+                    
+                    // Foto pequena, centralizada
+                    const photoSize = 50
+                    
+                    // Criar máscara circular (fundo transparente, círculo opaco)
+                    const maskBuffer = await sharp({
+                        create: {
+                            width: photoSize,
+                            height: photoSize,
+                            channels: 4,
+                            background: { r: 0, g: 0, b: 0, alpha: 0 } // Fundo transparente
+                        }
+                    })
+                    .composite([{
+                        input: Buffer.from(`<svg width="${photoSize}" height="${photoSize}"><circle cx="${photoSize/2}" cy="${photoSize/2}" r="${photoSize/2}" fill="white"/></svg>`),
+                        blend: 'over'
+                    }])
+                    .png()
+                    .toBuffer()
+                    
+                    // Processar imagem com máscara circular
+                    const circularBuffer = await sharp(originalBuffer)
+                        .resize(photoSize, photoSize, {
+                            fit: 'cover',
+                            position: 'center',
+                            withoutEnlargement: false,
+                            kernel: 'nearest'
+                        })
+                        .composite([{
+                            input: maskBuffer,
+                            blend: 'dest-in'
+                        }])
+                        .png()
+                        .toBuffer()
+                    
+                    const photoImage = await pdfDoc.embedPng(circularBuffer)
 
-                    // Try to embed as PNG or JPG
-                    try {
-                        photoImage = await pdfDoc.embedPng(photoBuffer)
-                    } catch {
-                        photoImage = await pdfDoc.embedJpg(photoBuffer)
-                    }
-
-                    // Foto muito grande, centralizada verticalmente, sobrepondo a divisão
-                    const photoSize = 110
-                    const photoX = width - photoSize - 25
+                    const photoX = width / 2 - photoSize / 2
                     const photoY = height / 2 - photoSize / 2
 
-                    // Círculo branco de fundo (borda grossa)
-                    page.drawCircle({
-                        x: photoX + photoSize / 2,
-                        y: photoY + photoSize / 2,
-                        size: photoSize / 2 + 5,
-                        color: rgb(1, 1, 1),
-                    })
-
-                    // Desenhar foto circular
+                    // Desenhar foto circular (já processada)
                     page.drawImage(photoImage, {
                         x: photoX,
                         y: photoY,
@@ -206,3 +364,6 @@ export async function generateCardPDF(data: {
         throw error
     }
 }
+
+// Exportar função auxiliar para testes
+export { createTextWithBackground }

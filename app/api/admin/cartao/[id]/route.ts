@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServiceSupabase } from "@/lib/supabase"
 import { verifyAdminAccess } from "@/lib/auth"
-import { generateCardPDF } from "@/lib/pdf-generator"
+import { generateCardPNG } from "@/lib/pdf-generator"
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -79,9 +79,7 @@ export async function GET(
     }
 
     try {
-        console.log(`[ADMIN PDF] Gerando PDF para cartão ${id}`)
-
-        const pdfBuffer = await generateCardPDF({
+        const pngBuffer = await generateCardPNG({
             name: userCard.name,
             cpf: userCard.cpf,
             cardNumber: cardNumber,
@@ -90,31 +88,27 @@ export async function GET(
             certificationDate: userCard.certification_date || userCard.created_at,
         })
 
-        console.log(`[ADMIN PDF] PDF gerado. Tamanho: ${pdfBuffer.length} bytes`)
-
         // Sanitizar o nome do arquivo
         const safeCardNumber = userCard.card_number.replace(/[^a-zA-Z0-9-]/g, '_')
 
-        // Retornar o PDF como download
-        return new NextResponse(pdfBuffer, {
+        // Retornar o PNG como download
+        return new NextResponse(pngBuffer, {
             status: 200,
             headers: {
-                'Content-Type': 'application/pdf',
-                'Content-Disposition': `attachment; filename="cartao-maf-${safeCardNumber}.pdf"`,
-                'Content-Length': pdfBuffer.length.toString(),
+                'Content-Type': 'image/png',
+                'Content-Disposition': `attachment; filename="cartao-maf-${safeCardNumber}.png"`,
+                'Content-Length': pngBuffer.length.toString(),
                 'Cache-Control': 'no-cache, no-store, must-revalidate',
                 'Pragma': 'no-cache',
                 'Expires': '0',
             },
         })
     } catch (error: any) {
-        console.error("[ADMIN PDF] Erro ao gerar PDF:", error)
-        console.error("[ADMIN PDF] Stack:", error?.stack)
+        console.error("[ADMIN PNG] Erro ao gerar PNG:", error)
         return NextResponse.json(
             {
-                error: "Erro ao gerar o PDF do cartão",
-                details: error?.message || 'Erro desconhecido',
-                stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+                error: "Erro ao gerar o PNG do cartão",
+                details: error?.message || 'Erro desconhecido'
             },
             { status: 500 }
         )

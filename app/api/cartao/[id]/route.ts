@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
-import { generateCardPDF } from "@/lib/pdf-generator"
+import { generateCardPNG } from "@/lib/pdf-generator"
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -37,11 +37,19 @@ export async function GET(
         .from('users_cards')
         .select('*')
         .eq('id', id)
-        .eq('email', user.email) // Garantir que o usuário só acesse seu próprio cartão
         .single()
 
     if (error || !userCard) {
         return NextResponse.json({ error: "Cartão não encontrado" }, { status: 404 })
+    }
+
+    // Verificar se o usuário tem permissão para acessar este cartão
+    // Permitir se: é o dono do cartão OU é admin
+    const isOwner = userCard.email === user.email
+    const isAdmin = user.user_metadata?.is_admin === true || user.app_metadata?.is_admin === true
+
+    if (!isOwner && !isAdmin) {
+        return NextResponse.json({ error: "Acesso negado ao cartão" }, { status: 403 })
     }
 
     // Verificar se o cartão está aprovado
@@ -91,9 +99,9 @@ export async function GET(
     }
 
     try {
-        console.log(`[PDF] Gerando PDF para cartão ${id}`)
+        console.log(`[PDF] Gerando PNG para cartão ${id}`)
 
-        const pdfBuffer = await generateCardPDF({
+        const pngBuffer = await generateCardPNG({
             name: userCard.name,
             cpf: userCard.cpf,
             cardNumber: cardNumber,
@@ -102,30 +110,30 @@ export async function GET(
             certificationDate: userCard.certification_date || userCard.created_at,
         })
 
-        console.log(`[PDF] PDF gerado com sucesso. Tamanho: ${pdfBuffer.length} bytes`)
+        console.log(`[PDF] PNG gerado com sucesso. Tamanho: ${pngBuffer.length} bytes`)
 
         // Sanitizar o nome do arquivo
         const safeCardNumber = userCard.card_number.replace(/[^a-zA-Z0-9-]/g, '_')
 
-        // Retornar o PDF como download
-        return new NextResponse(pdfBuffer, {
+        // Retornar o PNG como download
+        return new NextResponse(pngBuffer, {
             status: 200,
             headers: {
-                'Content-Type': 'application/pdf',
-                'Content-Disposition': `attachment; filename="cartao-maf-${safeCardNumber}.pdf"`,
-                'Content-Length': pdfBuffer.length.toString(),
+                'Content-Type': 'image/png',
+                'Content-Disposition': `attachment; filename="cartao-maf-${safeCardNumber}.png"`,
+                'Content-Length': pngBuffer.length.toString(),
                 'Cache-Control': 'no-cache, no-store, must-revalidate',
                 'Pragma': 'no-cache',
                 'Expires': '0',
             },
         })
     } catch (error: any) {
-        console.error("[PDF] Erro ao gerar PDF:", error)
+        console.error("[PDF] Erro ao gerar PNG:", error)
         console.error("[PDF] Stack:", error?.stack)
         console.error("[PDF] Message:", error?.message)
         return NextResponse.json(
             {
-                error: "Erro ao gerar o PDF do cartão",
+                error: "Erro ao gerar o PNG do cartão",
                 details: error?.message || 'Erro desconhecido',
                 stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined
             },

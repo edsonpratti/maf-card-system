@@ -142,11 +142,7 @@ export default function StudentActions({ student, onUpdate }: StudentActionsProp
                                 <Key className="mr-2 h-4 w-4" />
                                 Reenviar Senha
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={handleResendCardDownload}>
-                                <Download className="mr-2 h-4 w-4" />
-                                Reenviar Cartão
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
+                            {/* Removido: Reenviar Cartão */}
                         </>
                     )}
                     

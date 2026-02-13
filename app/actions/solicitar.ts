@@ -93,6 +93,19 @@ export async function checkCPFExists(cpf: string) {
 export async function submitApplication(prevState: any, formData: FormData) {
     const supabase = getServiceSupabase()
 
+    // Checar se o CPF já existe na tabela users_cards
+    const cpfToCheck = cleanCPF(formData.get("cpf") as string)
+    if (cpfToCheck && cpfToCheck.length === 11) {
+        const { data: existingUser } = await supabase
+            .from("users_cards")
+            .select("id")
+            .eq("cpf", cpfToCheck)
+            .single()
+        if (existingUser) {
+            return { success: false, message: "CPF já cadastrado. Acesse o portal para ver o status do seu pedido." }
+        }
+    }
+
     const rawData = {
         name: formData.get("name"),
         cpf: formData.get("cpf"),
@@ -298,8 +311,8 @@ export async function submitApplication(prevState: any, formData: FormData) {
         certificate_file_path: certificatePath || null,
         photo_path: photoPath,
         certification_date: rawData.certificationDate || null,
-        is_active: true, // Conta sempre ativa para login imediato
-        maf_pro_id_approved: status === "AUTO_APROVADA", // Aprovação automática apenas para AUTO_APROVADA
+        is_active: true,
+        maf_pro_id_approved: status === "AUTO_APROVADA",
     }
 
     // Adicionar card_number e validation_token se aprovado automaticamente

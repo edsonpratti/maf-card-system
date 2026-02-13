@@ -64,6 +64,7 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
     { key: "address", label: "Endereço", visible: false, defaultVisible: false },
     { key: "card_number", label: "Nº Carteirinha", visible: true, defaultVisible: true },
     { key: "status", label: "Status", visible: true, defaultVisible: true },
+    { key: "has_password", label: "Senha Definida", visible: true, defaultVisible: true },
     { key: "is_disabled", label: "Habilitado", visible: true, defaultVisible: true },
     { key: "certificate", label: "Certificado", visible: false, defaultVisible: false },
     { key: "card_pdf", label: "PDF Carteirinha", visible: false, defaultVisible: false },
@@ -207,7 +208,7 @@ export default function AlunasCadastradasPage() {
                 <div className="space-y-2">
                     <h1 className="text-2xl sm:text-3xl font-bold">Usuários</h1>
                     <p className="text-sm sm:text-base text-muted-foreground">
-                        Todos os usuários que definiram senha e têm acesso ao sistema.
+                        Todos os usuários cadastrados no sistema.
                     </p>
                 </div>
                 
@@ -367,10 +368,18 @@ export default function AlunasCadastradasPage() {
                                         ) : (
                                             <Badge variant="outline">{student.status}</Badge>
                                         )}
+                                        {student.auth_user_id ? (
+                                            <Badge variant="outline" className="border-green-500 text-green-600 text-xs">Senha OK</Badge>
+                                        ) : (
+                                            <Badge variant="secondary" className="text-xs">Sem senha</Badge>
+                                        )}
                                 </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-2 text-sm">
                                 <div>
-                                    <p className="text-muted-foreground text-xs">WhatsApp</p>
-                                    <p>{student.whatsapp || '-'}</p>
+                                    <p className="text-muted-foreground text-xs">Email</p>
+                                    <p className="truncate">{student.email}</p>
                                 </div>
                                 <div>
                                     <p className="text-muted-foreground text-xs">Nº Carteirinha</p>
@@ -379,6 +388,10 @@ export default function AlunasCadastradasPage() {
                                 <div>
                                     <p className="text-muted-foreground text-xs">Cadastro</p>
                                     <p>{new Date(student.created_at).toLocaleDateString('pt-BR')}</p>
+                                </div>
+                                <div>
+                                    <p className="text-muted-foreground text-xs">WhatsApp</p>
+                                    <p>{student.whatsapp || '-'}</p>
                                 </div>
                             </div>
 
@@ -410,6 +423,7 @@ export default function AlunasCadastradasPage() {
                             {isColumnVisible("address") && <TableHead>Endereço</TableHead>}
                             {isColumnVisible("card_number") && <TableHead>Nº Carteirinha</TableHead>}
                             {isColumnVisible("status") && <TableHead>Status</TableHead>}
+                            {isColumnVisible("has_password") && <TableHead>Senha</TableHead>}
                             {isColumnVisible("is_disabled") && <TableHead>Habilitado</TableHead>}
                             {isColumnVisible("certificate") && <TableHead>Certificado</TableHead>}
                             {isColumnVisible("card_pdf") && <TableHead>PDF Carteirinha</TableHead>}
@@ -423,7 +437,7 @@ export default function AlunasCadastradasPage() {
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={15} className="text-center h-24">
+                                <TableCell colSpan={16} className="text-center h-24">
                                     Carregando...
                                 </TableCell>
                             </TableRow>
@@ -472,6 +486,15 @@ export default function AlunasCadastradasPage() {
                                                 <Badge variant="destructive">Rejeitada</Badge>
                                             ) : (
                                                 <Badge variant="outline">{student.status}</Badge>
+                                            )}
+                                        </TableCell>
+                                    )}
+                                    {isColumnVisible("has_password") && (
+                                        <TableCell>
+                                            {student.auth_user_id ? (
+                                                <Badge variant="outline" className="border-green-500 text-green-600">Sim</Badge>
+                                            ) : (
+                                                <Badge variant="secondary">Pendente</Badge>
                                             )}
                                         </TableCell>
                                     )}
@@ -544,10 +567,10 @@ export default function AlunasCadastradasPage() {
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={15} className="text-center h-24">
+                                <TableCell colSpan={16} className="text-center h-24">
                                     {searchTerm || searchCPF || status !== "ALL"
                                         ? "Nenhum usuário encontrado com os filtros aplicados."
-                                        : "Nenhum usuário com acesso definido no sistema."}
+                                        : "Nenhum usuário cadastrado no sistema."}
                                 </TableCell>
                             </TableRow>
                         )}
@@ -557,7 +580,7 @@ export default function AlunasCadastradasPage() {
 
             <div className="rounded-lg border p-4 bg-muted/50">
                 <p className="text-sm text-muted-foreground">
-                    <strong>Total de usuários com acesso:</strong> {students.length}
+                    <strong>Total de usuários:</strong> {students.length}
                     {filteredStudents.length !== students.length && (
                         <> | <strong>Filtrados:</strong> {filteredStudents.length}</>
                     )}
