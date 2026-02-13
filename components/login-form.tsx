@@ -100,27 +100,27 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
 
     return (
         <Card className="w-full max-w-sm mx-auto bg-white/5 backdrop-blur-md border-white/10 shadow-2xl">
-            <CardHeader className="text-center">
-                <CardTitle className="text-white text-2xl">
+            <CardHeader className="text-center px-4 sm:px-6 pt-6 pb-4">
+                <CardTitle className="text-white text-xl sm:text-2xl">
                     {resetPassword ? "Recuperar Senha" : (admin ? "Admin Login" : "Bem-vinda de volta!")}
                 </CardTitle>
-                <CardDescription className="text-gray-400">
+                <CardDescription className="text-gray-400 text-sm">
                     {resetPassword
                         ? "Digite seu e-mail para receber o link de recuperação."
                         : "Entre com suas credenciais para acessar o portal."}
                 </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-4 sm:px-6 pb-6">
                 {resetPassword ? (
                     <form onSubmit={handleForgotPassword} className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="email" className="text-gray-300">E-mail</Label>
+                            <Label htmlFor="email" className="text-gray-300 text-sm">E-mail</Label>
                             <Input
                                 id="email"
                                 name="email"
                                 type="email"
                                 required
-                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 text-base"
                                 placeholder="seu@email.com"
                             />
                         </div>
@@ -128,7 +128,7 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
                             <Button
                                 type="button"
                                 variant="outline"
-                                className="w-full border-white/20 bg-white/5 hover:bg-white/10 text-white"
+                                className="w-full border-white/20 bg-white/5 hover:bg-white/10 text-white h-11"
                                 onClick={() => setResetPassword(false)}
                                 disabled={loading}
                             >
@@ -136,7 +136,7 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
                             </Button>
                             <Button
                                 type="submit"
-                                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white"
+                                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white h-11"
                                 disabled={loading}
                             >
                                 {loading ? "Enviando..." : "Enviar"}
@@ -146,23 +146,23 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
                 ) : (
                     <form onSubmit={handleLogin} className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="email" className="text-gray-300">E-mail</Label>
+                            <Label htmlFor="email" className="text-gray-300 text-sm">E-mail</Label>
                             <Input
                                 id="email"
                                 name="email"
                                 type="email"
                                 required
-                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 text-base"
                                 placeholder="seu@email.com"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="password" className="text-gray-300">Senha</Label>
+                            <Label htmlFor="password" className="text-gray-300 text-sm">Senha</Label>
                             <PasswordInput
                                 id="password"
                                 name="password"
                                 required
-                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 text-base"
                                 placeholder="••••••••"
                             />
                         </div>
@@ -179,7 +179,7 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
                         )}
                         <Button
                             type="submit"
-                            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-5 rounded-full shadow-lg shadow-emerald-500/25 transition-all hover:shadow-emerald-500/40"
+                            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-5 h-12 rounded-full shadow-lg shadow-emerald-500/25 transition-all hover:shadow-emerald-500/40 text-base"
                             disabled={loading}
                         >
                             {loading ? "Entrando..." : "Entrar"}

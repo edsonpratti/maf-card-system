@@ -61,9 +61,9 @@ export default function EnquetesPage() {
     }
 
     const getStatusBadge = (status: SurveyStatus) => {
-        const variants: Record<SurveyStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+        const variants: Record<SurveyStatus, { label: string; variant: 'success' | 'secondary' | 'outline' }> = {
             draft: { label: 'Rascunho', variant: 'secondary' },
-            active: { label: 'Ativa', variant: 'default' },
+            active: { label: 'Ativa', variant: 'success' },
             closed: { label: 'Encerrada', variant: 'outline' }
         }
         const config = variants[status]
@@ -75,16 +75,16 @@ export default function EnquetesPage() {
         : surveys.filter(s => s.status === filter)
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
+        <div className="space-y-4 sm:space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold">Enquetes</h1>
-                    <p className="text-muted-foreground mt-1">
+                    <h1 className="text-2xl sm:text-3xl font-bold">Enquetes</h1>
+                    <p className="text-sm sm:text-base text-muted-foreground mt-1">
                         Crie e gerencie enquetes e questionários para seu público
                     </p>
                 </div>
                 <Link href="/admin/enquetes/nova">
-                    <Button>
+                    <Button className="w-full sm:w-auto">
                         <Plus className="h-4 w-4 mr-2" />
                         Nova Enquete
                     </Button>
@@ -92,7 +92,7 @@ export default function EnquetesPage() {
             </div>
 
             {/* Filters */}
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
                 <Button
                     variant={filter === 'all' ? 'default' : 'outline'}
                     size="sm"
@@ -154,20 +154,20 @@ export default function EnquetesPage() {
                         const publicIdentifier = survey.code?.trim() || survey.id
                         return (
                             <Card key={survey.id}>
-                            <CardHeader>
-                                <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-3">
-                                            <CardTitle>{survey.name}</CardTitle>
+                            <CardHeader className="p-4 sm:p-6">
+                                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <CardTitle className="text-base sm:text-lg truncate">{survey.name}</CardTitle>
                                             {getStatusBadge(survey.status)}
                                         </div>
                                         {survey.description && (
-                                            <p className="text-sm text-muted-foreground mt-2">
+                                            <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
                                                 {survey.description}
                                             </p>
                                         )}
-                                        <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
-                                            <span>Código: <code className="bg-muted px-2 py-0.5 rounded">{survey.code}</code></span>
+                                        <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-3 text-xs sm:text-sm text-muted-foreground">
+                                            <span>Código: <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{survey.code}</code></span>
                                             <span>Início: {format(new Date(survey.start_date), 'dd/MM/yyyy')}</span>
                                             {survey.end_date && (
                                                 <span>Término: {format(new Date(survey.end_date), 'dd/MM/yyyy')}</span>
@@ -176,18 +176,18 @@ export default function EnquetesPage() {
                                     </div>
                                 </div>
                             </CardHeader>
-                            <CardContent>
-                                <div className="flex items-center gap-2">
+                            <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+                                <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
                                     <Link href={`/admin/enquetes/${survey.id}/editar`}>
-                                        <Button variant="outline" size="sm">
-                                            <Edit className="h-4 w-4 mr-2" />
-                                            Editar
+                                        <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                                            <Edit className="h-4 w-4 sm:mr-2" />
+                                            <span className="hidden sm:inline">Editar</span>
                                         </Button>
                                     </Link>
                                     <Link href={`/admin/enquetes/${survey.id}/resultados`}>
-                                        <Button variant="outline" size="sm">
-                                            <BarChart3 className="h-4 w-4 mr-2" />
-                                            Resultados
+                                        <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                                            <BarChart3 className="h-4 w-4 sm:mr-2" />
+                                            <span className="hidden sm:inline">Resultados</span>
                                         </Button>
                                     </Link>
                                     {survey.status === 'active' && (
@@ -195,25 +195,26 @@ export default function EnquetesPage() {
                                             variant="outline"
                                             size="sm"
                                             onClick={() => copyPublicLink(publicIdentifier)}
+                                            className="w-full sm:w-auto"
                                         >
-                                            <Copy className="h-4 w-4 mr-2" />
-                                            Copiar Link
+                                            <Copy className="h-4 w-4 sm:mr-2" />
+                                            <span className="hidden sm:inline">Copiar Link</span>
                                         </Button>
                                     )}
                                     <Link href={`/enquete/${publicIdentifier}`} target="_blank">
-                                        <Button variant="outline" size="sm">
-                                            <Eye className="h-4 w-4 mr-2" />
-                                            Visualizar
+                                        <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                                            <Eye className="h-4 w-4 sm:mr-2" />
+                                            <span className="hidden sm:inline">Visualizar</span>
                                         </Button>
                                     </Link>
                                     <Button
-                                        variant="outline"
+                                        variant="outline-destructive"
                                         size="sm"
                                         onClick={() => deleteSurvey(survey.id)}
-                                        className="ml-auto text-destructive hover:text-destructive"
+                                        className="col-span-2 sm:col-span-1 sm:ml-auto"
                                     >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Excluir
+                                        <Trash2 className="h-4 w-4 sm:mr-2" />
+                                        <span className="hidden sm:inline">Excluir</span>
                                     </Button>
                                 </div>
                             </CardContent>

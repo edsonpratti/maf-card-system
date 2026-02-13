@@ -120,3 +120,77 @@ export async function deleteStudent(id: string) {
     
     revalidatePath("/admin/base-alunas")
 }
+
+export async function updateStudent(id: string, name: string, cpf: string) {
+    const user = await verifyAdminAccess()
+    
+    const supabase = getServiceSupabase()
+    
+    // Limpar CPF
+    const cleanCpf = cpf.replace(/\D/g, "")
+    
+    if (cleanCpf.length !== 11) {
+        return { success: false, message: "CPF inválido" }
+    }
+    
+    if (name.length < 3) {
+        return { success: false, message: "Nome deve ter pelo menos 3 caracteres" }
+    }
+    
+    // Get current data for logging
+    const { data: oldData } = await supabase
+        .from("students_base")
+        .select("name, cpf")
+        .eq("id", id)
+        .single()
+    
+    // Check if CPF already exists (for another student)
+    const { data: existingStudent } = await supabase
+        .from("students_base")
+        .select("id")
+        .eq("cpf", cleanCpf)
+        .neq("id", id)
+        .single()
+    
+    if (existingStudent) {
+        return { success: false, message: "CPF já cadastrado para outra aluna" }
+    }
+    
+    const { error } = await supabase
+        .from("students_base")
+        .update({ name, cpf: cleanCpf, updated_at: new Date().toISOString() })
+        .eq("id", id)
+    
+    if (error) {
+        return { success: false, message: error.message }
+    }
+    
+    // Log action
+    await createAuditLog(user.id, "UPDATE_STUDENT", { 
+        id,
+        oldName: oldData?.name,
+        oldCpf: oldData?.cpf,
+        newName: name,
+        newCpf: cleanCpf
+    })
+    
+    revalidatePath("/admin/base-alunas")
+    return { success: true, message: "Aluna atualizada com sucesso!" }
+}
+
+export async function getStudentById(id: string) {
+    await verifyAdminAccess()
+    
+    const supabase = getServiceSupabase()
+    const { data, error } = await supabase
+        .from("students_base")
+        .select("*")
+        .eq("id", id)
+        .single()
+    
+    if (error) {
+        return null
+    }
+    
+    return data
+}

@@ -3,11 +3,14 @@
 export type SurveyStatus = 'draft' | 'active' | 'closed';
 
 export type QuestionType =
+    | 'name'
     | 'short_text'
     | 'long_text'
     | 'multiple_choice'
     | 'checkboxes'
-    | 'linear_scale';
+    | 'linear_scale'
+    | 'email'
+    | 'phone';
 
 // Survey interface
 export interface Survey {
@@ -21,6 +24,12 @@ export interface Survey {
     created_by?: string;
     created_at: string;
     updated_at: string;
+    // Completion page settings
+    completion_title?: string;
+    completion_subtitle?: string;
+    completion_show_button?: boolean;
+    completion_button_text?: string;
+    completion_button_url?: string;
 }
 
 // Question settings based on type
@@ -189,6 +198,11 @@ export interface CreateSurveyData {
 
 export interface UpdateSurveyData extends Partial<CreateSurveyData> {
     status?: SurveyStatus;
+    completion_title?: string;
+    completion_subtitle?: string;
+    completion_show_button?: boolean;
+    completion_button_text?: string;
+    completion_button_url?: string;
 }
 
 export interface CreateQuestionData {

@@ -1,7 +1,19 @@
 import { NextResponse } from "next/server"
+import { verifyAdminAccess, handleAuthError } from "@/lib/auth"
 
 export async function GET() {
     try {
+        // Verificar autenticação de admin - apenas admins podem ver informações de debug
+        await verifyAdminAccess();
+        
+        // Em produção, retornar informações mínimas
+        if (process.env.NODE_ENV === 'production') {
+            return NextResponse.json({
+                status: 'ok',
+                message: 'Debug info only available in development mode'
+            })
+        }
+        
         // Testar se as dependências estão disponíveis
         const testResults = {
             pdfLib: false,
@@ -40,11 +52,8 @@ export async function GET() {
             },
             dependencies: testResults
         })
-    } catch (error: any) {
-        return NextResponse.json({
-            status: 'error',
-            error: error.message,
-            stack: error.stack
-        }, { status: 500 })
+    } catch (error) {
+        console.error('Error in GET /api/debug/pdf-deps:', error);
+        return handleAuthError(error);
     }
 }

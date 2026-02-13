@@ -41,17 +41,17 @@ const actionLabels: Record<string, string> = {
     TESTE_SISTEMA: "Teste do Sistema",
 }
 
-const actionColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-    APROVADA_MANUAL: "default",
-    AUTO_APROVADA: "secondary",
+const actionColors: Record<string, "success" | "info" | "warning" | "destructive" | "secondary" | "outline"> = {
+    APROVADA_MANUAL: "info",
+    AUTO_APROVADA: "success",
     RECUSADA: "destructive",
-    REVOGADA: "destructive",
-    UPLOAD_CSV: "outline",
-    PENDENTE_MANUAL: "outline",
-    ADD_STUDENT: "secondary",
+    REVOGADA: "outline-destructive",
+    UPLOAD_CSV: "secondary",
+    PENDENTE_MANUAL: "warning",
+    ADD_STUDENT: "outline-success",
     DELETE_STUDENT: "destructive",
     DELETE_REQUEST: "destructive",
-    TESTE_SISTEMA: "outline",
+    TESTE_SISTEMA: "secondary",
 }
 
 function formatDate(dateString: string) {
@@ -78,11 +78,11 @@ export default async function AuditLogsPage({
     })
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
+        <div className="space-y-4 sm:space-y-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold">Logs de Auditoria</h1>
-                    <p className="text-muted-foreground mt-2">
+                    <h1 className="text-2xl sm:text-3xl font-bold">Logs de Auditoria</h1>
+                    <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
                         Histórico de todas as ações administrativas realizadas no sistema
                     </p>
                 </div>
@@ -104,7 +104,36 @@ export default async function AuditLogsPage({
                             Nenhum log encontrado
                         </div>
                     ) : (
-                        <div className="rounded-md border">
+                        <>
+                            {/* Visualização em Cards para Mobile */}
+                            <div className="block md:hidden space-y-3">
+                                {logs.map((log: any) => (
+                                    <div key={log.id} className="border rounded-lg p-3 space-y-2 bg-muted/30">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <Badge variant={actionColors[log.action] || "outline"}>
+                                                {actionLabels[log.action] || log.action}
+                                            </Badge>
+                                            <span className="text-xs text-muted-foreground font-mono">
+                                                {formatDate(log.created_at)}
+                                            </span>
+                                        </div>
+                                        <div className="text-sm">
+                                            <span className="font-medium">{log.users_cards?.name || "-"}</span>
+                                            <span className="text-muted-foreground ml-2 text-xs">
+                                                {log.users_cards?.cpf || ""}
+                                            </span>
+                                        </div>
+                                        {(log.metadata?.reason || log.metadata) && (
+                                            <p className="text-xs text-muted-foreground line-clamp-2">
+                                                {log.metadata?.reason || JSON.stringify(log.metadata)}
+                                            </p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                            
+                            {/* Tabela para Desktop */}
+                            <div className="rounded-md border hidden md:block">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
@@ -149,6 +178,7 @@ export default async function AuditLogsPage({
                                 </TableBody>
                             </Table>
                         </div>
+                        </>
                     )}
                 </CardContent>
             </Card>

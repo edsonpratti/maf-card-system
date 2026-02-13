@@ -1,52 +1,55 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { FileText, CheckCircle, XCircle } from "lucide-react"
-import { getDashboardStats } from "@/app/actions/admin"
+import { ModuleCard } from "@/components/admin/module-card"
+import { CreditCard, ClipboardList, Users, Settings } from "lucide-react"
 
-export default async function AdminDashboard() {
-    const stats = await getDashboardStats()
-
+export default function DashboardPage() {
     return (
         <div className="space-y-6">
-            <h1 className="text-3xl font-bold">Dashboard</h1>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Aprovações Pendentes
-                        </CardTitle>
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.pending}</div>
-                        <p className="text-xs text-muted-foreground">Waitlist manual</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Total Emitidas
-                        </CardTitle>
-                        <CheckCircle className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.issued.toLocaleString('pt-BR')}</div>
-                        <p className="text-xs text-muted-foreground">
-                            {stats.growthPercentage > 0 ? '+' : ''}{stats.growthPercentage}% este mês
-                        </p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Recusadas
-                        </CardTitle>
-                        <XCircle className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.rejected}</div>
-                        <p className="text-xs text-muted-foreground">Últimos 30 dias</p>
-                    </CardContent>
-                </Card>
+            <div>
+                <h1 className="text-3xl font-bold">Bem-vindo ao Painel Administrativo</h1>
+                <p className="text-muted-foreground mt-2">
+                    Selecione um módulo para gerenciar suas funcionalidades
+                </p>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
+                <ModuleCard
+                    title="MAF Pro ID"
+                    description="Sistema de confecção e gestão de carteirinhas de identificação. Gerencie solicitações, valide certificados e mantenha a base de alunas atualizada."
+                    icon={CreditCard}
+                    href="/admin/solicitacoes"
+                    status="active"
+                />
+
+                <ModuleCard
+                    title="MAF Pro Quiz"
+                    description="Gerador de enquetes e questionários interativos. Crie, gerencie e analise pesquisas e quizzes para engajamento da comunidade."
+                    icon={ClipboardList}
+                    href="/admin/enquetes"
+                    status="active"
+                />
+
+                <ModuleCard
+                    title="Gestão de Usuários"
+                    description="Visualize e gerencie todos os usuários cadastrados no sistema, independente do módulo."
+                    icon={Users}
+                    href="/admin/usuarios"
+                    status="active"
+                />
+
+                <ModuleCard
+                    title="Configurações"
+                    description="Configure o comportamento do sistema, validações automáticas e notificações por email."
+                    icon={Settings}
+                    href="/admin/configuracoes"
+                    status="active"
+                />
+            </div>
+
+            <div className="mt-8 p-4 border rounded-lg bg-muted/50">
+                <h2 className="text-lg font-semibold mb-2">Acesso Rápido</h2>
+                <p className="text-sm text-muted-foreground">
+                    Use o menu lateral para navegar diretamente para seções específicas de cada módulo.
+                </p>
             </div>
         </div>
     )

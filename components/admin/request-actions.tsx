@@ -74,7 +74,7 @@ export default function RequestActions({ request }: { request: any }) {
         <div className="flex gap-4">
             {request.status === "PENDENTE_MANUAL" && (
                 <>
-                    <Button onClick={handleApprove} disabled={loading} className="bg-green-600 hover:bg-green-700">
+                    <Button onClick={handleApprove} disabled={loading} variant="success">
                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Aprovar
                     </Button>
@@ -98,7 +98,7 @@ export default function RequestActions({ request }: { request: any }) {
                                 onChange={(e) => setRejectReason(e.target.value)}
                             />
                             <DialogFooter>
-                                <Button variant="outline" onClick={() => setRejectOpen(false)}>Cancelar</Button>
+                                <Button variant="secondary" onClick={() => setRejectOpen(false)}>Cancelar</Button>
                                 <Button variant="destructive" onClick={handleReject} disabled={!rejectReason || loading}>
                                     Confirmar Recusa
                                 </Button>
@@ -112,8 +112,7 @@ export default function RequestActions({ request }: { request: any }) {
                 <Button 
                     onClick={handleResendEmail} 
                     disabled={loading} 
-                    variant="outline"
-                    className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                    variant="outline-info"
                 >
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     <Mail className="mr-2 h-4 w-4" />

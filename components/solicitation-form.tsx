@@ -159,14 +159,14 @@ export default function SolicitationForm() {
 
     return (
         <Card className="w-full max-w-2xl mx-auto bg-white/5 backdrop-blur-md border-white/10 shadow-2xl">
-            <CardContent className="pt-6">
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
                     <div className="space-y-2">
-                        <Label htmlFor="cpf" className="text-gray-300">CPF</Label>
+                        <Label htmlFor="cpf" className="text-gray-300 text-sm">CPF</Label>
                         <Input
                             id="cpf"
                             placeholder="000.000.000-00"
-                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20"
+                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 text-base"
                             {...cpfRegister}
                             onBlur={(e) => {
                                 cpfRegister.onBlur(e)
@@ -179,26 +179,26 @@ export default function SolicitationForm() {
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="name" className="text-gray-300">Nome Completo</Label>
+                        <Label htmlFor="name" className="text-gray-300 text-sm">Nome Completo</Label>
                         <Input
                             id="name"
                             {...form.register("name")}
                             readOnly={cpfStatus === "found"}
-                            className={`bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 ${cpfStatus === "found" ? "bg-white/10 text-gray-400" : ""}`}
+                            className={`bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 text-base ${cpfStatus === "found" ? "bg-white/10 text-gray-400" : ""}`}
                         />
                         {form.formState.errors.name && (
                             <p className="text-sm text-red-400">{form.formState.errors.name.message}</p>
                         )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="whatsapp" className="text-gray-300">WhatsApp</Label>
+                            <Label htmlFor="whatsapp" className="text-gray-300 text-sm">WhatsApp</Label>
                             <Input
                                 id="whatsapp"
                                 {...form.register("whatsapp")}
                                 placeholder="(00) 00000-0000"
-                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 text-base"
                                 onChange={(e) => {
                                     e.target.value = formatPhone(e.target.value)
                                     form.register("whatsapp").onChange(e)
@@ -209,12 +209,12 @@ export default function SolicitationForm() {
                             )}
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="email" className="text-gray-300">E-mail</Label>
+                            <Label htmlFor="email" className="text-gray-300 text-sm">E-mail</Label>
                             <Input 
                                 id="email" 
                                 type="email" 
                                 {...form.register("email")} 
-                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 text-base"
                             />
                             {form.formState.errors.email && (
                                 <p className="text-sm text-red-400">{form.formState.errors.email.message}</p>
@@ -224,14 +224,14 @@ export default function SolicitationForm() {
 
                     {/* Address Fields Simplified */}
                     <div className="space-y-2">
-                        <Label htmlFor="cep" className="text-gray-300">CEP</Label>
+                        <Label htmlFor="cep" className="text-gray-300 text-sm">CEP</Label>
                         <div className="relative">
                             <Input
                                 id="cep"
                                 {...form.register("address.cep")}
                                 placeholder="00000-000"
                                 disabled={cepLoading}
-                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base"
                                 onChange={(e) => {
                                     e.target.value = formatCEP(e.target.value)
                                     form.register("address.cep").onChange(e)
@@ -251,70 +251,84 @@ export default function SolicitationForm() {
                     </div>
 
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="street" className="text-gray-300">Rua</Label>
+                            <Label htmlFor="street" className="text-gray-300 text-sm">Rua</Label>
                             <Input 
                                 id="street" 
                                 {...form.register("address.street")} 
                                 disabled={cepLoading}
-                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="number" className="text-gray-300">Número</Label>
-                            <Input 
-                                id="number" 
-                                {...form.register("address.number")} 
-                                disabled={cepLoading}
-                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50"
-                            />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="number" className="text-gray-300 text-sm">Número</Label>
+                                <Input 
+                                    id="number" 
+                                    {...form.register("address.number")} 
+                                    disabled={cepLoading}
+                                    className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="complement" className="text-gray-300 text-sm">Complemento</Label>
+                                <Input 
+                                    id="complement" 
+                                    {...form.register("address.complement")} 
+                                    placeholder="Opcional"
+                                    disabled={cepLoading}
+                                    className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base"
+                                />
+                            </div>
                         </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="neighborhood" className="text-gray-300">Bairro</Label>
+                            <Label htmlFor="neighborhood" className="text-gray-300 text-sm">Bairro</Label>
                             <Input 
                                 id="neighborhood" 
                                 {...form.register("address.neighborhood")} 
                                 disabled={cepLoading}
-                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="city" className="text-gray-300">Cidade</Label>
-                            <Input 
-                                id="city" 
-                                {...form.register("address.city")} 
-                                disabled={cepLoading}
-                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50"
-                            />
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-2 col-span-2">
+                                <Label htmlFor="city" className="text-gray-300 text-sm">Cidade</Label>
+                                <Input 
+                                    id="city" 
+                                    {...form.register("address.city")} 
+                                    disabled={cepLoading}
+                                    className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="state" className="text-gray-300 text-sm">UF</Label>
+                                <Input
+                                    id="state"
+                                    {...form.register("address.state")}
+                                    maxLength={2}
+                                    disabled={cepLoading}
+                                    className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base"
+                                    onChange={(e) => {
+                                        e.target.value = e.target.value.toUpperCase()
+                                        form.register("address.state").onChange(e)
+                                    }}
+                                />
+                            </div>
                         </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="state" className="text-gray-300">Estado (UF)</Label>
-                        <Input
-                            id="state"
-                            {...form.register("address.state")}
-                            maxLength={2}
-                            disabled={cepLoading}
-                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50"
-                            onChange={(e) => {
-                                e.target.value = e.target.value.toUpperCase()
-                                form.register("address.state").onChange(e)
-                            }}
-                        />
                     </div>
 
                     {cpfStatus === "not_found" && (
-                        <div className="space-y-2 border border-yellow-500/30 p-4 rounded-lg bg-yellow-500/10">
-                            <Label htmlFor="certificate" className="text-yellow-400">Upload do Certificado (Obrigatório)</Label>
+                        <div className="space-y-2 border border-yellow-500/30 p-3 sm:p-4 rounded-lg bg-yellow-500/10">
+                            <Label htmlFor="certificate" className="text-yellow-400 text-sm">Upload do Certificado (Obrigatório)</Label>
                             <Input 
                                 id="certificate" 
                                 type="file" 
                                 accept=".pdf,.jpg,.png" 
                                 required 
-                                className="bg-white/5 border-white/10 text-white file:bg-emerald-500 file:text-white file:border-0 file:rounded-md file:px-3 file:py-1 file:mr-3 file:cursor-pointer"
+                                className="bg-white/5 border-white/10 text-white file:bg-emerald-500 file:text-white file:border-0 file:rounded-md file:px-2 sm:file:px-3 file:py-1 file:mr-2 sm:file:mr-3 file:cursor-pointer file:text-xs sm:file:text-sm h-auto py-2"
                             />
                             <p className="text-xs text-yellow-400/80">
                                 Como seu CPF não foi encontrado automaticamente, precisamos validar seu certificado manualmente.
@@ -324,7 +338,7 @@ export default function SolicitationForm() {
 
                     <Button 
                         type="submit" 
-                        className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-5 rounded-full shadow-lg shadow-emerald-500/25 transition-all hover:shadow-emerald-500/40" 
+                        className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-5 h-12 rounded-full shadow-lg shadow-emerald-500/25 transition-all hover:shadow-emerald-500/40 text-base" 
                         disabled={loading}
                     >
                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

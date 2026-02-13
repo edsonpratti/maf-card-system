@@ -1,5 +1,5 @@
 import { ModuleCard } from "@/components/admin/module-card"
-import { CreditCard, ClipboardList } from "lucide-react"
+import { CreditCard, ClipboardList, Users, Settings } from "lucide-react"
 
 export default function AdminPage() {
     return (
@@ -14,9 +14,9 @@ export default function AdminPage() {
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
                 <ModuleCard
                     title="MAF Pro ID"
-                    description="Sistema de confecção e gestão de carteirinhas de identificação. Gerencie solicitações, aprove documentos e mantenha a base de alunas atualizada."
+                    description="Sistema de confecção e gestão de carteirinhas de identificação. Gerencie solicitações, valide certificados e mantenha a base de alunas atualizada."
                     icon={CreditCard}
-                    href="/admin/dashboard"
+                    href="/admin/solicitacoes"
                     status="active"
                 />
 
@@ -24,8 +24,24 @@ export default function AdminPage() {
                     title="MAF Pro Quiz"
                     description="Gerador de enquetes e questionários interativos. Crie, gerencie e analise pesquisas e quizzes para engajamento da comunidade."
                     icon={ClipboardList}
-                    href="/admin/quiz"
-                    status="development"
+                    href="/admin/enquetes"
+                    status="active"
+                />
+
+                <ModuleCard
+                    title="Gestão de Usuários"
+                    description="Visualize e gerencie todos os usuários cadastrados no sistema, independente do módulo."
+                    icon={Users}
+                    href="/admin/usuarios"
+                    status="active"
+                />
+
+                <ModuleCard
+                    title="Configurações"
+                    description="Configure o comportamento do sistema, validações automáticas e notificações por email."
+                    icon={Settings}
+                    href="/admin/configuracoes"
+                    status="active"
                 />
             </div>
 

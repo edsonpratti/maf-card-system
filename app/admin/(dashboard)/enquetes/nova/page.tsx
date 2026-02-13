@@ -151,11 +151,11 @@ export default function NovaSurveyPage() {
                         </div>
 
                         <div className="flex gap-2 pt-4">
-                            <Button type="submit" disabled={loading}>
+                            <Button type="submit" disabled={loading} variant="success">
                                 {loading ? 'Criando...' : 'Criar e Adicionar Perguntas'}
                             </Button>
                             <Link href="/admin/enquetes">
-                                <Button type="button" variant="outline">
+                                <Button type="button" variant="secondary">
                                     Cancelar
                                 </Button>
                             </Link>

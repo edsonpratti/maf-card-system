@@ -47,9 +47,13 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                 <Badge 
                     variant={
                         request.status === "PENDENTE_MANUAL" || request.status === "WAITLIST_MANUAL" 
-                            ? "destructive" 
-                            : request.status === "APROVADA_MANUAL" || request.status === "AUTO_APROVADA"
-                            ? "default"
+                            ? "warning" 
+                            : request.status === "APROVADA_MANUAL" 
+                            ? "info"
+                            : request.status === "AUTO_APROVADA"
+                            ? "success"
+                            : request.status === "RECUSADA"
+                            ? "destructive"
                             : "secondary"
                     }
                 >
@@ -209,13 +213,13 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                                     Cartão Aprovado
                                 </p>
                                 <div className="space-y-2">
-                                    <Button asChild variant="default" className="w-full">
+                                    <Button asChild variant="success" className="w-full">
                                         <a href={`/api/admin/cartao/${request.id}`} download>
                                             <Download className="mr-2 h-4 w-4" />
                                             Baixar Cartão PDF
                                         </a>
                                     </Button>
-                                    <Button asChild variant="outline" className="w-full">
+                                    <Button asChild variant="outline-info" className="w-full">
                                         <a href={`/validar/${request.validation_token}`} target="_blank" rel="noopener noreferrer">
                                             <FileCheck className="mr-2 h-4 w-4" />
                                             Validar Cartão Online

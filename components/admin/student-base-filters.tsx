@@ -23,8 +23,8 @@ export function StudentBaseFilters({
 }: StudentBaseFiltersProps) {
     return (
         <Card>
-            <CardContent className="pt-6">
-                <div className="grid gap-4 md:grid-cols-3">
+            <CardContent className="p-4 sm:pt-6">
+                <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 md:grid-cols-3">
                     <div className="space-y-2">
                         <Label htmlFor="searchName">Nome</Label>
                         <div className="relative">

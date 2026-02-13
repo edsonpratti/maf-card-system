@@ -1,7 +1,44 @@
-"use server"
-
 import { cookies } from "next/headers"
 import { createServerClient } from "@supabase/ssr"
+import { NextResponse } from "next/server"
+
+/**
+ * Classe de erro para autenticação
+ */
+export class AuthError extends Error {
+    public statusCode: number
+    
+    constructor(message: string, statusCode: number = 401) {
+        super(message)
+        this.name = 'AuthError'
+        this.statusCode = statusCode
+    }
+}
+
+/**
+ * Helper para tratar erros de autenticação em rotas API
+ * @param error O erro capturado
+ * @returns NextResponse com status apropriado
+ */
+export function handleAuthError(error: unknown): NextResponse {
+    if (error instanceof AuthError) {
+        return NextResponse.json(
+            { error: error.message },
+            { status: error.statusCode }
+        )
+    }
+    
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    
+    if (errorMessage.includes('Unauthorized') || errorMessage.includes('Authentication')) {
+        return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
+    if (errorMessage.includes('Forbidden') || errorMessage.includes('Admin')) {
+        return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+    }
+    
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
+}
 
 /**
  * Verifica se o usuário atual tem permissões de administrador

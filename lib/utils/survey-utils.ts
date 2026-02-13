@@ -247,9 +247,27 @@ export function validateAnswer(question: SurveyQuestion, answerValue: any): bool
     }
 
     switch (question.question_type) {
+        case 'name':
+            // Nome é o campo mais importante - validação mais rigorosa
+            if (typeof answerValue.text !== 'string' || answerValue.text.trim() === '') return false;
+            // Nome deve ter pelo menos 2 caracteres
+            return answerValue.text.trim().length >= 2;
+
         case 'short_text':
         case 'long_text':
             return typeof answerValue.text === 'string' && answerValue.text.trim() !== '';
+
+        case 'email':
+            if (typeof answerValue.text !== 'string' || answerValue.text.trim() === '') return false;
+            // Validação básica de email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(answerValue.text.trim());
+
+        case 'phone':
+            if (typeof answerValue.text !== 'string' || answerValue.text.trim() === '') return false;
+            // Validação de telefone brasileiro (10 ou 11 dígitos)
+            const phoneNumbers = answerValue.text.replace(/\D/g, '');
+            return phoneNumbers.length >= 10 && phoneNumbers.length <= 11;
 
         case 'multiple_choice':
             const mcSettings = question.settings as MultipleChoiceSettings;

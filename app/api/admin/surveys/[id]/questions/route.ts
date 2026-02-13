@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
+import { verifyAdminAccess, handleAuthError } from '@/lib/auth';
 import { CreateQuestionData, UpdateQuestionData } from '@/lib/types/survey-types';
 
 // GET /api/admin/surveys/[id]/questions - Get all questions for a survey
@@ -9,6 +10,9 @@ export async function GET(
 ) {
     const { id } = await params
     try {
+        // Verificar autenticação de admin
+        await verifyAdminAccess();
+        
         const supabase = getServiceSupabase();
 
         const { data, error } = await supabase
@@ -25,7 +29,7 @@ export async function GET(
         return NextResponse.json(data || []);
     } catch (error) {
         console.error('Error in GET /api/admin/surveys/[id]/questions:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return handleAuthError(error);
     }
 }
 
@@ -36,6 +40,9 @@ export async function POST(
 ) {
     const { id } = await params
     try {
+        // Verificar autenticação de admin
+        await verifyAdminAccess();
+        
         const body: CreateQuestionData = await request.json();
         const supabase = getServiceSupabase();
 
@@ -72,7 +79,7 @@ export async function POST(
         return NextResponse.json(data, { status: 201 });
     } catch (error) {
         console.error('Error in POST /api/admin/surveys/[id]/questions:', error);
-        return NextResponse.json({ message: 'Erro interno do servidor' }, { status: 500 });
+        return handleAuthError(error);
     }
 }
 
@@ -83,11 +90,29 @@ export async function PUT(
 ) {
     const { id } = await params
     try {
+        // Verificar autenticação de admin
+        await verifyAdminAccess();
+        
         const body: { questions: Array<{ id: string; order_index: number }> } = await request.json();
         const supabase = getServiceSupabase();
 
-        // Update each question's order
-        const updates = body.questions.map(q =>
+        // Para evitar conflitos com a constraint UNIQUE(survey_id, order_index),
+        // primeiro definimos order_index temporário com valores negativos,
+        // depois atualizamos para os valores finais
+        
+        // Passo 1: Definir order_index temporários negativos
+        const tempUpdates = body.questions.map((q, i) =>
+            supabase
+                .from('survey_questions')
+                .update({ order_index: -(i + 1000) })
+                .eq('id', q.id)
+                .eq('survey_id', id)
+        );
+        
+        await Promise.all(tempUpdates);
+
+        // Passo 2: Definir os order_index finais
+        const finalUpdates = body.questions.map(q =>
             supabase
                 .from('survey_questions')
                 .update({ order_index: q.order_index })
@@ -95,11 +120,18 @@ export async function PUT(
                 .eq('survey_id', id)
         );
 
-        await Promise.all(updates);
+        const results = await Promise.all(finalUpdates);
+        
+        // Verificar se algum update falhou
+        const errors = results.filter(r => r.error);
+        if (errors.length > 0) {
+            console.error('Errors updating question order:', errors.map(e => e.error));
+            return NextResponse.json({ message: 'Erro ao reordenar perguntas' }, { status: 500 });
+        }
 
         return NextResponse.json({ message: 'Ordem atualizada com sucesso' });
     } catch (error) {
         console.error('Error in PUT /api/admin/surveys/[id]/questions:', error);
-        return NextResponse.json({ message: 'Erro interno do servidor' }, { status: 500 });
+        return handleAuthError(error);
     }
 }

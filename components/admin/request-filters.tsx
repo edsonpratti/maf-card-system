@@ -62,15 +62,15 @@ export function RequestFilters() {
 
     return (
         <Card>
-            <CardContent className="pt-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="status">Status</Label>
+            <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6 pb-4 sm:pb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                    <div className="space-y-1.5 sm:space-y-2">
+                        <Label htmlFor="status" className="text-sm">Status</Label>
                         <select
                             id="status"
                             value={status}
                             onChange={(e) => setStatus(e.target.value)}
-                            className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            className="w-full h-10 sm:h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >
                             {statusOptions.map((option) => (
                                 <option key={option.value} value={option.value}>
@@ -80,60 +80,64 @@ export function RequestFilters() {
                         </select>
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="name">Nome</Label>
+                    <div className="space-y-1.5 sm:space-y-2">
+                        <Label htmlFor="name" className="text-sm">Nome</Label>
                         <Input
                             id="name"
                             type="text"
                             placeholder="Buscar por nome..."
                             value={searchName}
                             onChange={(e) => setSearchName(e.target.value)}
+                            className="h-10"
                         />
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="cpf">CPF</Label>
+                    <div className="space-y-1.5 sm:space-y-2">
+                        <Label htmlFor="cpf" className="text-sm">CPF</Label>
                         <Input
                             id="cpf"
                             type="text"
                             placeholder="Buscar por CPF..."
                             value={searchCpf}
                             onChange={(e) => setSearchCpf(e.target.value)}
+                            className="h-10"
                         />
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="startDate">Data Inicial</Label>
+                    <div className="space-y-1.5 sm:space-y-2">
+                        <Label htmlFor="startDate" className="text-sm">Data Inicial</Label>
                         <Input
                             id="startDate"
                             type="date"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
+                            className="h-10"
                         />
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="endDate">Data Final</Label>
+                    <div className="space-y-1.5 sm:space-y-2">
+                        <Label htmlFor="endDate" className="text-sm">Data Final</Label>
                         <Input
                             id="endDate"
                             type="date"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
+                            className="h-10"
                         />
                     </div>
 
-                    <div className="space-y-2 flex items-end">
+                    <div className="space-y-1.5 sm:space-y-2 flex items-end">
                         <div className="flex gap-2 w-full">
                             <Button 
                                 onClick={handleFilter} 
-                                className="flex-1"
+                                className="flex-1 h-10"
                             >
                                 Filtrar
                             </Button>
                             <Button 
                                 onClick={handleClear} 
                                 variant="outline"
-                                className="flex-1"
+                                className="flex-1 h-10"
                             >
                                 Limpar
                             </Button>

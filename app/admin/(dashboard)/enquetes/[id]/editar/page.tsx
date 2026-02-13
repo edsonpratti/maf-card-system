@@ -88,7 +88,12 @@ export default function EditSurveyPage({ params }: { params: Promise<{ id: strin
                     description: survey.description,
                     start_date: survey.start_date,
                     end_date: survey.end_date,
-                    status: survey.status
+                    status: survey.status,
+                    completion_title: survey.completion_title,
+                    completion_subtitle: survey.completion_subtitle,
+                    completion_show_button: survey.completion_show_button,
+                    completion_button_text: survey.completion_button_text,
+                    completion_button_url: survey.completion_button_url
                 })
             })
 
@@ -200,6 +205,7 @@ export default function EditSurveyPage({ params }: { params: Promise<{ id: strin
     const handleReorderQuestions = async (reorderedQuestions: SurveyQuestion[]) => {
         if (!surveyId) return
 
+        // Atualiza o state local imediatamente (otimista)
         setQuestions(reorderedQuestions)
 
         try {
@@ -207,9 +213,9 @@ export default function EditSurveyPage({ params }: { params: Promise<{ id: strin
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    questions: reorderedQuestions.map(q => ({
+                    questions: reorderedQuestions.map((q, index) => ({
                         id: q.id,
-                        order_index: q.order_index
+                        order_index: index
                     }))
                 })
             })
@@ -240,7 +246,7 @@ export default function EditSurveyPage({ params }: { params: Promise<{ id: strin
     const publicIdentifier = survey.code?.trim() || survey.id
 
     return (
-        <div className="space-y-6 max-w-5xl mx-auto">
+        <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -263,12 +269,12 @@ export default function EditSurveyPage({ params }: { params: Promise<{ id: strin
                             Visualizar
                         </Button>
                     </Link>
-                    <Button onClick={handleSaveSurvey} disabled={saving}>
+                    <Button onClick={handleSaveSurvey} disabled={saving} variant="success">
                         <Save className="h-4 w-4 mr-2" />
                         Salvar
                     </Button>
                     {survey.status === 'draft' && (
-                        <Button onClick={handlePublish} disabled={saving}>
+                        <Button onClick={handlePublish} disabled={saving} variant="info">
                             Publicar
                         </Button>
                     )}
@@ -337,6 +343,74 @@ export default function EditSurveyPage({ params }: { params: Promise<{ id: strin
                                 onChange={(e) => setSurvey({ ...survey, end_date: e.target.value || undefined })}
                             />
                         </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Completion Page Settings */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Tela de Finalização</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="completion_title">Título</Label>
+                        <Input
+                            id="completion_title"
+                            value={survey.completion_title || 'Obrigado!'}
+                            onChange={(e) => setSurvey({ ...survey, completion_title: e.target.value })}
+                            placeholder="Obrigado!"
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="completion_subtitle">Subtítulo / Mensagem</Label>
+                        <Textarea
+                            id="completion_subtitle"
+                            value={survey.completion_subtitle || ''}
+                            onChange={(e) => setSurvey({ ...survey, completion_subtitle: e.target.value })}
+                            placeholder="Suas respostas foram enviadas com sucesso. Agradecemos sua participação!"
+                            rows={2}
+                        />
+                    </div>
+
+                    <div className="space-y-4 border-t pt-4">
+                        <div className="flex items-center gap-3">
+                            <input
+                                type="checkbox"
+                                id="completion_show_button"
+                                checked={survey.completion_show_button || false}
+                                onChange={(e) => setSurvey({ ...survey, completion_show_button: e.target.checked })}
+                                className="h-4 w-4 rounded border-gray-300"
+                            />
+                            <Label htmlFor="completion_show_button" className="cursor-pointer">
+                                Exibir botão de ação (CTA)
+                            </Label>
+                        </div>
+
+                        {survey.completion_show_button && (
+                            <div className="grid grid-cols-2 gap-4 pl-7">
+                                <div className="space-y-2">
+                                    <Label htmlFor="completion_button_text">Texto do Botão</Label>
+                                    <Input
+                                        id="completion_button_text"
+                                        value={survey.completion_button_text || ''}
+                                        onChange={(e) => setSurvey({ ...survey, completion_button_text: e.target.value })}
+                                        placeholder="Saiba mais"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="completion_button_url">Link do Botão</Label>
+                                    <Input
+                                        id="completion_button_url"
+                                        type="url"
+                                        value={survey.completion_button_url || ''}
+                                        onChange={(e) => setSurvey({ ...survey, completion_button_url: e.target.value })}
+                                        placeholder="https://exemplo.com"
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </CardContent>
             </Card>

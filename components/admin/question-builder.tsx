@@ -48,6 +48,9 @@ export default function QuestionBuilder({
 
     const getQuestionTypeLabel = (type: string) => {
         const labels: Record<string, string> = {
+            name: 'Nome',
+            email: 'E-mail',
+            phone: 'Telefone (WhatsApp)',
             short_text: 'Texto Curto',
             long_text: 'Texto Longo',
             multiple_choice: 'Múltipla Escolha',
@@ -158,24 +161,27 @@ export default function QuestionBuilder({
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8"
+                                    className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50"
                                     onClick={() => onEdit(question)}
+                                    title="Editar"
                                 >
                                     <Edit className="h-4 w-4" />
                                 </Button>
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8"
+                                    className="h-8 w-8 text-gray-500 hover:text-gray-600 hover:bg-gray-50"
                                     onClick={() => onDuplicate(question)}
+                                    title="Duplicar"
                                 >
                                     <Copy className="h-4 w-4" />
                                 </Button>
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                    className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
                                     onClick={() => onDelete(question.id)}
+                                    title="Excluir"
                                 >
                                     <Trash2 className="h-4 w-4" />
                                 </Button>

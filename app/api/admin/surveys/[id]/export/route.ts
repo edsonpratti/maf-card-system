@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
+import { verifyAdminAccess, handleAuthError } from '@/lib/auth';
 import { convertToCSV } from '@/lib/utils/survey-utils';
 
 // GET /api/admin/surveys/[id]/export - Export survey responses as CSV
@@ -9,6 +10,9 @@ export async function GET(
 ) {
     const { id } = await params
     try {
+        // Verificar autenticação de admin
+        await verifyAdminAccess();
+        
         const supabase = getServiceSupabase();
 
         // Get survey name
@@ -60,6 +64,6 @@ export async function GET(
         });
     } catch (error) {
         console.error('Error in GET /api/admin/surveys/[id]/export:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return handleAuthError(error);
     }
 }

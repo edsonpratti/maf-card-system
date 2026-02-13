@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
+import { verifyAdminAccess, handleAuthError } from '@/lib/auth';
 import { UpdateSurveyData } from '@/lib/types/survey-types';
 
 // GET /api/admin/surveys/[id] - Get survey by ID
@@ -9,6 +10,9 @@ export async function GET(
 ) {
     const { id } = await params
     try {
+        // Verificar autenticação de admin
+        await verifyAdminAccess();
+        
         const supabase = getServiceSupabase();
 
         const { data, error } = await supabase
@@ -24,7 +28,7 @@ export async function GET(
         return NextResponse.json(data);
     } catch (error) {
         console.error('Error in GET /api/admin/surveys/[id]:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return handleAuthError(error);
     }
 }
 
@@ -35,6 +39,9 @@ export async function PUT(
 ) {
     const { id } = await params
     try {
+        // Verificar autenticação de admin
+        await verifyAdminAccess();
+        
         const body: UpdateSurveyData = await request.json();
         const supabase = getServiceSupabase();
 
@@ -53,7 +60,7 @@ export async function PUT(
         return NextResponse.json(data);
     } catch (error) {
         console.error('Error in PUT /api/admin/surveys/[id]:', error);
-        return NextResponse.json({ message: 'Erro interno do servidor' }, { status: 500 });
+        return handleAuthError(error);
     }
 }
 
@@ -64,6 +71,9 @@ export async function DELETE(
 ) {
     const { id } = await params
     try {
+        // Verificar autenticação de admin
+        await verifyAdminAccess();
+        
         const supabase = getServiceSupabase();
 
         const { error } = await supabase
@@ -79,6 +89,6 @@ export async function DELETE(
         return NextResponse.json({ message: 'Enquete excluída com sucesso' });
     } catch (error) {
         console.error('Error in DELETE /api/admin/surveys/[id]:', error);
-        return NextResponse.json({ message: 'Erro interno do servidor' }, { status: 500 });
+        return handleAuthError(error);
     }
 }

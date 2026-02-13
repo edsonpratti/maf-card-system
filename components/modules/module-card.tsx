@@ -33,17 +33,17 @@ export function ModuleCard({ module }: ModuleCardProps) {
             <Icon className="h-8 w-8 text-white" />
           </div>
           {module.badge && (
-            <Badge variant={module.status === 'active' ? 'default' : 'secondary'}>
+            <Badge variant={module.status === 'active' ? 'success' : 'secondary'}>
               {module.badge}
             </Badge>
           )}
           {module.status === 'coming-soon' && (
-            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
+            <Badge variant="warning">
               Em breve
             </Badge>
           )}
           {module.status === 'disabled' && (
-            <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300">
+            <Badge variant="secondary">
               <Lock className="h-3 w-3 mr-1" />
               Bloqueado
             </Badge>

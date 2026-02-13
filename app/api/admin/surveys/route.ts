@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
+import { verifyAdminAccess, handleAuthError } from '@/lib/auth';
 import { CreateSurveyData, Survey } from '@/lib/types/survey-types';
 import { generateSurveyCode } from '@/lib/utils/survey-utils';
 
 // GET /api/admin/surveys - List all surveys
 export async function GET() {
     try {
+        // Verificar autenticação de admin
+        await verifyAdminAccess();
+        
         const supabase = getServiceSupabase();
 
         const { data, error } = await supabase
@@ -21,13 +25,16 @@ export async function GET() {
         return NextResponse.json(data);
     } catch (error) {
         console.error('Error in GET /api/admin/surveys:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return handleAuthError(error);
     }
 }
 
 // POST /api/admin/surveys - Create new survey
 export async function POST(request: NextRequest) {
     try {
+        // Verificar autenticação de admin
+        await verifyAdminAccess();
+        
         const body: CreateSurveyData = await request.json();
 
         // Validate required fields
@@ -79,6 +86,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(data, { status: 201 });
     } catch (error) {
         console.error('Error in POST /api/admin/surveys:', error);
-        return NextResponse.json({ message: 'Erro interno do servidor' }, { status: 500 });
+        return handleAuthError(error);
     }
 }

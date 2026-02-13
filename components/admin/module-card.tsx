@@ -9,15 +9,10 @@ interface ModuleCardProps {
     description: string
     icon: LucideIcon
     href: string
-    status: "active" | "development"
+    status: "active"
 }
 
-export function ModuleCard({ title, description, icon: Icon, href, status }: ModuleCardProps) {
-    const statusConfig = {
-        active: { label: "Ativo", variant: "default" as const },
-        development: { label: "Em Desenvolvimento", variant: "secondary" as const }
-    }
-
+export function ModuleCard({ title, description, icon: Icon, href }: ModuleCardProps) {
     return (
         <Link href={href} className="block group">
             <Card className="h-full transition-all duration-300 hover:shadow-lg hover:scale-[1.02] hover:border-primary/50">
@@ -33,8 +28,8 @@ export function ModuleCard({ title, description, icon: Icon, href, status }: Mod
                                 </CardTitle>
                             </div>
                         </div>
-                        <Badge variant={statusConfig[status].variant}>
-                            {statusConfig[status].label}
+                        <Badge variant="success">
+                            Ativo
                         </Badge>
                     </div>
                     <CardDescription className="mt-3">

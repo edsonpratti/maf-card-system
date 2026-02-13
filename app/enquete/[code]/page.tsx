@@ -4,8 +4,7 @@ import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, PlayCircle } from 'lucide-react'
 import { Survey, SurveyQuestion, AnswerValue } from '@/lib/types/survey-types'
 import { generateSessionId, validateAnswer } from '@/lib/utils/survey-utils'
 import SurveyQuestionRenderer from '@/components/survey/survey-question-renderer'
@@ -16,6 +15,7 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ code: s
     const router = useRouter()
     const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
+    const [started, setStarted] = useState(false)
     const [survey, setSurvey] = useState<Survey | null>(null)
     const [questions, setQuestions] = useState<SurveyQuestion[]>([])
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
@@ -30,6 +30,8 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ code: s
             try {
                 const savedAnswers = JSON.parse(saved)
                 setAnswers(new Map(Object.entries(savedAnswers)))
+                // Se já tem respostas salvas, já iniciou a enquete
+                setStarted(true)
             } catch (e) {
                 console.error('Error loading saved answers:', e)
             }
@@ -63,11 +65,8 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ code: s
         }
     }
 
-    const currentQuestion = questions[currentQuestionIndex]
-    const currentAnswer = currentQuestion ? answers.get(currentQuestion.id) || null : null
-    const progress = questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0
-
     const handleAnswerChange = (answer: AnswerValue) => {
+        const currentQuestion = questions[currentQuestionIndex]
         if (!currentQuestion) return
 
         const newAnswers = new Map(answers)
@@ -80,8 +79,10 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ code: s
     }
 
     const canGoNext = () => {
+        const currentQuestion = questions[currentQuestionIndex]
         if (!currentQuestion) return false
         if (!currentQuestion.is_required) return true
+        const currentAnswer = answers.get(currentQuestion.id) || null
         return validateAnswer(currentQuestion, currentAnswer)
     }
 
@@ -158,70 +159,112 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ code: s
         )
     }
 
-    if (!survey || !currentQuestion) {
+    if (!survey || questions.length === 0) {
         return null
     }
 
-    const isLastQuestion = currentQuestionIndex === questions.length - 1
+    // Tela inicial - apresentação da enquete
+    if (!started) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 flex items-center justify-center py-6 sm:py-8 px-4">
+                <Card className="max-w-xl w-full shadow-2xl">
+                    <CardContent className="p-6 sm:p-10 text-center space-y-6 sm:space-y-8">
+                        <div className="space-y-3 sm:space-y-4">
+                            <h1 className="text-2xl sm:text-4xl font-bold tracking-tight">{survey.name}</h1>
+                            {survey.description && (
+                                <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
+                                    {survey.description}
+                                </p>
+                            )}
+                        </div>
 
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 py-8 px-4">
-            <div className="max-w-3xl mx-auto space-y-6">
-                {/* Header */}
-                <div className="text-center space-y-2">
-                    <h1 className="text-4xl font-bold">{survey.name}</h1>
-                    {survey.description && (
-                        <p className="text-lg text-muted-foreground">{survey.description}</p>
-                    )}
-                </div>
-
-                {/* Progress */}
-                <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm text-muted-foreground">
-                        <span>Pergunta {currentQuestionIndex + 1} de {questions.length}</span>
-                        <span>{Math.round(progress)}%</span>
-                    </div>
-                    <Progress value={progress} className="h-2" />
-                </div>
-
-                {/* Question Card */}
-                <Card className="shadow-lg">
-                    <CardContent className="p-8">
-                        <SurveyQuestionRenderer
-                            question={currentQuestion}
-                            answer={currentAnswer}
-                            onChange={handleAnswerChange}
-                        />
+                        <div className="pt-2 sm:pt-4">
+                            <Button 
+                                onClick={() => setStarted(true)} 
+                                size="lg" 
+                                className="w-full sm:w-auto px-6 sm:px-8 py-5 sm:py-6 text-base sm:text-lg"
+                            >
+                                <PlayCircle className="h-5 w-5 mr-2" />
+                                Iniciar
+                            </Button>
+                        </div>
                     </CardContent>
                 </Card>
+            </div>
+        )
+    }
 
-                {/* Navigation */}
-                <div className="flex items-center justify-between">
+    const currentQuestion = questions[currentQuestionIndex]
+    if (!currentQuestion) {
+        return null
+    }
+
+    const currentAnswer = currentQuestion ? answers.get(currentQuestion.id) || null : null
+    const isLastQuestion = currentQuestionIndex === questions.length - 1
+
+    // Tela de perguntas - apenas a pergunta, sem distrações
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 flex flex-col py-4 sm:py-8 px-3 sm:px-4">
+            <div className="max-w-3xl mx-auto w-full flex-1 flex flex-col">
+                {/* Progress indicator mobile */}
+                <div className="mb-4 sm:hidden">
+                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                        <span>{currentQuestionIndex + 1}</span>
+                        <span>/</span>
+                        <span>{questions.length}</span>
+                    </div>
+                </div>
+
+                {/* Question Card - centralizado */}
+                <div className="flex-1 flex items-center justify-center">
+                    <Card className="shadow-lg w-full">
+                        <CardContent className="p-4 sm:p-8">
+                            <SurveyQuestionRenderer
+                                question={currentQuestion}
+                                answer={currentAnswer}
+                                onChange={handleAnswerChange}
+                            />
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Navigation - fixo embaixo */}
+                <div className="flex items-center justify-between pt-4 sm:pt-8 gap-3">
                     <Button
                         variant="outline"
                         onClick={handlePrevious}
                         disabled={currentQuestionIndex === 0}
+                        className="h-10 sm:h-11 px-3 sm:px-4"
                     >
-                        <ChevronLeft className="h-4 w-4 mr-2" />
-                        Anterior
+                        <ChevronLeft className="h-4 w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Anterior</span>
                     </Button>
+
+                    {/* Progress indicator desktop */}
+                    <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
+                        <span>{currentQuestionIndex + 1}</span>
+                        <span>/</span>
+                        <span>{questions.length}</span>
+                    </div>
 
                     {isLastQuestion ? (
                         <Button
                             onClick={handleSubmit}
                             disabled={submitting || !canGoNext()}
                             size="lg"
+                            className="h-10 sm:h-11 px-4 sm:px-6 text-sm sm:text-base"
                         >
-                            {submitting ? 'Enviando...' : 'Enviar Respostas'}
+                            {submitting ? 'Enviando...' : 'Enviar'}
                         </Button>
                     ) : (
                         <Button
                             onClick={handleNext}
                             disabled={!canGoNext()}
                             size="lg"
+                            className="h-10 sm:h-11 px-3 sm:px-4"
                         >
-                            Próxima
-                            <ChevronRight className="h-4 w-4 ml-2" />
+                            <span className="hidden sm:inline">Próxima</span>
+                            <ChevronRight className="h-4 w-4 sm:ml-2" />
                         </Button>
                     )}
                 </div>

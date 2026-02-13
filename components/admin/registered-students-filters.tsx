@@ -33,8 +33,8 @@ export function RegisteredStudentsFilters({
 }: RegisteredStudentsFiltersProps) {
     return (
         <Card>
-            <CardContent className="pt-6">
-                <div className="grid gap-4 md:grid-cols-4">
+            <CardContent className="p-4 sm:pt-6">
+                <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                     <div className="space-y-2">
                         <Label htmlFor="searchName">Nome</Label>
                         <div className="relative">
@@ -71,7 +71,7 @@ export function RegisteredStudentsFilters({
                             id="status"
                             value={status}
                             onChange={(e) => onStatusChange(e.target.value)}
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            className="flex h-11 sm:h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >
                             {statusOptions.map((option) => (
                                 <option key={option.value} value={option.value}>

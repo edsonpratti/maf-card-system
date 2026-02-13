@@ -163,6 +163,9 @@ export default function QuestionForm({ surveyId, question, onSave, onCancel }: Q
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
+                                <SelectItem value="name">Nome</SelectItem>
+                                <SelectItem value="email">E-mail</SelectItem>
+                                <SelectItem value="phone">Telefone (WhatsApp)</SelectItem>
                                 <SelectItem value="short_text">Texto Curto</SelectItem>
                                 <SelectItem value="long_text">Texto Longo</SelectItem>
                                 <SelectItem value="multiple_choice">Múltipla Escolha</SelectItem>
@@ -267,10 +270,10 @@ export default function QuestionForm({ surveyId, question, onSave, onCancel }: Q
                     </div>
 
                     <div className="flex gap-2 pt-4">
-                        <Button type="submit">
+                        <Button type="submit" variant="success">
                             {question ? 'Atualizar Pergunta' : 'Adicionar Pergunta'}
                         </Button>
-                        <Button type="button" variant="outline" onClick={onCancel}>
+                        <Button type="button" variant="secondary" onClick={onCancel}>
                             Cancelar
                         </Button>
                     </div>
