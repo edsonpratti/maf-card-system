@@ -31,6 +31,8 @@ export interface RecuperarSenhaResult {
  */
 export async function solicitarRecuperacaoSenha(email: string): Promise<RecuperarSenhaResult> {
     try {
+        console.log("🔑 [RECUPERAR_SENHA] Iniciando para email:", email)
+        
         // 1. Buscar dados do usuário na tabela users_cards
         const { data: userCard, error: userCardError } = await supabaseAdmin
             .from("users_cards")
@@ -38,9 +40,15 @@ export async function solicitarRecuperacaoSenha(email: string): Promise<Recupera
             .eq("email", email)
             .single()
 
+        console.log("🔑 [RECUPERAR_SENHA] Resultado users_cards:", { 
+            found: !!userCard, 
+            auth_user_id: userCard?.auth_user_id,
+            error: userCardError?.message 
+        })
+
         // Se não encontrou na tabela ou ocorreu erro, retorna mensagem genérica por segurança
         if (userCardError || !userCard) {
-            console.log("Usuário não encontrado na tabela users_cards:", email)
+            console.log("🔑 [RECUPERAR_SENHA] Usuário não encontrado em users_cards:", email)
             return {
                 success: true,
                 message: "Se o email estiver cadastrado e ativado, você receberá as instruções em breve."
@@ -50,7 +58,7 @@ export async function solicitarRecuperacaoSenha(email: string): Promise<Recupera
         // 2. Verificar se o usuário já completou o primeiro acesso (está ativado)
         // Apenas usuários com auth_user_id ou first_access_completed podem recuperar senha
         if (!userCard.auth_user_id) {
-            console.log("Usuário ainda não completou o primeiro acesso:", email)
+            console.log("🔑 [RECUPERAR_SENHA] Usuário não ativado (sem auth_user_id):", email)
             return {
                 success: true,
                 message: "Se o email estiver cadastrado e ativado, você receberá as instruções em breve."
@@ -119,7 +127,14 @@ export async function solicitarRecuperacaoSenha(email: string): Promise<Recupera
         console.log("Link de recuperação:", resetLink)
 
         // 7. Enviar email via Resend
-        const { error: emailError } = await resend.emails.send({
+        console.log("🔑 [RECUPERAR_SENHA] Enviando email via Resend...")
+        console.log("🔑 [RECUPERAR_SENHA] Config:", {
+            apiKey: process.env.RESEND_API_KEY ? "OK" : "MISSING",
+            from: process.env.RESEND_FROM_EMAIL || "mafpro@amandafernandes.com",
+            to: email
+        })
+        
+        const { data: emailData, error: emailError } = await resend.emails.send({
             from: process.env.RESEND_FROM_EMAIL || "mafpro@amandafernandes.com",
             to: email,
             subject: "🔒 Recuperação de Senha - MAF Card System",
@@ -127,12 +142,14 @@ export async function solicitarRecuperacaoSenha(email: string): Promise<Recupera
         })
 
         if (emailError) {
-            console.error("Erro ao enviar email:", emailError)
+            console.error("🔑 [RECUPERAR_SENHA] Erro ao enviar email:", emailError)
             return {
                 success: false,
                 message: "Erro ao enviar email. Tente novamente."
             }
         }
+
+        console.log("🔑 [RECUPERAR_SENHA] ✅ Email enviado com sucesso! ID:", emailData?.id)
 
         return {
             success: true,
