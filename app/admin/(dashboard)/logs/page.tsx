@@ -41,7 +41,7 @@ const actionLabels: Record<string, string> = {
     TESTE_SISTEMA: "Teste do Sistema",
 }
 
-const actionColors: Record<string, "success" | "info" | "warning" | "destructive" | "secondary" | "outline"> = {
+const actionColors: Record<string, "success" | "info" | "warning" | "destructive" | "secondary" | "outline" | "outline-success" | "outline-destructive" | "outline-warning" | "outline-info"> = {
     APROVADA_MANUAL: "info",
     AUTO_APROVADA: "success",
     RECUSADA: "destructive",
