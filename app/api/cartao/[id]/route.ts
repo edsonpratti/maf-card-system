@@ -116,7 +116,7 @@ export async function GET(
         const safeCardNumber = userCard.card_number.replace(/[^a-zA-Z0-9-]/g, '_')
 
         // Retornar o PNG como download
-        return new NextResponse(pngBuffer, {
+        return new NextResponse(new Uint8Array(pngBuffer), {
             status: 200,
             headers: {
                 'Content-Type': 'image/png',

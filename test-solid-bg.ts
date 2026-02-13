@@ -1,4 +1,4 @@
-import { createTextImage } from './lib/pdf-generator.ts'
+import { createTextWithBackground } from './lib/pdf-generator'
 import QRCode from 'qrcode'
 
 const testWithSolidBackground = async () => {
@@ -54,7 +54,7 @@ const testWithSolidBackground = async () => {
         }])
 
         // Adicionar textos como imagens separadas
-        const labelTextBuffer = await createTextImage('Código único:', { fontSize: 28, color: 'white', fontWeight: 'bold' })
+        const labelTextBuffer = await createTextWithBackground('Código único:', { fontSize: 28, fontWeight: 'bold' })
         console.log('🎨 Compondo label...')
         baseImage = baseImage.composite([{
             input: labelTextBuffer,
@@ -63,7 +63,7 @@ const testWithSolidBackground = async () => {
         }])
         console.log('✅ Label composto')
 
-        const cardTextBuffer = await createTextImage(testData.cardNumber, { fontSize: 32, color: 'white' })
+        const cardTextBuffer = await createTextWithBackground(testData.cardNumber, { fontSize: 32 })
         console.log('🎨 Compondo card number...')
         baseImage = baseImage.composite([{
             input: cardTextBuffer,
@@ -72,7 +72,7 @@ const testWithSolidBackground = async () => {
         }])
         console.log('✅ Card number composto')
 
-        const nameTextBuffer = await createTextImage(testData.name, { fontSize: 48, color: 'white', fontWeight: 'bold' })
+        const nameTextBuffer = await createTextWithBackground(testData.name, { fontSize: 48, fontWeight: 'bold' })
         console.log('🎨 Compondo nome...')
         baseImage = baseImage.composite([{
             input: nameTextBuffer,
@@ -81,7 +81,7 @@ const testWithSolidBackground = async () => {
         }])
         console.log('✅ Nome composto')
 
-        const cpfTextBuffer = await createTextImage(testData.cpf, { fontSize: 36, color: 'white' })
+        const cpfTextBuffer = await createTextWithBackground(testData.cpf, { fontSize: 36 })
         console.log('🎨 Compondo CPF...')
         baseImage = baseImage.composite([{
             input: cpfTextBuffer,
@@ -92,7 +92,7 @@ const testWithSolidBackground = async () => {
 
         if (testData.certificationDate) {
             const dateText = `Habilitada desde ${new Date(testData.certificationDate).getFullYear()}`
-            const dateTextBuffer = await createTextImage(dateText, { fontSize: 24, color: 'white' })
+            const dateTextBuffer = await createTextWithBackground(dateText, { fontSize: 24 })
             console.log('🎨 Compondo data...')
             baseImage = baseImage.composite([{
                 input: dateTextBuffer,

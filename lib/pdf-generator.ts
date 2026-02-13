@@ -2,6 +2,7 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
 import QRCode from "qrcode"
 import sharp from "sharp"
 import { createCanvas } from "canvas"
+import { getServiceSupabase } from "@/lib/supabase"
 
 // Função auxiliar para gerar texto com fundo integrado (mais confiável)
 async function createTextWithBackground(text: string, options: { fontSize: number; fontWeight?: string }): Promise<Buffer> {
@@ -51,9 +52,6 @@ export async function generateCardPNG(data: {
                 position: 'center',
                 withoutEnlargement: false
             })
-
-        // Import getServiceSupabase to download photo
-        const { getServiceSupabase } = data.photoPath ? await import('@/lib/supabase') : { getServiceSupabase: null }
 
         // Adicionar foto se existir (posição baseada no modelo)
         if (data.photoPath) {

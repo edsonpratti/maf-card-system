@@ -1,4 +1,4 @@
-import { createTextImage } from './lib/pdf-generator.ts'
+import { createTextWithBackground } from './lib/pdf-generator'
 
 const simpleTest = async () => {
     const { default: sharp } = await import('sharp')
@@ -14,7 +14,7 @@ const simpleTest = async () => {
     }).png().toBuffer()
 
     // Criar imagem de texto branco
-    const textBuffer = await createTextImage('TESTE DE TEXTO', { fontSize: 48, color: 'white', fontWeight: 'bold' })
+    const textBuffer = await createTextWithBackground('TESTE DE TEXTO', { fontSize: 48, fontWeight: 'bold' })
 
     // Compor: fundo + texto
     const result = await sharp(background)

@@ -1,6 +1,8 @@
 import { generateCardPNG } from '../lib/pdf-generator'
 import { writeFileSync } from 'fs'
 import { join } from 'path'
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
+import QRCode from 'qrcode'
 
 async function generateTestCardPDF(data: {
     name: string
