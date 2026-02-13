@@ -4,7 +4,8 @@ import { getServiceSupabase } from "@/lib/supabase"
 import { cleanCPF } from "@/lib/utils"
 import { z } from "zod"
 import { studentSchema } from "@/lib/validators"
-import { sendFirstAccessEmail } from "./first-access"
+import { sendWelcomeEmail } from "./first-access"
+import crypto from "crypto"
 
 // Rate limiting helper (simple in-memory implementation)
 // For production, consider using Redis or similar
@@ -211,6 +212,7 @@ export async function submitApplication(prevState: any, formData: FormData) {
         address_json: rawData.address,
         status,
         certificate_file_path: certificatePath || null,
+        is_active: true, // Conta sempre ativa para login imediato
     }
     
     // Adicionar card_number e validation_token se aprovado automaticamente
@@ -223,17 +225,34 @@ export async function submitApplication(prevState: any, formData: FormData) {
     const { data: insertedData, error } = await supabase.from("users_cards").insert(insertData).select().single()
 
     if (error) {
+        console.error("Erro ao inserir usuário:", error)
         return { success: false, message: "Erro ao salvar dados." }
     }
 
-    // If auto-approved, send first access email
-    if (status === "AUTO_APROVADA" && insertedData) {
-        await sendFirstAccessEmail(insertedData.id, rawData.email as string, rawData.name as string)
+    // NOVO FLUXO: Sempre enviar email para definir senha (independente do status de validação)
+    // O usuário terá acesso ao sistema imediatamente, mas o MAF PRO ID só após validação
+    if (insertedData) {
+        const emailResult = await sendWelcomeEmail(
+            insertedData.id, 
+            rawData.email as string, 
+            rawData.name as string,
+            status // Passar o status para personalizar o email
+        )
+        
+        if (!emailResult.success) {
+            console.error("Erro ao enviar email de boas-vindas:", emailResult.error)
+            // Não retorna erro pois o cadastro foi feito com sucesso
+        }
+    }
+
+    const messageByStatus = {
+        "AUTO_APROVADA": "Cadastro realizado! Verifique seu email para definir sua senha. Sua carteirinha já foi aprovada automaticamente!",
+        "PENDENTE_MANUAL": "Cadastro realizado! Verifique seu email para definir sua senha. Seu certificado será analisado pela nossa equipe."
     }
 
     return { 
         success: true, 
-        message: "Solicitação enviada com sucesso!", 
+        message: messageByStatus[status as keyof typeof messageByStatus] || "Cadastro realizado com sucesso!", 
         status,
         userId: insertedData.id 
     }

@@ -15,13 +15,10 @@ export function resendPasswordEmailTemplate(name: string, resetLink: string) {
           
           <!-- Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
+            <td style="background-color: #7c3aed; padding: 40px 30px; text-align: center;">
               <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">
-                🔒 MAF Card System
+                🔒 Redefinição de Senha
               </h1>
-              <p style="margin: 10px 0 0 0; color: #e0e7ff; font-size: 16px;">
-                Redefinição de Senha
-              </p>
             </td>
           </tr>
 
@@ -44,7 +41,7 @@ export function resendPasswordEmailTemplate(name: string, resetLink: string) {
               <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
                 <tr>
                   <td align="center">
-                    <a href="${resetLink}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);">
+                    <a href="${resetLink}" style="display: inline-block; background-color: #7c3aed; color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600;">
                       Redefinir Minha Senha
                     </a>
                   </td>
@@ -115,13 +112,10 @@ export function cardDownloadEmailTemplate(name: string, downloadLink: string, ca
           
           <!-- Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
+            <td style="background-color: #7c3aed; padding: 40px 30px; text-align: center;">
               <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">
-                🎓 MAF Card System
+                🎓 Carteirinha Profissional
               </h1>
-              <p style="margin: 10px 0 0 0; color: #e0e7ff; font-size: 16px;">
-                Download da Carteirinha Profissional
-              </p>
             </td>
           </tr>
 
@@ -157,7 +151,7 @@ export function cardDownloadEmailTemplate(name: string, downloadLink: string, ca
               <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
                 <tr>
                   <td align="center">
-                    <a href="${downloadLink}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);">
+                    <a href="${downloadLink}" style="display: inline-block; background-color: #7c3aed; color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600;">
                       📥 Baixar Carteirinha (PDF)
                     </a>
                   </td>

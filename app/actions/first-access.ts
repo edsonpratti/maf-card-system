@@ -3,22 +3,27 @@
 import { getServiceSupabase } from "@/lib/supabase"
 import crypto from "crypto"
 import { Resend } from "resend"
-import { firstAccessEmailTemplate } from "@/lib/email-templates"
+import { firstAccessEmailTemplate, welcomeEmailTemplate } from "@/lib/email-templates"
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-export async function sendFirstAccessEmail(userId: string, email: string, name: string) {
+/**
+ * NOVO FLUXO: Envia email de boas-vindas para TODOS os usuários que se cadastram
+ * O usuário pode fazer login imediatamente após definir a senha
+ * O MAF PRO ID só fica disponível após validação do certificado
+ */
+export async function sendWelcomeEmail(userId: string, email: string, name: string, status: string) {
     try {
-        console.log("📧 Iniciando envio de email para:", { userId, email, name })
+        console.log("📧 [WELCOME] Iniciando envio de email para:", { userId, email, name, status })
         
         const supabase = getServiceSupabase()
         
         // Generate a secure token
         const token = crypto.randomBytes(32).toString('hex')
         const expiresAt = new Date()
-        expiresAt.setHours(expiresAt.getHours() + 48) // 48 hours to set password
+        expiresAt.setHours(expiresAt.getHours() + 72) // 72 hours to set password
         
-        console.log("🔑 Token gerado, salvando no banco...")
+        console.log("🔑 [WELCOME] Token gerado, salvando no banco...")
         
         // Save token to database
         const { error: updateError } = await supabase
@@ -30,53 +35,61 @@ export async function sendFirstAccessEmail(userId: string, email: string, name: 
             .eq("id", userId)
         
         if (updateError) {
-            console.error("❌ Erro ao salvar token:", updateError)
+            console.error("❌ [WELCOME] Erro ao salvar token:", updateError)
             return { success: false, error: "Erro ao gerar token de acesso" }
         }
         
-        console.log("✅ Token salvo com sucesso")
+        console.log("✅ [WELCOME] Token salvo com sucesso")
         
         // Generate the link
         const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
         const accessLink = `${baseUrl}/primeiro-acesso/${token}`
         
-        console.log("🔗 Link gerado:", accessLink)
-        console.log("📮 Tentando enviar email via Resend...")
-        console.log("🔧 Configurações:", {
-            apiKey: process.env.RESEND_API_KEY ? "Configurada" : "❌ NÃO CONFIGURADA",
-            from: process.env.RESEND_FROM_EMAIL || 'mafpro@amandafernandes.com',
-            to: email
-        })
+        console.log("🔗 [WELCOME] Link gerado:", accessLink)
+        
+        // Determinar se está aprovado ou pendente
+        const isApproved = status === "AUTO_APROVADA"
+        
+        // Usar template apropriado
+        const emailHtml = welcomeEmailTemplate(name, accessLink, expiresAt, isApproved)
+        const subject = isApproved 
+            ? '🎉 Bem-vinda ao MAF Pro! Sua carteirinha foi aprovada'
+            : '🎉 Bem-vinda ao MAF Pro! Defina sua senha para acessar'
         
         // Send email via Resend
         try {
             const { data, error } = await resend.emails.send({
                 from: process.env.RESEND_FROM_EMAIL || 'mafpro@amandafernandes.com',
                 to: email,
-                subject: '🎉 Carteirinha Aprovada - Defina sua Senha | MAF Card System',
-                html: firstAccessEmailTemplate(name, accessLink, expiresAt)
+                subject: subject,
+                html: emailHtml
             })
             
             if (error) {
-                console.error("❌ Erro ao enviar email via Resend:", error)
-                console.error("❌ Detalhes do erro:", JSON.stringify(error, null, 2))
+                console.error("❌ [WELCOME] Erro ao enviar email via Resend:", error)
                 return { success: false, error: `Erro ao enviar email: ${error.message || JSON.stringify(error)}` }
             }
             
-            console.log("✅ Email enviado com sucesso via Resend! ID:", data?.id)
+            console.log("✅ [WELCOME] Email enviado com sucesso! ID:", data?.id)
             return { success: true, link: accessLink }
             
         } catch (emailError: any) {
-            console.error("❌ Exceção ao enviar email:", emailError)
-            console.error("❌ Stack:", emailError?.stack)
+            console.error("❌ [WELCOME] Exceção ao enviar email:", emailError)
             return { success: false, error: `Exceção ao enviar: ${emailError?.message || 'desconhecido'}` }
         }
         
     } catch (error: any) {
-        console.error("❌ Erro geral ao enviar email:", error)
-        console.error("❌ Stack:", error?.stack)
+        console.error("❌ [WELCOME] Erro geral:", error)
         return { success: false, error: `Erro ao enviar email: ${error?.message || 'Erro desconhecido'}` }
     }
+}
+
+/**
+ * Função legada mantida para compatibilidade
+ * Usada quando admin aprova manualmente uma carteirinha
+ */
+export async function sendFirstAccessEmail(userId: string, email: string, name: string) {
+    return sendWelcomeEmail(userId, email, name, "AUTO_APROVADA")
 }
 
 export async function verifyFirstAccessToken(token: string) {
@@ -119,7 +132,7 @@ export async function setUserPassword(token: string, password: string) {
         // First verify the token and get the user
         const { data: user, error: fetchError } = await supabase
             .from("users_cards")
-            .select("id, email")
+            .select("id, email, auth_user_id")
             .eq("first_access_token", token)
             .single()
         
@@ -127,32 +140,59 @@ export async function setUserPassword(token: string, password: string) {
             return { success: false, error: "Token inválido" }
         }
         
-        // Create auth user with the password
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-            email: user.email,
-            password: password,
-            email_confirm: true,
-            user_metadata: {
-                card_id: user.id
-            }
-        })
+        let authUserId = user.auth_user_id
         
-        if (authError) {
-            return { success: false, error: "Erro ao criar conta: " + authError.message }
+        // Se já tem auth_user_id, apenas atualiza a senha
+        if (authUserId) {
+            const { error: updateAuthError } = await supabase.auth.admin.updateUserById(
+                authUserId,
+                { password: password }
+            )
+            
+            if (updateAuthError) {
+                console.error("Erro ao atualizar senha:", updateAuthError)
+                return { success: false, error: "Erro ao definir senha: " + updateAuthError.message }
+            }
+        } else {
+            // Create auth user with the password
+            const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+                email: user.email,
+                password: password,
+                email_confirm: true,
+                user_metadata: {
+                    card_id: user.id
+                }
+            })
+            
+            if (authError) {
+                console.error("Erro ao criar usuário auth:", authError)
+                return { success: false, error: "Erro ao criar conta: " + authError.message }
+            }
+            
+            authUserId = authData.user.id
         }
         
-        // Clear the first access token
-        await supabase
+        // Clear the first access token and mark as completed
+        const { error: updateError } = await supabase
             .from("users_cards")
             .update({
                 first_access_token: null,
                 first_access_token_expires_at: null,
-                auth_user_id: authData.user.id
+                auth_user_id: authUserId,
+                first_access_completed_at: new Date().toISOString(),
+                is_active: true
             })
             .eq("id", user.id)
         
+        if (updateError) {
+            console.error("Erro ao atualizar users_cards:", updateError)
+            // Não retorna erro pois a senha foi definida com sucesso
+        }
+        
+        console.log("✅ Senha definida com sucesso para:", user.email)
         return { success: true }
-    } catch (error) {
+    } catch (error: any) {
+        console.error("Erro ao definir senha:", error)
         return { success: false, error: "Erro ao processar solicitação" }
     }
 }

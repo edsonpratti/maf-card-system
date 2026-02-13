@@ -750,14 +750,23 @@ export async function toggleUserStatus(id: string) {
     const user = await verifyAdminAccess()
     const supabase = getServiceSupabase()
 
-    // Buscar status atual
+    console.log("[toggleUserStatus] Buscando usuário com id:", id)
+
+    // Buscar status atual - buscar primeiro só os campos básicos para garantir que existe
     const { data: userData, error: fetchError } = await supabase
         .from("users_cards")
-        .select("name, email, is_disabled")
+        .select("id, name, email, is_disabled")
         .eq("id", id)
         .single()
 
-    if (fetchError || !userData) {
+    console.log("[toggleUserStatus] Resultado:", { userData, fetchError })
+
+    if (fetchError) {
+        console.error("[toggleUserStatus] Erro ao buscar usuário:", fetchError)
+        return { success: false, message: `Erro ao buscar usuário: ${fetchError.message}` }
+    }
+
+    if (!userData) {
         return { success: false, message: "Usuário não encontrado" }
     }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect, use, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -9,6 +9,9 @@ import { Survey, SurveyQuestion, AnswerValue } from '@/lib/types/survey-types'
 import { generateSessionId, validateAnswer } from '@/lib/utils/survey-utils'
 import SurveyQuestionRenderer from '@/components/survey/survey-question-renderer'
 import { toast } from 'sonner'
+
+// Tipos de perguntas que auto-avançam ao responder (seleção única)
+const AUTO_ADVANCE_TYPES = ['multiple_choice', 'linear_scale']
 
 export default function PublicSurveyPage({ params }: { params: Promise<{ code: string }> }) {
     const { code } = use(params)
@@ -21,6 +24,10 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ code: s
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
     const [answers, setAnswers] = useState<Map<string, AnswerValue>>(new Map())
     const [sessionId] = useState(() => generateSessionId())
+    // Controla o maior índice de pergunta já alcançada (para restringir navegação)
+    const [maxReachedIndex, setMaxReachedIndex] = useState(0)
+    // Ref para evitar auto-avanço múltiplo
+    const autoAdvanceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
     useEffect(() => {
         loadSurvey()
@@ -36,7 +43,21 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ code: s
                 console.error('Error loading saved answers:', e)
             }
         }
+        // Load saved max reached index
+        const savedMaxIndex = localStorage.getItem(`survey_${code}_maxIndex`)
+        if (savedMaxIndex) {
+            setMaxReachedIndex(parseInt(savedMaxIndex, 10))
+        }
     }, [code])
+
+    // Limpa timeout ao desmontar
+    useEffect(() => {
+        return () => {
+            if (autoAdvanceTimeoutRef.current) {
+                clearTimeout(autoAdvanceTimeoutRef.current)
+            }
+        }
+    }, [])
 
     const loadSurvey = async () => {
         try {
@@ -76,6 +97,24 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ code: s
         // Save to localStorage
         const answersObj = Object.fromEntries(newAnswers)
         localStorage.setItem(`survey_${code}`, JSON.stringify(answersObj))
+
+        // Auto-avançar para perguntas de seleção única (não é a última pergunta)
+        if (AUTO_ADVANCE_TYPES.includes(currentQuestion.question_type) && currentQuestionIndex < questions.length - 1) {
+            // Limpa timeout anterior se existir
+            if (autoAdvanceTimeoutRef.current) {
+                clearTimeout(autoAdvanceTimeoutRef.current)
+            }
+            // Pequeno delay para feedback visual antes de avançar
+            autoAdvanceTimeoutRef.current = setTimeout(() => {
+                const nextIndex = currentQuestionIndex + 1
+                setCurrentQuestionIndex(nextIndex)
+                // Atualiza o máximo índice alcançado
+                if (nextIndex > maxReachedIndex) {
+                    setMaxReachedIndex(nextIndex)
+                    localStorage.setItem(`survey_${code}_maxIndex`, nextIndex.toString())
+                }
+            }, 300)
+        }
     }
 
     const canGoNext = () => {
@@ -86,6 +125,16 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ code: s
         return validateAnswer(currentQuestion, currentAnswer)
     }
 
+    // Verifica se pode avançar para a próxima pergunta
+    // Só permite se: a pergunta atual está respondida E (a próxima já foi alcançada OU estamos no máximo alcançado)
+    const canNavigateNext = () => {
+        if (!canGoNext()) return false
+        // Se estamos no índice máximo já alcançado, podemos avançar (explorando novo território)
+        if (currentQuestionIndex >= maxReachedIndex) return true
+        // Se não estamos no máximo, só podemos avançar para perguntas já visitadas
+        return currentQuestionIndex < maxReachedIndex
+    }
+
     const handleNext = () => {
         if (!canGoNext()) {
             toast.error('Por favor, responda esta pergunta obrigatória')
@@ -93,7 +142,13 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ code: s
         }
 
         if (currentQuestionIndex < questions.length - 1) {
-            setCurrentQuestionIndex(currentQuestionIndex + 1)
+            const nextIndex = currentQuestionIndex + 1
+            setCurrentQuestionIndex(nextIndex)
+            // Atualiza o máximo índice alcançado
+            if (nextIndex > maxReachedIndex) {
+                setMaxReachedIndex(nextIndex)
+                localStorage.setItem(`survey_${code}_maxIndex`, nextIndex.toString())
+            }
         }
     }
 
@@ -137,6 +192,7 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ code: s
             if (response.ok) {
                 // Clear localStorage
                 localStorage.removeItem(`survey_${code}`)
+                localStorage.removeItem(`survey_${code}_maxIndex`)
                 // Redirect to thank you page
                 router.push(`/enquete/${code}/obrigado`)
             } else {
@@ -206,15 +262,6 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ code: s
     return (
         <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 flex flex-col py-4 sm:py-8 px-3 sm:px-4">
             <div className="max-w-3xl mx-auto w-full flex-1 flex flex-col">
-                {/* Progress indicator mobile */}
-                <div className="mb-4 sm:hidden">
-                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                        <span>{currentQuestionIndex + 1}</span>
-                        <span>/</span>
-                        <span>{questions.length}</span>
-                    </div>
-                </div>
-
                 {/* Question Card - centralizado */}
                 <div className="flex-1 flex items-center justify-center">
                     <Card className="shadow-lg w-full">
@@ -240,13 +287,6 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ code: s
                         <span className="hidden sm:inline">Anterior</span>
                     </Button>
 
-                    {/* Progress indicator desktop */}
-                    <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>{currentQuestionIndex + 1}</span>
-                        <span>/</span>
-                        <span>{questions.length}</span>
-                    </div>
-
                     {isLastQuestion ? (
                         <Button
                             onClick={handleSubmit}
@@ -259,7 +299,7 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ code: s
                     ) : (
                         <Button
                             onClick={handleNext}
-                            disabled={!canGoNext()}
+                            disabled={!canNavigateNext()}
                             size="lg"
                             className="h-10 sm:h-11 px-3 sm:px-4"
                         >
