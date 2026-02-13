@@ -43,24 +43,24 @@ export async function GET(
     // Gerar card_number e validation_token se não existirem
     let cardNumber = userCard.card_number
     let validationToken = userCard.validation_token
-    
+
     if (!cardNumber || !validationToken) {
         console.log(`[ADMIN PDF] Gerando credenciais para cartão ${id}`)
-        
+
         // Gerar card_number
         if (!cardNumber) {
             const timestamp = Date.now().toString(36)
             const randomPart = Math.random().toString(36).substring(2, 8)
             cardNumber = `MAF-${timestamp}-${randomPart}`.toUpperCase()
         }
-        
+
         // Gerar validation_token
         if (!validationToken) {
-            validationToken = Array.from({ length: 64 }, () => 
+            validationToken = Array.from({ length: 64 }, () =>
                 Math.floor(Math.random() * 16).toString(16)
             ).join('')
         }
-        
+
         // Atualizar no banco
         const { error: updateError } = await supabase
             .from('users_cards')
@@ -70,7 +70,7 @@ export async function GET(
                 updated_at: new Date().toISOString()
             })
             .eq('id', id)
-        
+
         if (updateError) {
             console.error('[ADMIN PDF] Erro ao atualizar credenciais:', updateError)
         } else {
@@ -80,14 +80,16 @@ export async function GET(
 
     try {
         console.log(`[ADMIN PDF] Gerando PDF para cartão ${id}`)
-        
+
         const pdfBuffer = await generateCardPDF({
             name: userCard.name,
             cpf: userCard.cpf,
             cardNumber: cardNumber,
             qrToken: validationToken,
+            photoPath: userCard.photo_path,
+            certificationDate: userCard.certification_date || userCard.created_at,
         })
-        
+
         console.log(`[ADMIN PDF] PDF gerado. Tamanho: ${pdfBuffer.length} bytes`)
 
         // Sanitizar o nome do arquivo
@@ -109,7 +111,7 @@ export async function GET(
         console.error("[ADMIN PDF] Erro ao gerar PDF:", error)
         console.error("[ADMIN PDF] Stack:", error?.stack)
         return NextResponse.json(
-            { 
+            {
                 error: "Erro ao gerar o PDF do cartão",
                 details: error?.message || 'Erro desconhecido',
                 stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined

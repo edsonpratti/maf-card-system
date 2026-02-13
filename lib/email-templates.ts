@@ -1,3 +1,127 @@
+/**
+ * Template de email de notificação de aprovação do MAF Pro ID
+ * Enviado quando o admin aprova o acesso de um usuário ao módulo MAF Pro ID
+ */
+export function mafProIdApprovedEmailTemplate(name: string) {
+  return `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MAF Pro ID Aprovado!</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">
+                🎉 Seu MAF Pro ID foi Aprovado!
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="margin: 0 0 20px 0; color: #1f2937; font-size: 24px; font-weight: 600;">
+                Olá, ${name}! 👋
+              </h2>
+              
+              <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
+                Temos uma ótima notícia! Seu certificado foi <strong style="color: #10b981;">validado com sucesso</strong> e seu acesso ao MAF Pro ID foi aprovado! 🎊
+              </p>
+
+              <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
+                Agora você tem acesso completo à sua carteirinha profissional digital e pode:
+              </p>
+
+              <!-- Benefits List -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin: 0 0 30px 0;">
+                <tr>
+                  <td style="padding: 12px 0;">
+                    <p style="margin: 0; color: #4b5563; font-size: 15px; line-height: 1.6;">
+                      ✅ <strong>Visualizar</strong> sua carteirinha digital
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 0;">
+                    <p style="margin: 0; color: #4b5563; font-size: 15px; line-height: 1.6;">
+                      ✅ <strong>Baixar</strong> o PDF da sua carteirinha
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 0;">
+                    <p style="margin: 0; color: #4b5563; font-size: 15px; line-height: 1.6;">
+                      ✅ <strong>Compartilhar</strong> seu QR Code de validação
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 0;">
+                    <p style="margin: 0; color: #4b5563; font-size: 15px; line-height: 1.6;">
+                      ✅ <strong>Gerenciar</strong> seus dados profissionais
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA Button -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
+                <tr>
+                  <td align="center">
+                    <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/portal/carteira-profissional" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                      Acessar Minha Carteirinha
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Info Box -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0 0 0; background-color: #dbeafe; border-left: 4px solid #3b82f6; border-radius: 6px;">
+                <tr>
+                  <td style="padding: 16px;">
+                    <p style="margin: 0; color: #1e40af; font-size: 14px; line-height: 1.6;">
+                      💡 <strong>Dica:</strong> Faça login no portal e acesse a seção "Carteira Profissional" para visualizar e baixar sua carteirinha digital.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 30px 0 0 0; color: #4b5563; font-size: 15px; line-height: 1.6;">
+                Parabéns pela conquista! 🎓
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 14px;">
+                MAF Pro - Sistema de Carteirinha Profissional
+              </p>
+              <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+                Este é um email automático. Por favor, não responda.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim()
+}
+
 export function firstAccessEmailTemplate(name: string, accessLink: string, expiresAt: Date) {
   return `
 <!DOCTYPE html>
@@ -61,13 +185,13 @@ export function firstAccessEmailTemplate(name: string, accessLink: string, expir
                 <tr>
                   <td style="padding: 16px;">
                     <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.6;">
-                      ⚠️ <strong>Importante:</strong> Este link expira em <strong>${expiresAt.toLocaleString('pt-BR', { 
-                        day: '2-digit',
-                        month: '2-digit', 
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}</strong>. Caso expire, entre em contato com o suporte para receber um novo link.
+                      ⚠️ <strong>Importante:</strong> Este link expira em <strong>${expiresAt.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })}</strong>. Caso expire, entre em contato com o suporte para receber um novo link.
                     </p>
                   </td>
                 </tr>
@@ -106,7 +230,7 @@ export function firstAccessEmailTemplate(name: string, accessLink: string, expir
  * Personaliza a mensagem dependendo se foi aprovado automaticamente ou está pendente
  */
 export function welcomeEmailTemplate(name: string, accessLink: string, expiresAt: Date, isApproved: boolean) {
-  const statusMessage = isApproved 
+  const statusMessage = isApproved
     ? `<p style="margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
         Sua carteirinha profissional foi <strong style="color: #10b981;">aprovada automaticamente</strong>! 🎉
        </p>
@@ -123,7 +247,7 @@ export function welcomeEmailTemplate(name: string, accessLink: string, expiresAt
          <tr>
            <td style="padding: 16px;">
              <p style="margin: 0; color: #1e40af; font-size: 14px; line-height: 1.6;">
-               📋 <strong>Sobre o MAF Pro ID:</strong> Após a validação do seu certificado, você terá acesso à sua carteirinha profissional digital.
+               📋 <strong>Sobre o MAF Pro ID:</strong> Você poderá fazer login no portal, mas o acesso à sua carteirinha profissional digital será liberado após a validação do seu certificado. Você receberá um email quando for aprovado!
              </p>
            </td>
          </tr>
@@ -189,13 +313,13 @@ export function welcomeEmailTemplate(name: string, accessLink: string, expiresAt
                 <tr>
                   <td style="padding: 16px;">
                     <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.6;">
-                      ⚠️ <strong>Importante:</strong> Este link expira em <strong>${expiresAt.toLocaleString('pt-BR', { 
-                        day: '2-digit',
-                        month: '2-digit', 
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}</strong> (72 horas).
+                      ⚠️ <strong>Importante:</strong> Este link expira em <strong>${expiresAt.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })}</strong> (72 horas).
                     </p>
                   </td>
                 </tr>
@@ -296,13 +420,13 @@ export function passwordResetEmailTemplate(name: string, resetLink: string, expi
                 <tr>
                   <td style="padding: 16px;">
                     <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.6;">
-                      ⚠️ <strong>Importante:</strong> Este link expira em <strong>${expiresAt.toLocaleString('pt-BR', { 
-                        day: '2-digit',
-                        month: '2-digit', 
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}</strong> (30 minutos). Após esse período, será necessário solicitar um novo link.
+                      ⚠️ <strong>Importante:</strong> Este link expira em <strong>${expiresAt.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })}</strong> (30 minutos). Após esse período, será necessário solicitar um novo link.
                     </p>
                   </td>
                 </tr>

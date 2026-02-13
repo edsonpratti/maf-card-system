@@ -15,7 +15,7 @@ async function createAuditLog(
     metadata: any = {}
 ) {
     const supabase = getServiceSupabase()
-    
+
     await supabase.from("admin_audit_logs").insert({
         admin_user_id: adminUserId,
         action,
@@ -32,7 +32,7 @@ export async function getRequests(filters?: {
     endDate?: string
 }) {
     await verifyAdminAccess()
-    
+
     const supabase = getServiceSupabase()
     let query = supabase
         .from("users_cards")
@@ -74,7 +74,7 @@ export async function getRequests(filters?: {
 
 export async function updateRequestStatus(id: string, newStatus: string, reason?: string) {
     const user = await verifyAdminAccess()
-    
+
     const supabase = getServiceSupabase()
 
     const updateData: any = {
@@ -88,25 +88,25 @@ export async function updateRequestStatus(id: string, newStatus: string, reason?
 
     if (newStatus === "APROVADA_MANUAL" || newStatus === "AUTO_APROVADA") {
         updateData.issued_at = new Date().toISOString()
-        
+
         // Buscar o registro para verificar se já tem card_number e validation_token
         const { data: currentCard } = await supabase
             .from("users_cards")
             .select("card_number, validation_token")
             .eq("id", id)
             .single()
-        
+
         // Gerar card_number se não existir
         if (!currentCard?.card_number) {
             const timestamp = Date.now().toString(36)
             const randomPart = Math.random().toString(36).substring(2, 8)
             updateData.card_number = `MAF-${timestamp}-${randomPart}`.toUpperCase()
         }
-        
+
         // Gerar validation_token se não existir
         if (!currentCard?.validation_token) {
             // Gerar token seguro sem usar require()
-            updateData.validation_token = Array.from({ length: 64 }, () => 
+            updateData.validation_token = Array.from({ length: 64 }, () =>
                 Math.floor(Math.random() * 16).toString(16)
             ).join('')
         }
@@ -128,7 +128,7 @@ export async function updateRequestStatus(id: string, newStatus: string, reason?
             .select("id, email, name")
             .eq("id", id)
             .single()
-        
+
         if (userData && userData.email && userData.name) {
             await sendFirstAccessEmail(userData.id, userData.email, userData.name)
         }
@@ -143,47 +143,47 @@ export async function updateRequestStatus(id: string, newStatus: string, reason?
 
 export async function resendFirstAccessEmail(id: string) {
     const user = await verifyAdminAccess()
-    
+
     const supabase = getServiceSupabase()
-    
+
     // Get user data
     const { data: userData, error } = await supabase
         .from("users_cards")
         .select("id, email, name, status, auth_user_id")
         .eq("id", id)
         .single()
-    
+
     if (error || !userData) {
         console.error("Erro ao buscar usuário para reenvio:", error)
         return { success: false, message: "Usuário não encontrado" }
     }
-    
+
     // Check if already has auth account
     if (userData.auth_user_id) {
         return { success: false, message: "Usuário já possui conta criada. Use 'Esqueci minha senha' na tela de login." }
     }
-    
+
     // Only allow for approved cards
     if (userData.status !== "APROVADA_MANUAL" && userData.status !== "AUTO_APROVADA") {
         return { success: false, message: "Apenas carteirinhas aprovadas podem receber o email de primeiro acesso" }
     }
-    
+
     // Resend email
     const result = await sendFirstAccessEmail(userData.id, userData.email, userData.name)
-    
+
     if (result.success) {
         // Log action
         await createAuditLog(user.id, "RESEND_FIRST_ACCESS_EMAIL", id)
-        
+
         return { success: true, message: "Email de primeiro acesso reenviado com sucesso!" }
     }
-    
+
     return { success: false, message: result.error || "Erro ao enviar email" }
 }
 
 export async function deleteRequest(id: string) {
     const user = await verifyAdminAccess()
-    
+
     const supabase = getServiceSupabase()
     const { error } = await supabase.from("users_cards").delete().eq("id", id)
 
@@ -200,7 +200,7 @@ export async function deleteRequest(id: string) {
 
 export async function getDashboardStats() {
     await verifyAdminAccess()
-    
+
     const supabase = getServiceSupabase()
 
     // Get total pending approvals (waitlist manual)
@@ -321,9 +321,9 @@ export async function getAuditLogs(filters?: {
     limit?: number
 }) {
     await verifyAdminAccess()
-    
+
     const supabase = getServiceSupabase()
-    
+
     let query = supabase
         .from("admin_audit_logs")
         .select(`
@@ -368,27 +368,27 @@ export async function getAuditLogs(filters?: {
 
 export async function createTestLog() {
     const user = await verifyAdminAccess()
-    
+
     await createAuditLog(
         user.id,
         "TESTE_SISTEMA",
         null,
-        { 
-            teste: true, 
+        {
+            teste: true,
             timestamp: new Date().toISOString(),
             mensagem: "Log de teste criado manualmente"
         }
     )
-    
+
     revalidatePath("/admin/logs")
     return { success: true, message: "Log de teste criado!" }
 }
 
 export async function getRegisteredStudents(includeDisabled: boolean = true) {
     await verifyAdminAccess()
-    
+
     const supabase = getServiceSupabase()
-    
+
     // Busca usuários que têm conta ativa (definiram senha - auth_user_id existe)
     // Independente do status da carteirinha (aprovada, pendente, etc)
     let query = supabase
@@ -396,7 +396,7 @@ export async function getRegisteredStudents(includeDisabled: boolean = true) {
         .select("*")
         .not("auth_user_id", "is", null)
         .order("created_at", { ascending: false })
-    
+
     // Se não incluir desabilitados, filtrar
     if (!includeDisabled) {
         query = query.or("is_disabled.is.null,is_disabled.eq.false")
@@ -414,40 +414,40 @@ export async function getRegisteredStudents(includeDisabled: boolean = true) {
 export async function resendPasswordResetEmail(id: string) {
     const user = await verifyAdminAccess()
     const supabase = getServiceSupabase()
-    
+
     // Buscar dados do usuário
     const { data: userData, error: userError } = await supabase
         .from("users_cards")
         .select("id, email, name, auth_user_id, status")
         .eq("id", id)
         .single()
-    
+
     if (userError || !userData) {
         console.error("Erro ao buscar usuário:", userError)
         return { success: false, message: "Usuário não encontrado" }
     }
-    
+
     // Verificar se o usuário já tem conta criada
     if (!userData.auth_user_id) {
-        return { 
-            success: false, 
-            message: "Usuário ainda não criou conta. Use 'Reenviar Email de Primeiro Acesso' ao invés disso." 
+        return {
+            success: false,
+            message: "Usuário ainda não criou conta. Use 'Reenviar Email de Primeiro Acesso' ao invés disso."
         }
     }
-    
+
     // Importar função de recuperação de senha
     const crypto = await import("crypto")
     const { Resend } = await import("resend")
     const { resendPasswordEmailTemplate } = await import("@/lib/email-templates-admin")
-    
+
     const resend = new Resend(process.env.RESEND_API_KEY)
-    
+
     try {
         // Gerar token de reset
         const resetToken = crypto.randomBytes(32).toString("hex")
         const expiresAt = new Date()
         expiresAt.setMinutes(expiresAt.getMinutes() + 30) // 30 minutos
-        
+
         // Salvar token no banco
         const { error: tokenError } = await supabase
             .from("password_reset_tokens")
@@ -457,35 +457,35 @@ export async function resendPasswordResetEmail(id: string) {
                 expires_at: expiresAt.toISOString(),
                 used: false
             })
-        
+
         if (tokenError) {
             console.error("Erro ao criar token:", tokenError)
             return { success: false, message: "Erro ao gerar token de recuperação" }
         }
-        
+
         // Enviar email
         const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/recuperar-senha/${resetToken}`
-        
+
         const { data: emailData, error: emailError } = await resend.emails.send({
             from: process.env.RESEND_FROM_EMAIL || "mafpro@amandafernandes.com",
             to: userData.email,
             subject: "Redefinição de Senha - MAF Card System",
             html: resendPasswordEmailTemplate(userData.name, resetLink),
         })
-        
+
         if (emailError) {
             console.error("Erro ao enviar email:", emailError)
             return { success: false, message: "Erro ao enviar email" }
         }
-        
+
         // Registrar no log
         await createAuditLog(user.id, "RESEND_PASSWORD_RESET", id, {
             email: userData.email,
             emailId: emailData?.id
         })
-        
+
         return { success: true, message: "Email de redefinição de senha enviado com sucesso!" }
-        
+
     } catch (error) {
         console.error("Erro ao reenviar email de senha:", error)
         return { success: false, message: "Erro ao processar solicitação" }
@@ -495,73 +495,73 @@ export async function resendPasswordResetEmail(id: string) {
 export async function resendCardDownloadEmail(id: string) {
     const user = await verifyAdminAccess()
     const supabase = getServiceSupabase()
-    
+
     // Buscar dados do usuário
     const { data: userData, error: userError } = await supabase
         .from("users_cards")
         .select("id, email, name, card_number, status, auth_user_id")
         .eq("id", id)
         .single()
-    
+
     if (userError || !userData) {
         console.error("Erro ao buscar usuário:", userError)
         return { success: false, message: "Usuário não encontrado" }
     }
-    
+
     // Verificar se o cartão está aprovado
     if (userData.status !== "APROVADA_MANUAL" && userData.status !== "AUTO_APROVADA") {
-        return { 
-            success: false, 
-            message: "Apenas carteirinhas aprovadas podem receber o email de download" 
+        return {
+            success: false,
+            message: "Apenas carteirinhas aprovadas podem receber o email de download"
         }
     }
-    
+
     // Verificar se tem número de carteirinha
     if (!userData.card_number) {
-        return { 
-            success: false, 
-            message: "Carteirinha sem número gerado. Entre em contato com o suporte técnico." 
+        return {
+            success: false,
+            message: "Carteirinha sem número gerado. Entre em contato com o suporte técnico."
         }
     }
-    
+
     // Verificar se o usuário já tem conta criada
     if (!userData.auth_user_id) {
-        return { 
-            success: false, 
-            message: "Usuário ainda não criou conta. Use 'Reenviar Email de Primeiro Acesso' primeiro." 
+        return {
+            success: false,
+            message: "Usuário ainda não criou conta. Use 'Reenviar Email de Primeiro Acesso' primeiro."
         }
     }
-    
+
     const { Resend } = await import("resend")
     const { cardDownloadEmailTemplate } = await import("@/lib/email-templates-admin")
-    
+
     const resend = new Resend(process.env.RESEND_API_KEY)
-    
+
     try {
         // Link para o portal onde a aluna pode fazer login e baixar
         const downloadLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/portal/carteira-profissional`
-        
+
         const { data: emailData, error: emailError } = await resend.emails.send({
             from: process.env.RESEND_FROM_EMAIL || "mafpro@amandafernandes.com",
             to: userData.email,
             subject: "Download da sua Carteirinha Profissional - MAF Card System",
             html: cardDownloadEmailTemplate(userData.name, downloadLink, userData.card_number),
         })
-        
+
         if (emailError) {
             console.error("Erro ao enviar email:", emailError)
             return { success: false, message: "Erro ao enviar email" }
         }
-        
+
         // Registrar no log
         await createAuditLog(user.id, "RESEND_CARD_DOWNLOAD", id, {
             email: userData.email,
             cardNumber: userData.card_number,
             emailId: emailData?.id
         })
-        
+
         return { success: true, message: "Email de download da carteirinha enviado com sucesso!" }
-        
+
     } catch (error) {
         console.error("Erro ao reenviar email de download:", error)
         return { success: false, message: "Erro ao processar solicitação" }
@@ -572,7 +572,7 @@ export async function resendCardDownloadEmail(id: string) {
 
 export async function getPendingValidations() {
     await verifyAdminAccess()
-    
+
     const supabase = getServiceSupabase()
     const { data, error } = await supabase
         .from("users_cards")
@@ -589,30 +589,30 @@ export async function getPendingValidations() {
 
 export async function getValidationStats() {
     await verifyAdminAccess()
-    
+
     const supabase = getServiceSupabase()
-    
+
     // Buscar contagens por status
     const { data: pendingData } = await supabase
         .from("users_cards")
         .select("id", { count: "exact" })
         .eq("status", "PENDENTE_MANUAL")
-    
+
     const { data: autoData } = await supabase
         .from("users_cards")
         .select("id", { count: "exact" })
         .eq("status", "AUTO_APROVADA")
-    
+
     const { data: manualData } = await supabase
         .from("users_cards")
         .select("id", { count: "exact" })
         .eq("status", "APROVADA_MANUAL")
-    
+
     const { data: rejectedData } = await supabase
         .from("users_cards")
         .select("id", { count: "exact" })
         .eq("status", "RECUSADA")
-    
+
     const { data: totalData } = await supabase
         .from("users_cards")
         .select("id", { count: "exact" })
@@ -648,29 +648,29 @@ let validationSettings: ValidationSettings = {
 
 export async function getValidationSettings(): Promise<ValidationSettings> {
     await verifyAdminAccess()
-    
+
     const supabase = getServiceSupabase()
-    
+
     // Tentar buscar do banco de dados
     const { data, error } = await supabase
         .from("system_settings")
         .select("settings")
         .eq("key", "validation_settings")
         .single()
-    
+
     if (data && data.settings) {
         return data.settings as ValidationSettings
     }
-    
+
     // Retornar configurações padrão se não existir no banco
     return validationSettings
 }
 
 export async function updateValidationSettings(settings: ValidationSettings) {
     const user = await verifyAdminAccess()
-    
+
     const supabase = getServiceSupabase()
-    
+
     // Tentar fazer upsert na tabela de settings
     const { error } = await supabase
         .from("system_settings")
@@ -681,7 +681,7 @@ export async function updateValidationSettings(settings: ValidationSettings) {
         }, {
             onConflict: "key"
         })
-    
+
     if (error) {
         // Se a tabela não existir, armazenar em memória
         if (error.code === "42P01") {
@@ -691,10 +691,10 @@ export async function updateValidationSettings(settings: ValidationSettings) {
         console.error("Erro ao salvar configurações:", error)
         return { success: false, message: error.message }
     }
-    
+
     // Log da ação
     await createAuditLog(user.id, "UPDATE_VALIDATION_SETTINGS", null, { settings })
-    
+
     return { success: true, message: "Configurações salvas com sucesso" }
 }
 
@@ -736,7 +736,7 @@ export async function deleteUser(id: string) {
     }
 
     // Log da ação
-    await createAuditLog(user.id, "DELETE_USER", id, { 
+    await createAuditLog(user.id, "DELETE_USER", id, {
         deletedUser: {
             name: userData.name,
             email: userData.email,
@@ -777,7 +777,7 @@ export async function toggleUserStatus(id: string) {
     // Atualizar status
     const { error } = await supabase
         .from("users_cards")
-        .update({ 
+        .update({
             is_disabled: newStatus,
             updated_at: new Date().toISOString()
         })
@@ -795,8 +795,8 @@ export async function toggleUserStatus(id: string) {
     })
 
     revalidatePath("/admin/usuarios")
-    return { 
-        success: true, 
+    return {
+        success: true,
         message: newStatus ? "Usuário desabilitado com sucesso" : "Usuário habilitado com sucesso",
         isDisabled: newStatus
     }
@@ -833,7 +833,7 @@ export async function createUserManually(data: {
     const timestamp = Date.now().toString(36)
     const randomPart = Math.random().toString(36).substring(2, 8)
     const cardNumber = `MAF-${timestamp}-${randomPart}`.toUpperCase()
-    const validationToken = Array.from({ length: 64 }, () => 
+    const validationToken = Array.from({ length: 64 }, () =>
         Math.floor(Math.random() * 16).toString(16)
     ).join('')
 
@@ -877,11 +877,117 @@ export async function createUserManually(data: {
     }
 
     revalidatePath("/admin/usuarios")
-    return { 
-        success: true, 
-        message: data.sendEmail 
-            ? "Usuário criado e email de primeiro acesso enviado!" 
+    return {
+        success: true,
+        message: data.sendEmail
+            ? "Usuário criado e email de primeiro acesso enviado!"
             : "Usuário criado com sucesso!",
-        userId: newUser.id 
+        userId: newUser.id
+    }
+}
+
+// ========== MAF Pro ID Approval ==========
+
+/**
+ * Aprova o acesso ao MAF Pro ID para um usuário
+ * Envia email de notificação e registra a ação em audit logs
+ */
+export async function approveMafProIdAccess(userId: string) {
+    const admin = await verifyAdminAccess()
+    const supabase = getServiceSupabase()
+
+    // Buscar dados do usuário
+    const { data: userData, error: fetchError } = await supabase
+        .from("users_cards")
+        .select("id, name, email, status, maf_pro_id_approved, auth_user_id")
+        .eq("id", userId)
+        .single()
+
+    if (fetchError || !userData) {
+        console.error("Erro ao buscar usuário:", fetchError)
+        return { success: false, message: "Usuário não encontrado" }
+    }
+
+    // Verificar se já está aprovado
+    if (userData.maf_pro_id_approved) {
+        return { success: false, message: "Usuário já tem acesso aprovado ao MAF Pro ID" }
+    }
+
+    // Atualizar aprovação do MAF Pro ID
+    const { error: updateError } = await supabase
+        .from("users_cards")
+        .update({
+            maf_pro_id_approved: true,
+            maf_pro_id_approved_at: new Date().toISOString(),
+            maf_pro_id_approved_by: admin.id,
+            // Se ainda está pendente, aprovar também o status
+            status: userData.status === "PENDENTE_MANUAL" ? "APROVADA_MANUAL" : userData.status,
+            updated_at: new Date().toISOString()
+        })
+        .eq("id", userId)
+
+    if (updateError) {
+        console.error("Erro ao aprovar MAF Pro ID:", updateError)
+        return { success: false, message: "Erro ao aprovar acesso" }
+    }
+
+    // Se o status mudou para APROVADA_MANUAL, gerar card_number e validation_token
+    if (userData.status === "PENDENTE_MANUAL") {
+        const timestamp = Date.now().toString(36)
+        const randomPart = Math.random().toString(36).substring(2, 8)
+        const cardNumber = `MAF-${timestamp}-${randomPart}`.toUpperCase()
+        const validationToken = Array.from({ length: 64 }, () =>
+            Math.floor(Math.random() * 16).toString(16)
+        ).join('')
+
+        await supabase
+            .from("users_cards")
+            .update({
+                card_number: cardNumber,
+                validation_token: validationToken,
+                issued_at: new Date().toISOString()
+            })
+            .eq("id", userId)
+    }
+
+    // Enviar email de notificação se o usuário já tem conta criada
+    if (userData.auth_user_id && userData.email && userData.name) {
+        try {
+            const { Resend } = await import("resend")
+            const { mafProIdApprovedEmailTemplate } = await import("@/lib/email-templates")
+
+            const resend = new Resend(process.env.RESEND_API_KEY)
+
+            const { error: emailError } = await resend.emails.send({
+                from: process.env.RESEND_FROM_EMAIL || "mafpro@amandafernandes.com",
+                to: userData.email,
+                subject: "🎉 Seu MAF Pro ID foi aprovado!",
+                html: mafProIdApprovedEmailTemplate(userData.name)
+            })
+
+            if (emailError) {
+                console.error("Erro ao enviar email de aprovação:", emailError)
+                // Não falha a aprovação se o email falhar
+            }
+        } catch (emailError) {
+            console.error("Erro ao enviar email de aprovação:", emailError)
+            // Não falha a aprovação se o email falhar
+        }
+    }
+
+    // Registrar no audit log
+    await createAuditLog(admin.id, "APPROVE_MAF_PRO_ID", userId, {
+        userName: userData.name,
+        userEmail: userData.email,
+        previousStatus: userData.status
+    })
+
+    revalidatePath("/admin/alunos")
+    revalidatePath("/admin/solicitacoes")
+
+    return {
+        success: true,
+        message: "Acesso ao MAF Pro ID aprovado com sucesso!" +
+            (userData.auth_user_id ? " Email de notificação enviado." : " Usuário receberá notificação ao criar a conta.")
     }
 }

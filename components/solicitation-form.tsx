@@ -20,6 +20,7 @@ export default function SolicitationForm() {
     const [loading, setLoading] = useState(false)
     const [cpfStatus, setCpfStatus] = useState<"initial" | "found" | "not_found" | "checking">("initial")
     const [cepLoading, setCepLoading] = useState(false)
+    const [photoPreview, setPhotoPreview] = useState<string | null>(null)
 
 
     const form = useForm<StudentFormData>({
@@ -29,6 +30,7 @@ export default function SolicitationForm() {
             name: "",
             whatsapp: "",
             email: "",
+            certificationDate: "",
             address: {
                 cep: "",
                 street: "",
@@ -106,6 +108,30 @@ export default function SolicitationForm() {
 
 
 
+    const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            if (file.size > 2 * 1024 * 1024) {
+                toast.error("A foto deve ter no máximo 2MB.")
+                e.target.value = ""
+                setPhotoPreview(null)
+                return
+            }
+            if (!file.type.match(/^image\/(jpeg|jpg|png)$/)) {
+                toast.error("Apenas arquivos JPG ou PNG são permitidos.")
+                e.target.value = ""
+                setPhotoPreview(null)
+                return
+            }
+            // Create preview
+            const reader = new FileReader()
+            reader.onloadend = () => {
+                setPhotoPreview(reader.result as string)
+            }
+            reader.readAsDataURL(file)
+        }
+    }
+
     const onSubmit = async (data: StudentFormData) => {
         setLoading(true)
         const formData = new FormData()
@@ -113,6 +139,9 @@ export default function SolicitationForm() {
         formData.append("name", data.name)
         formData.append("whatsapp", data.whatsapp)
         formData.append("email", data.email)
+        if (data.certificationDate) {
+            formData.append("certificationDate", data.certificationDate)
+        }
         formData.append("address.cep", data.address.cep)
         formData.append("address.street", data.address.street)
         formData.append("address.number", data.address.number)
@@ -121,7 +150,17 @@ export default function SolicitationForm() {
         formData.append("address.city", data.address.city)
         formData.append("address.state", data.address.state)
 
-        // Handle file upload if needed (manual via input ref or controlled input)
+        // Handle photo upload (required)
+        const photoInput = document.getElementById("photo") as HTMLInputElement
+        const photoFile = photoInput?.files?.[0]
+        if (!photoFile) {
+            toast.error("Por favor, faça o upload da sua foto.")
+            setLoading(false)
+            return
+        }
+        formData.append("photo", photoFile)
+
+        // Handle certificate upload if needed (manual via input ref or controlled input)
         // For simplicity, assuming file input exists and we grab it from DOM or state if not using controlled
         const fileInput = document.getElementById("certificate") as HTMLInputElement
         if (cpfStatus === "not_found") {
@@ -191,6 +230,41 @@ export default function SolicitationForm() {
                         )}
                     </div>
 
+                    <div className="space-y-2 border border-emerald-500/30 p-3 sm:p-4 rounded-lg bg-emerald-500/10">
+                        <Label htmlFor="photo" className="text-emerald-400 text-sm">Foto para Carteirinha (Obrigatório)</Label>
+                        <Input
+                            id="photo"
+                            type="file"
+                            accept=".jpg,.jpeg,.png"
+                            required
+                            onChange={handlePhotoChange}
+                            className="bg-white/5 border-white/10 text-white file:bg-emerald-500 file:text-white file:border-0 file:rounded-md file:px-2 sm:file:px-3 file:py-1 file:mr-2 sm:file:mr-3 file:cursor-pointer file:text-xs sm:file:text-sm h-auto py-2"
+                        />
+                        {photoPreview && (
+                            <div className="mt-2">
+                                <p className="text-xs text-emerald-400 mb-2">Preview:</p>
+                                <img src={photoPreview} alt="Preview" className="w-24 h-24 object-cover rounded-lg border border-emerald-500/30" />
+                            </div>
+                        )}
+                        <p className="text-xs text-emerald-400/80">
+                            Formatos aceitos: JPG, PNG. Tamanho máximo: 2MB.
+                        </p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="certificationDate" className="text-gray-300 text-sm">Data de Habilitação (Opcional)</Label>
+                        <Input
+                            id="certificationDate"
+                            type="date"
+                            {...form.register("certificationDate")}
+                            max={new Date().toISOString().split('T')[0]}
+                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 text-base"
+                        />
+                        <p className="text-xs text-gray-400">
+                            Se não informada, usaremos a data de hoje como referência.
+                        </p>
+                    </div>
+
                     <div className="grid grid-cols-1 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="whatsapp" className="text-gray-300 text-sm">WhatsApp</Label>
@@ -210,10 +284,10 @@ export default function SolicitationForm() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="email" className="text-gray-300 text-sm">E-mail</Label>
-                            <Input 
-                                id="email" 
-                                type="email" 
-                                {...form.register("email")} 
+                            <Input
+                                id="email"
+                                type="email"
+                                {...form.register("email")}
                                 className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 text-base"
                             />
                             {form.formState.errors.email && (
@@ -254,9 +328,9 @@ export default function SolicitationForm() {
                     <div className="grid grid-cols-1 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="street" className="text-gray-300 text-sm">Rua</Label>
-                            <Input 
-                                id="street" 
-                                {...form.register("address.street")} 
+                            <Input
+                                id="street"
+                                {...form.register("address.street")}
                                 disabled={cepLoading}
                                 className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base"
                             />
@@ -264,18 +338,18 @@ export default function SolicitationForm() {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="number" className="text-gray-300 text-sm">Número</Label>
-                                <Input 
-                                    id="number" 
-                                    {...form.register("address.number")} 
+                                <Input
+                                    id="number"
+                                    {...form.register("address.number")}
                                     disabled={cepLoading}
                                     className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base"
                                 />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="complement" className="text-gray-300 text-sm">Complemento</Label>
-                                <Input 
-                                    id="complement" 
-                                    {...form.register("address.complement")} 
+                                <Input
+                                    id="complement"
+                                    {...form.register("address.complement")}
                                     placeholder="Opcional"
                                     disabled={cepLoading}
                                     className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base"
@@ -286,9 +360,9 @@ export default function SolicitationForm() {
                     <div className="grid grid-cols-1 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="neighborhood" className="text-gray-300 text-sm">Bairro</Label>
-                            <Input 
-                                id="neighborhood" 
-                                {...form.register("address.neighborhood")} 
+                            <Input
+                                id="neighborhood"
+                                {...form.register("address.neighborhood")}
                                 disabled={cepLoading}
                                 className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base"
                             />
@@ -296,9 +370,9 @@ export default function SolicitationForm() {
                         <div className="grid grid-cols-3 gap-4">
                             <div className="space-y-2 col-span-2">
                                 <Label htmlFor="city" className="text-gray-300 text-sm">Cidade</Label>
-                                <Input 
-                                    id="city" 
-                                    {...form.register("address.city")} 
+                                <Input
+                                    id="city"
+                                    {...form.register("address.city")}
                                     disabled={cepLoading}
                                     className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base"
                                 />
@@ -323,22 +397,22 @@ export default function SolicitationForm() {
                     {cpfStatus === "not_found" && (
                         <div className="space-y-2 border border-yellow-500/30 p-3 sm:p-4 rounded-lg bg-yellow-500/10">
                             <Label htmlFor="certificate" className="text-yellow-400 text-sm">Upload do Certificado (Obrigatório)</Label>
-                            <Input 
-                                id="certificate" 
-                                type="file" 
-                                accept=".pdf,.jpg,.png" 
-                                required 
+                            <Input
+                                id="certificate"
+                                type="file"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                required
                                 className="bg-white/5 border-white/10 text-white file:bg-emerald-500 file:text-white file:border-0 file:rounded-md file:px-2 sm:file:px-3 file:py-1 file:mr-2 sm:file:mr-3 file:cursor-pointer file:text-xs sm:file:text-sm h-auto py-2"
                             />
                             <p className="text-xs text-yellow-400/80">
-                                Como seu CPF não foi encontrado automaticamente, precisamos validar seu certificado manualmente.
+                                Como seu CPF não foi encontrado automaticamente, precisamos validar seu certificado manualmente. Formatos aceitos: JPG, PNG ou PDF. Tamanho máximo: 5MB.
                             </p>
                         </div>
                     )}
 
-                    <Button 
-                        type="submit" 
-                        className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-5 h-12 rounded-full shadow-lg shadow-emerald-500/25 transition-all hover:shadow-emerald-500/40 text-base" 
+                    <Button
+                        type="submit"
+                        className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-5 h-12 rounded-full shadow-lg shadow-emerald-500/25 transition-all hover:shadow-emerald-500/40 text-base"
                         disabled={loading}
                     >
                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

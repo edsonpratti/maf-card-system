@@ -1,12 +1,13 @@
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
 import QRCode from "qrcode"
+import { writeFileSync } from 'fs'
+import { join } from 'path'
 
-export async function generateCardPDF(data: {
+async function generateTestCardPDF(data: {
     name: string
     cpf: string
     cardNumber: string
     qrToken: string
-    photoPath?: string | null
     certificationDate?: string | null
 }) {
     try {
@@ -18,12 +19,9 @@ export async function generateCardPDF(data: {
         const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
         const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica)
 
-        // Import getServiceSupabase to download photo
-        const { getServiceSupabase } = await import('@/lib/supabase')
-
         // DESIGN: Cartão dividido em duas seções
-        // Esquerda (~60%): Fundo branco com informações em preto
-        // Direita (~40%): Gradiente azul-turquesa com foto circular grande sobrepondo
+        // Esquerda (~55%): Fundo branco com informações em preto
+        // Direita (~45%): Gradiente azul-turquesa
 
         // Seção esquerda - Fundo branco
         const leftSectionWidth = width * 0.55
@@ -61,51 +59,6 @@ export async function generateCardPDF(data: {
             font: fontRegular,
             color: rgb(1, 1, 1),
         })
-
-        // Foto circular GRANDE sobrepondo a divisão entre as seções
-        if (data.photoPath) {
-            try {
-                const supabase = getServiceSupabase()
-                const { data: photoData, error: photoError } = await supabase.storage
-                    .from('photos')
-                    .download(data.photoPath)
-
-                if (!photoError && photoData) {
-                    const photoBuffer = await photoData.arrayBuffer()
-                    let photoImage
-
-                    // Try to embed as PNG or JPG
-                    try {
-                        photoImage = await pdfDoc.embedPng(photoBuffer)
-                    } catch {
-                        photoImage = await pdfDoc.embedJpg(photoBuffer)
-                    }
-
-                    // Foto muito grande, centralizada verticalmente, sobrepondo a divisão
-                    const photoSize = 110
-                    const photoX = width - photoSize - 25
-                    const photoY = height / 2 - photoSize / 2
-
-                    // Círculo branco de fundo (borda grossa)
-                    page.drawCircle({
-                        x: photoX + photoSize / 2,
-                        y: photoY + photoSize / 2,
-                        size: photoSize / 2 + 5,
-                        color: rgb(1, 1, 1),
-                    })
-
-                    // Desenhar foto circular
-                    page.drawImage(photoImage, {
-                        x: photoX,
-                        y: photoY,
-                        width: photoSize,
-                        height: photoSize,
-                    })
-                }
-            } catch (photoErr) {
-                console.error('Erro ao carregar foto:', photoErr)
-            }
-        }
 
         // Nome completo à esquerda (em preto sobre fundo branco)
         const nameSize = 15
@@ -161,7 +114,7 @@ export async function generateCardPDF(data: {
 
         // QR Code no canto inferior direito com borda branca
         try {
-            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://maf-card-system.vercel.app'
+            const baseUrl = 'https://maf-card-system.vercel.app'
             const qrBuffer = await QRCode.toBuffer(
                 `${baseUrl}/validar/${data.qrToken}`,
                 {
@@ -195,14 +148,47 @@ export async function generateCardPDF(data: {
             })
         } catch (qrError) {
             console.error('Erro ao gerar QR Code:', qrError)
-            // Continuar sem QR Code se houver erro
         }
 
         // Serializar o PDF
         const pdfBytes = await pdfDoc.save()
         return Buffer.from(pdfBytes)
     } catch (error) {
-        console.error('Erro em generateCardPDF:', error)
+        console.error('Erro em generateTestCardPDF:', error)
         throw error
     }
 }
+
+async function testCardGeneration() {
+    console.log('🎨 Testando geração de carteirinha com novo design...')
+
+    try {
+        const testData = {
+            name: 'Mariana Costa',
+            cpf: '000.000.000-00',
+            cardNumber: 'MAF-MLF8M9GR-4XQHZR',
+            qrToken: 'test-token-123456',
+            certificationDate: '2020-01-01'
+        }
+
+        const pdfBuffer = await generateTestCardPDF(testData)
+
+        const outputPath = join(process.cwd(), 'test-card-output.pdf')
+        writeFileSync(outputPath, pdfBuffer)
+
+        console.log('✅ PDF gerado com sucesso!')
+        console.log(`📄 Arquivo salvo em: ${outputPath}`)
+        console.log(`📊 Tamanho: ${(pdfBuffer.length / 1024).toFixed(2)} KB`)
+        console.log('\n🔍 Abra o arquivo para verificar:')
+        console.log('   - Gradiente diagonal (azul escuro → turquesa)')
+        console.log('   - Nome e informações posicionados à esquerda')
+        console.log('   - QR Code no canto inferior direito')
+        console.log('   - Logo MAF no canto superior direito')
+
+    } catch (error) {
+        console.error('❌ Erro ao gerar PDF:', error)
+        process.exit(1)
+    }
+}
+
+testCardGeneration()

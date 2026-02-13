@@ -87,6 +87,40 @@ export async function middleware(request: NextRequest) {
     if (!user) {
       return NextResponse.redirect(new URL('/login', request.url))
     }
+
+    // Verificar acesso ao MAF Pro ID para rotas específicas
+    if (request.nextUrl.pathname.startsWith('/portal/carteira-profissional')) {
+      // Buscar informações do usuário para verificar aprovação do MAF Pro ID
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            get(name: string) {
+              return request.cookies.get(name)?.value
+            },
+            set(name: string, value: string, options: any) {
+              // Not needed for read-only operation
+            },
+            remove(name: string, options: any) {
+              // Not needed for read-only operation
+            },
+          },
+        }
+      )
+
+      const { data: userCard } = await supabase
+        .from('users_cards')
+        .select('maf_pro_id_approved')
+        .eq('auth_user_id', user.id)
+        .single()
+
+      // Se não tem aprovação do MAF Pro ID, redirecionar para página de pendência
+      if (!userCard?.maf_pro_id_approved) {
+        return NextResponse.redirect(new URL('/portal/pendente-aprovacao', request.url))
+      }
+    }
+
     // Se for admin, permitir acesso ao portal também
     return response
   }

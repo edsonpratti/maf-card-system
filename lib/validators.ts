@@ -19,6 +19,7 @@ export const studentSchema = z.object({
     cpf: cpfSchema,
     whatsapp: z.string().min(10, "WhatsApp inválido"),
     email: z.string().email("Email inválido"),
+    certificationDate: z.string().optional(),
     address: z.object({
         cep: z.string().min(8, "CEP inválido"),
         street: z.string().min(3, "Rua inválida"),

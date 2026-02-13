@@ -8,7 +8,7 @@ import { CreditCard, ArrowRight, CheckCircle2, Clock, XCircle, Users, Graduation
 
 export default async function PortalPage() {
     const cookieStore = await cookies()
-    
+
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -22,7 +22,7 @@ export default async function PortalPage() {
     )
 
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
         redirect("/login")
     }
@@ -64,9 +64,9 @@ export default async function PortalPage() {
         RECUSADA: 'destructive'
     }
 
-    // Verificar se o cartão está aprovado
-    const isApproved = userCard?.status === 'AUTO_APROVADA' || userCard?.status === 'APROVADA_MANUAL'
-    const isPending = userCard?.status === 'PENDENTE_MANUAL'
+    // Verificar se o MAF Pro ID está aprovado (novo campo)
+    const hasMafProIdAccess = userCard?.maf_pro_id_approved === true
+    const isPending = userCard?.status === 'PENDENTE_MANUAL' && !hasMafProIdAccess
     const isRejected = userCard?.status === 'RECUSADA'
 
     return (
@@ -78,7 +78,7 @@ export default async function PortalPage() {
 
             <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 {/* MAF Pro ID - Carteira Profissional */}
-                {isApproved ? (
+                {hasMafProIdAccess ? (
                     <Link href="/portal/carteira-profissional" className="block group">
                         <Card className="transition-all duration-300 hover:shadow-lg hover:scale-[1.02] sm:hover:scale-105 cursor-pointer h-full border-green-200 bg-green-50/30">
                             <CardHeader className="p-4 sm:p-6">
@@ -105,29 +105,31 @@ export default async function PortalPage() {
                         </Card>
                     </Link>
                 ) : isPending ? (
-                    <Card className="h-full border-amber-200 bg-amber-50/30">
-                        <CardHeader className="p-4 sm:p-6">
-                            <div className="flex items-start justify-between mb-3 sm:mb-4">
-                                <div className="p-2 sm:p-3 rounded-lg bg-amber-500">
-                                    <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
+                    <Link href="/portal/pendente-aprovacao" className="block group">
+                        <Card className="h-full border-amber-200 bg-amber-50/30 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] cursor-pointer">
+                            <CardHeader className="p-4 sm:p-6">
+                                <div className="flex items-start justify-between mb-3 sm:mb-4">
+                                    <div className="p-2 sm:p-3 rounded-lg bg-amber-500">
+                                        <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
+                                    </div>
+                                    <Badge variant="secondary" className="flex items-center gap-1 text-xs bg-amber-100 text-amber-700">
+                                        <Clock className="h-3 w-3" />
+                                        <span>Em Análise</span>
+                                    </Badge>
                                 </div>
-                                <Badge variant="secondary" className="flex items-center gap-1 text-xs bg-amber-100 text-amber-700">
-                                    <Clock className="h-3 w-3" />
-                                    <span>Em Análise</span>
-                                </Badge>
-                            </div>
-                            <CardTitle className="text-lg sm:text-xl">MAF Pro ID</CardTitle>
-                            <CardDescription className="text-sm">
-                                Seu certificado está sendo analisado pela equipe.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-4 sm:p-6 pt-0">
-                            <div className="bg-amber-100 p-3 rounded-lg text-sm text-amber-800">
-                                <p className="font-medium mb-1">⏳ Aguardando validação</p>
-                                <p className="text-xs">Você receberá um email quando sua carteirinha for aprovada.</p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                                <CardTitle className="text-lg sm:text-xl">MAF Pro ID</CardTitle>
+                                <CardDescription className="text-sm">
+                                    Seu certificado está sendo analisado pela equipe.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="p-4 sm:p-6 pt-0">
+                                <div className="bg-amber-100 p-3 rounded-lg text-sm text-amber-800">
+                                    <p className="font-medium mb-1">⏳ Aguardando validação</p>
+                                    <p className="text-xs">Você receberá um email quando sua carteirinha for aprovada. Clique para mais detalhes.</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </Link>
                 ) : isRejected ? (
                     <Card className="h-full border-red-200 bg-red-50/30">
                         <CardHeader className="p-4 sm:p-6">
