@@ -1,6 +1,5 @@
 "use server"
 
-import { supabase } from "@/lib/supabase"
 import { createClient } from "@supabase/supabase-js"
 import { Resend } from "resend"
 import { passwordResetEmailTemplate } from "@/lib/email-templates"
@@ -28,10 +27,37 @@ export interface RecuperarSenhaResult {
 /**
  * Solicita recuperação de senha
  * Envia email com link de reset via Resend
+ * Apenas usuários que já completaram o primeiro acesso (validados/ativados) podem recuperar senha
  */
 export async function solicitarRecuperacaoSenha(email: string): Promise<RecuperarSenhaResult> {
     try {
-        // 1. Verificar se o email existe no sistema
+        // 1. Buscar dados do usuário na tabela users_cards
+        const { data: userCard, error: userCardError } = await supabaseAdmin
+            .from("users_cards")
+            .select("id, name, email, auth_user_id, first_access_completed")
+            .eq("email", email)
+            .single()
+
+        // Se não encontrou na tabela ou ocorreu erro, retorna mensagem genérica por segurança
+        if (userCardError || !userCard) {
+            console.log("Usuário não encontrado na tabela users_cards:", email)
+            return {
+                success: true,
+                message: "Se o email estiver cadastrado e ativado, você receberá as instruções em breve."
+            }
+        }
+
+        // 2. Verificar se o usuário já completou o primeiro acesso (está ativado)
+        // Apenas usuários com auth_user_id ou first_access_completed podem recuperar senha
+        if (!userCard.auth_user_id) {
+            console.log("Usuário ainda não completou o primeiro acesso:", email)
+            return {
+                success: true,
+                message: "Se o email estiver cadastrado e ativado, você receberá as instruções em breve."
+            }
+        }
+
+        // 3. Verificar se o email existe no auth.users do Supabase
         const { data: userData, error: userError } = await supabaseAdmin.auth.admin.listUsers()
         
         if (userError) {
@@ -45,23 +71,18 @@ export async function solicitarRecuperacaoSenha(email: string): Promise<Recupera
         const user = userData.users.find(u => u.email === email)
         
         if (!user) {
-            // Por segurança, retornar mensagem genérica mesmo se email não existir
+            // Por segurança, retornar mensagem genérica mesmo se email não existir no auth
+            console.log("Usuário não encontrado no auth.users:", email)
             return {
                 success: true,
-                message: "Se o email estiver cadastrado, você receberá as instruções em breve."
+                message: "Se o email estiver cadastrado e ativado, você receberá as instruções em breve."
             }
         }
 
-        // 2. Buscar dados da aluna
-        const { data: aluna } = await supabase
-            .from("alunas")
-            .select("nome_completo")
-            .eq("email", email)
-            .single()
+        // Usar o nome da tabela users_cards
+        const name = userCard.name || "Usuária"
 
-        const name = aluna?.nome_completo || "Usuária"
-
-        // 3. Gerar token de recuperação
+        // 4. Gerar token de recuperação
         const resetToken = crypto.randomBytes(32).toString("hex")
         const expiresAt = new Date(Date.now() + 30 * 60 * 1000) // 30 minutos
 
@@ -69,7 +90,7 @@ export async function solicitarRecuperacaoSenha(email: string): Promise<Recupera
         console.log("Token gerado:", resetToken)
         console.log("Expira em:", expiresAt)
 
-        // 4. Salvar token no banco (usar admin para bypass RLS)
+        // 5. Salvar token no banco (usar admin para bypass RLS)
         const { data: insertData, error: insertError } = await supabaseAdmin
             .from("password_reset_tokens")
             .insert({
@@ -91,13 +112,13 @@ export async function solicitarRecuperacaoSenha(email: string): Promise<Recupera
             }
         }
 
-        // 5. Montar link de recuperação
+        // 6. Montar link de recuperação
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
         const resetLink = `${siteUrl}/recuperar-senha/${resetToken}`
 
         console.log("Link de recuperação:", resetLink)
 
-        // 6. Enviar email via Resend
+        // 7. Enviar email via Resend
         const { error: emailError } = await resend.emails.send({
             from: process.env.RESEND_FROM_EMAIL || "mafpro@amandafernandes.com",
             to: email,
