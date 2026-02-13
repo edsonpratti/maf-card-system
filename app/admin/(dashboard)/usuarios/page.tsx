@@ -207,7 +207,7 @@ export default function AlunasCadastradasPage() {
                 <div className="space-y-2">
                     <h1 className="text-2xl sm:text-3xl font-bold">Usuários</h1>
                     <p className="text-sm sm:text-base text-muted-foreground">
-                        Usuários cadastrados no sistema com acesso autorizado.
+                        Todos os usuários que definiram senha e têm acesso ao sistema.
                     </p>
                 </div>
                 
@@ -356,19 +356,17 @@ export default function AlunasCadastradasPage() {
                                     <p className="text-sm text-muted-foreground">{student.cpf}</p>
                                 </div>
                                 <div className="flex flex-col gap-1 shrink-0">
-                                    <Badge variant={student.status === "AUTO_APROVADA" ? "default" : "secondary"}>
-                                        {student.status === "AUTO_APROVADA" ? "Auto" : "Manual"}
-                                    </Badge>
-                                    {student.is_disabled && (
-                                        <Badge variant="destructive">Desabilitado</Badge>
-                                    )}
-                                </div>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-2 text-sm">
-                                <div>
-                                    <p className="text-muted-foreground text-xs">Email</p>
-                                    <p className="truncate">{student.email}</p>
+                                        {student.status === "AUTO_APROVADA" ? (
+                                            <Badge variant="default">Auto Aprovada</Badge>
+                                        ) : student.status === "APROVADA_MANUAL" ? (
+                                            <Badge variant="default">Aprovada</Badge>
+                                        ) : student.status === "PENDENTE_MANUAL" ? (
+                                            <Badge variant="secondary">Pendente</Badge>
+                                        ) : student.status === "REJEITADA" ? (
+                                            <Badge variant="destructive">Rejeitada</Badge>
+                                        ) : (
+                                            <Badge variant="outline">{student.status}</Badge>
+                                        )}
                                 </div>
                                 <div>
                                     <p className="text-muted-foreground text-xs">WhatsApp</p>
@@ -464,9 +462,17 @@ export default function AlunasCadastradasPage() {
                                     )}
                                     {isColumnVisible("status") && (
                                         <TableCell>
-                                            <Badge variant={student.status === "AUTO_APROVADA" ? "default" : "secondary"}>
-                                                {student.status === "AUTO_APROVADA" ? "Auto" : "Manual"}
-                                            </Badge>
+                                            {student.status === "AUTO_APROVADA" ? (
+                                                <Badge variant="default">Auto Aprovada</Badge>
+                                            ) : student.status === "APROVADA_MANUAL" ? (
+                                                <Badge variant="default">Aprovada</Badge>
+                                            ) : student.status === "PENDENTE_MANUAL" ? (
+                                                <Badge variant="secondary">Pendente</Badge>
+                                            ) : student.status === "REJEITADA" ? (
+                                                <Badge variant="destructive">Rejeitada</Badge>
+                                            ) : (
+                                                <Badge variant="outline">{student.status}</Badge>
+                                            )}
                                         </TableCell>
                                     )}
                                     {isColumnVisible("is_disabled") && (
@@ -541,7 +547,7 @@ export default function AlunasCadastradasPage() {
                                 <TableCell colSpan={15} className="text-center h-24">
                                     {searchTerm || searchCPF || status !== "ALL"
                                         ? "Nenhum usuário encontrado com os filtros aplicados."
-                                        : "Nenhum usuário cadastrado e autorizado no sistema."}
+                                        : "Nenhum usuário com acesso definido no sistema."}
                                 </TableCell>
                             </TableRow>
                         )}
@@ -551,7 +557,7 @@ export default function AlunasCadastradasPage() {
 
             <div className="rounded-lg border p-4 bg-muted/50">
                 <p className="text-sm text-muted-foreground">
-                    <strong>Total de usuários autorizados:</strong> {students.length}
+                    <strong>Total de usuários com acesso:</strong> {students.length}
                     {filteredStudents.length !== students.length && (
                         <> | <strong>Filtrados:</strong> {filteredStudents.length}</>
                     )}

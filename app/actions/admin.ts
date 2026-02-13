@@ -389,11 +389,12 @@ export async function getRegisteredStudents(includeDisabled: boolean = true) {
     
     const supabase = getServiceSupabase()
     
-    // Busca alunas que fizeram login e foram autorizadas (status aprovado)
+    // Busca usuários que têm conta ativa (definiram senha - auth_user_id existe)
+    // Independente do status da carteirinha (aprovada, pendente, etc)
     let query = supabase
         .from("users_cards")
         .select("*")
-        .in("status", ["APROVADA_MANUAL", "AUTO_APROVADA"])
+        .not("auth_user_id", "is", null)
         .order("created_at", { ascending: false })
     
     // Se não incluir desabilitados, filtrar
@@ -404,6 +405,7 @@ export async function getRegisteredStudents(includeDisabled: boolean = true) {
     const { data, error } = await query
 
     if (error) {
+        console.error("Erro ao buscar usuários registrados:", error)
         return []
     }
 

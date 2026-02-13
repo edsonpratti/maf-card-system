@@ -20,6 +20,8 @@ const statusOptions = [
     { value: "ALL", label: "Todos os status" },
     { value: "AUTO_APROVADA", label: "Auto Aprovada" },
     { value: "APROVADA_MANUAL", label: "Aprovada Manualmente" },
+    { value: "PENDENTE_MANUAL", label: "Pendente Validação" },
+    { value: "REJEITADA", label: "Rejeitada" },
 ]
 
 export function RegisteredStudentsFilters({
