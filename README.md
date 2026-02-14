@@ -17,6 +17,16 @@ Este é um sistema integrado de gestão profissional MAF, incluindo carteira pro
 - [Supabase](https://supabase.com) (Postgres, Auth, Storage)
 - [pdf-lib](https://pdf-lib.js.org) + [qrcode](https://www.npmjs.com/package/qrcode)
 
+## 📚 Documentação
+
+Toda a documentação técnica está organizada na pasta [`docs/`](docs/):
+
+- **[📖 Documentação Completa](docs/README.md)** - Índice e organização da documentação
+- **[🔧 Setup e Configuração](docs/setup/)** - Guias de instalação e deploy
+- **[🐛 Troubleshooting](docs/troubleshooting/)** - Solução de problemas comuns
+- **[✨ Funcionalidades](docs/features/)** - Detalhes técnicos das features
+- **[🔒 Segurança](docs/security/)** - Configurações de segurança e permissões
+
 ## Configuração
 
 1. **Clone o repositório**

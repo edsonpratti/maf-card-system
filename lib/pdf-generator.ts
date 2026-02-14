@@ -4,6 +4,20 @@ import sharp from "sharp"
 import { createCanvas } from "canvas"
 import { getServiceSupabase } from "@/lib/supabase"
 
+// Função auxiliar para formatar CPF
+function formatCPF(cpf: string): string {
+    // Remove todos os caracteres não numéricos
+    const cleaned = cpf.replace(/\D/g, '')
+
+    // Verifica se tem 11 dígitos
+    if (cleaned.length !== 11) {
+        return cpf // Retorna como está se não for válido
+    }
+
+    // Aplica a formatação: XXX.XXX.XXX-XX
+    return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+}
+
 // Função auxiliar para gerar texto com fundo integrado (mais confiável)
 async function createTextWithBackground(text: string, options: { fontSize: number; fontWeight?: string }): Promise<Buffer> {
     const fontWeight = options.fontWeight === 'bold' ? 'font-weight="bold"' : ''
@@ -35,25 +49,57 @@ export async function generateCardPNG(data: {
     certificationDate?: string | null
 }) {
     try {
-        // Dimensões do modelo: 1063 × 591 pixels
+        // Dimensões do cartão: 1063 × 591 pixels
         const width = 1063
         const height = 591
 
-        // Carregar o modelo1.jpeg como base
+        // Criar canvas para desenhar tudo
+        const { createCanvas } = await import('canvas')
+        const canvas = createCanvas(width, height)
+        const ctx = canvas.getContext('2d')
+
+        // Carregar imagem de fundo
+        const { loadImage } = await import('canvas')
         const fs = await import('fs')
         const path = await import('path')
-        const modeloPath = path.join(process.cwd(), 'public', 'modelo1.jpeg')
-        const modeloBuffer = fs.readFileSync(modeloPath)
 
-        // Usar o modelo como base - isso garante que seja exatamente igual
-        let baseImage = sharp(modeloBuffer)
-            .resize(width, height, {
-                fit: 'cover',
-                position: 'center',
-                withoutEnlargement: false
-            })
+        const backgroundPath = path.join(process.cwd(), 'public', 'padrao_fundo_carteira.png')
+        const backgroundImage = await loadImage(backgroundPath)
 
-        // Adicionar foto se existir (posição baseada no modelo)
+        // Desenhar imagem de fundo
+        ctx.drawImage(backgroundImage, 0, 0, width, height)
+
+        // Textos com tamanhos específicos e centralizados verticalmente
+        ctx.fillStyle = 'black'
+        ctx.textAlign = 'left'
+
+        // Calcular posições com espaçamento personalizado
+        const nameToDateSpacing = 30  // Espaçamento nome → data
+        const dateToCpfSpacing = 45   // Espaçamento data → CPF
+        const centerY = height / 2
+
+        // Centralizar o bloco de texto considerando espaçamentos diferentes
+        const nameY = centerY - (nameToDateSpacing / 2) - dateToCpfSpacing
+        const dateY = nameY + nameToDateSpacing
+        const cpfY = dateY + dateToCpfSpacing
+
+        // Nome: (negrito, 40px)
+        ctx.font = 'bold 40px Montserrat'
+        ctx.fillText(data.name, 50, Math.round(nameY))
+
+        // Data: (normal, 15px) - usar data real do usuário
+        ctx.font = '15px Montserrat'
+        const formattedDate = data.certificationDate
+            ? new Date(data.certificationDate).toLocaleDateString('pt-BR')
+            : 'Data não informada'
+        ctx.fillText(`Habilitado(a) desde ${formattedDate}`, 50, Math.round(dateY))
+
+        // CPF: (normal, 25px) - usar CPF real do usuário formatado
+        ctx.font = '25px Montserrat'
+        const formattedCPF = formatCPF(data.cpf)
+        ctx.fillText(formattedCPF, 50, Math.round(cpfY))
+
+        // Adicionar foto se existir (lado direito)
         if (data.photoPath) {
             try {
                 const supabase = getServiceSupabase()
@@ -65,73 +111,121 @@ export async function generateCardPNG(data: {
                     const photoBuffer = await photoData.arrayBuffer()
                     const originalBuffer = Buffer.from(photoBuffer)
 
-                    const photoSize = 180 // Ajustar tamanho baseado no modelo
+                    // Carregar imagem da foto
+                    const { loadImage } = await import('canvas')
+                    const photoImg = await loadImage(originalBuffer)
 
-                    // Criar máscara circular
-                    const maskBuffer = await sharp({
-                        create: {
-                            width: photoSize,
-                            height: photoSize,
-                            channels: 4,
-                            background: { r: 0, g: 0, b: 0, alpha: 0 } // Fundo transparente
-                        }
-                    })
-                    .composite([{
-                        input: Buffer.from(`<svg width="${photoSize}" height="${photoSize}"><circle cx="${photoSize/2}" cy="${photoSize/2}" r="${photoSize/2}" fill="white"/></svg>`),
-                        blend: 'over'
-                    }])
-                    .png()
-                    .toBuffer()
+                    const photoSize = 250
+                    // Centralizar foto no cartão
+                    const photoX = (width - photoSize) / 2
+                    const photoY = (height - photoSize) / 2
 
-                    // Processar imagem com máscara circular
-                    const circularBuffer = await sharp(originalBuffer)
-                        .resize(photoSize, photoSize, {
-                            fit: 'cover',
-                            position: 'center',
-                            withoutEnlargement: false,
-                            kernel: 'nearest'
-                        })
-                        .composite([{
-                            input: maskBuffer,
-                            blend: 'dest-in'
-                        }])
-                        .png()
-                        .toBuffer()
+                    // Implementar modo COVER: redimensionar para cobrir toda a área circular
+                    const imgWidth = photoImg.width
+                    const imgHeight = photoImg.height
+                    const aspectRatio = imgWidth / imgHeight
+                    const circleAspectRatio = 1 // Círculo é sempre 1:1
 
-                    // Posicionar a foto baseada no modelo (lado direito)
-                    baseImage = baseImage.composite([{
-                        input: circularBuffer,
-                        top: Math.floor(height / 2 - photoSize / 2),
-                        left: Math.floor(width * 0.68 - photoSize / 2) // Ajustar posição baseada no modelo
-                    }])
+                    let scale, sourceX, sourceY, sourceWidth, sourceHeight
+
+                    if (aspectRatio > circleAspectRatio) {
+                        // Imagem mais larga: cortar nas laterais
+                        scale = photoSize / imgHeight
+                        sourceHeight = imgHeight
+                        sourceWidth = photoSize / scale
+                        sourceX = (imgWidth - sourceWidth) / 2
+                        sourceY = 0
+                    } else {
+                        // Imagem mais alta ou quadrada: cortar em cima/baixo
+                        scale = photoSize / imgWidth
+                        sourceWidth = imgWidth
+                        sourceHeight = photoSize / scale
+                        sourceX = 0
+                        sourceY = (imgHeight - sourceHeight) / 2
+                    }
+
+                    // Desenhar borda circular branca de 5px
+                    ctx.save()
+                    ctx.strokeStyle = 'white'
+                    ctx.lineWidth = 10 // 5px de cada lado = 10px total
+                    ctx.beginPath()
+                    ctx.arc(photoX + photoSize/2, photoY + photoSize/2, photoSize/2 + 5, 0, Math.PI * 2)
+                    ctx.stroke()
+                    ctx.restore()
+
+                    // Criar círculo para máscara
+                    ctx.save()
+                    ctx.beginPath()
+                    ctx.arc(photoX + photoSize/2, photoY + photoSize/2, photoSize/2, 0, Math.PI * 2)
+                    ctx.clip()
+
+                    // Desenhar foto em modo COVER (cortando partes que não couberem)
+                    ctx.imageSmoothingEnabled = true
+                    ctx.drawImage(
+                        photoImg,
+                        sourceX, sourceY, sourceWidth, sourceHeight, // Parte da imagem original
+                        photoX, photoY, photoSize, photoSize // Destino no canvas
+                    )
+                    ctx.restore()
                 }
             } catch (photoErr) {
                 console.error('Erro ao carregar foto:', photoErr)
             }
         }
 
-        // Gerar QR Code
+        // Adicionar QR Code (canto inferior direito)
         try {
             const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://maf-card-system.vercel.app'
             const qrBuffer = await QRCode.toBuffer(`${baseUrl}/validar/${data.qrToken}`, {
-                width: 192,
-                margin: 2,
+                width: 180,
+                margin: 1,
                 errorCorrectionLevel: 'M',
                 type: 'png'
             })
 
-            baseImage = baseImage.composite([{
-                input: qrBuffer,
-                top: height - 232,
-                left: width - 232
-            }])
+            // Carregar QR code como imagem
+            const { loadImage } = await import('canvas')
+            const qrImg = await loadImage(qrBuffer)
+
+            const qrX = width - 230  // 180 (tamanho) + 50 (margem) = 230
+            const qrY = height - 230 // 180 (tamanho) + 50 (margem) = 230
+            ctx.drawImage(qrImg, qrX, qrY, 180, 180)
+
         } catch (qrError) {
             console.error('Erro ao gerar QR Code:', qrError)
         }
 
-        // Exportar como PNG
-        const pngBuffer = await baseImage.png().toBuffer()
-        return pngBuffer
+        // Adicionar logo MAF no canto superior direito
+        try {
+            const logoPath = path.join(process.cwd(), 'public', 'logomaf.png')
+            const { loadImage } = await import('canvas')
+            const logoImg = await loadImage(logoPath)
+
+            // Definir tamanho da logo (2x maior)
+            const logoSize = 160
+            const logoX = width - logoSize - 40 // 40px de margem da borda direita (afastada)
+            const logoY = 20 // 20px do topo
+
+            ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize)
+
+        } catch (logoError) {
+            console.error('Erro ao carregar logo MAF:', logoError)
+        }
+
+        // Adicionar código do usuário no canto inferior esquerdo
+        ctx.fillStyle = 'black'
+        ctx.textAlign = 'left'
+
+        // "Registro:" em negrito 20px - 50px das bordas esquerda e inferior
+        ctx.font = 'bold 20px Montserrat'
+        ctx.fillText('Registro:', 50, height - 75)
+
+        // Código do usuário em normal 25px - 50px das bordas esquerda e inferior
+        ctx.font = '25px Montserrat'
+        ctx.fillText(data.cardNumber || 'MAF-TEST-001', 50, height - 50)
+
+        // Retornar buffer do canvas
+        return canvas.toBuffer('image/png')
     } catch (error) {
         console.error('Erro em generateCardPNG:', error)
         throw error
@@ -264,7 +358,7 @@ export async function generateCardPDF(data: {
         }
 
         // Nome completo à esquerda (em preto sobre fundo branco)
-        const nameSize = 15
+        const nameSize = 50
         page.drawText(data.name, {
             x: 25,
             y: height / 2 + 30,
@@ -282,7 +376,7 @@ export async function generateCardPDF(data: {
             page.drawText(dateText, {
                 x: 25,
                 y: height / 2 + 12,
-                size: 9,
+                size: 30,
                 font: fontRegular,
                 color: rgb(0.6, 0.6, 0.6),
             })
@@ -292,7 +386,7 @@ export async function generateCardPDF(data: {
         page.drawText(data.cpf, {
             x: 25,
             y: height / 2 - 6,
-            size: 12,
+            size: 30,
             font: fontRegular,
             color: rgb(0, 0, 0),
         })
@@ -362,6 +456,3 @@ export async function generateCardPDF(data: {
         throw error
     }
 }
-
-// Exportar função auxiliar para testes
-export { createTextWithBackground }
