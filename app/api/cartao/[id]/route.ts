@@ -13,12 +13,6 @@ export async function GET(
     const { id } = await params
     const cookieStore = await cookies()
 
-    // Debug: verificar variáveis de ambiente
-    console.log('[PDF API] Verificando variáveis de ambiente:', {
-        supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Configurado' : 'NÃO CONFIGURADO',
-        supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Configurado' : 'NÃO CONFIGURADO'
-    })
-
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -46,21 +40,8 @@ export async function GET(
         .single()
 
     if (error || !userCard) {
-        console.error('[PDF API] Erro ao buscar cartão:', error)
         return NextResponse.json({ error: "Cartão não encontrado" }, { status: 404 })
     }
-
-    // Debug: log dos dados do cartão
-    console.log('[PDF API] Dados do cartão encontrados:', {
-        id: userCard.id,
-        name: userCard.name,
-        cpf: userCard.cpf,
-        email: userCard.email,
-        status: userCard.status,
-        certification_date: userCard.certification_date,
-        created_at: userCard.created_at,
-        photo_path: userCard.photo_path
-    })
 
     // Verificar se o usuário tem permissão para acessar este cartão
     // Permitir se: é o dono do cartão OU é admin
@@ -120,18 +101,14 @@ export async function GET(
     try {
         console.log(`[PDF] Gerando PNG para cartão ${id}`)
 
-        const cardData = {
+        const pngBuffer = await generateCardPNG({
             name: userCard.name,
             cpf: userCard.cpf,
             cardNumber: cardNumber,
             qrToken: validationToken,
             photoPath: userCard.photo_path,
             certificationDate: userCard.certification_date || userCard.created_at,
-        }
-
-        console.log('[PDF] Dados sendo passados para generateCardPNG:', cardData)
-
-        const pngBuffer = await generateCardPNG(cardData)
+        })
 
         console.log(`[PDF] PNG gerado com sucesso. Tamanho: ${pngBuffer.length} bytes`)
 

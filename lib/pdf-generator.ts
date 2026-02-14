@@ -2,7 +2,6 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
 import QRCode from "qrcode"
 import sharp from "sharp"
 import { createCanvas } from "canvas"
-import { getServiceSupabase } from "@/lib/supabase"
 
 // Função auxiliar para formatar CPF
 function formatCPF(cpf: string): string {
@@ -49,16 +48,6 @@ export async function generateCardPNG(data: {
     certificationDate?: string | null
 }) {
     try {
-        // Debug: log dos dados recebidos
-        console.log('[PDF-GENERATOR] Dados recebidos:', {
-            name: data.name,
-            cpf: data.cpf,
-            cardNumber: data.cardNumber,
-            qrToken: data.qrToken ? data.qrToken.substring(0, 10) + '...' : null,
-            photoPath: data.photoPath,
-            certificationDate: data.certificationDate
-        })
-
         // Dimensões do cartão: 1063 × 591 pixels
         const width = 1063
         const height = 591
@@ -113,6 +102,8 @@ export async function generateCardPNG(data: {
         // Adicionar foto se existir (lado direito)
         if (data.photoPath) {
             try {
+                // Importar Supabase dinamicamente apenas se necessário
+                const { getServiceSupabase } = await import('@/lib/supabase')
                 const supabase = getServiceSupabase()
                 const { data: photoData, error: photoError } = await supabase.storage
                     .from('photos')
@@ -181,6 +172,7 @@ export async function generateCardPNG(data: {
                 }
             } catch (photoErr) {
                 console.error('Erro ao carregar foto:', photoErr)
+                // Continua sem a foto em caso de erro
             }
         }
 
