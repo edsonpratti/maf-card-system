@@ -69,14 +69,15 @@ export async function generateCardPNG(data: {
             const color = options.color || 'black'
             const maxWidth = options.maxWidth || 800
 
-            // Criar SVG com o texto
+            // Criar SVG com o texto - ajustar para melhor alinhamento
             const svg = `
                 <svg width="${maxWidth}" height="${options.fontSize + 10}" xmlns="http://www.w3.org/2000/svg">
                     <text x="0" y="${options.fontSize}"
                           font-family="Helvetica"
                           font-size="${options.fontSize}"
                           ${fontWeight}
-                          fill="${color}">${text}</text>
+                          fill="${color}"
+                          dominant-baseline="alphabetic">${text}</text>
                 </svg>
             `
 
@@ -95,6 +96,13 @@ export async function generateCardPNG(data: {
             }
         }
 
+        // Configurar ambiente para Canvas funcionar no Vercel
+        if (isVercel) {
+            // Desabilitar Fontconfig no Vercel
+            process.env.FONTCONFIG_PATH = '/dev/null'
+            process.env.FONTCONFIG_FILE = '/dev/null'
+        }
+
         // Dimensões do cartão: 1063 × 591 pixels
         const width = 1063
         const height = 591
@@ -110,6 +118,11 @@ export async function generateCardPNG(data: {
         // Desenhar imagem de fundo
         ctx.drawImage(backgroundImage, 0, 0, width, height)
 
+        // Textos com tamanhos específicos e centralizados verticalmente
+        ctx.fillStyle = 'black'
+        ctx.textAlign = 'left'
+        ctx.textBaseline = 'top'
+
         // Calcular posições com espaçamento personalizado
         const nameToDateSpacing = 30  // Espaçamento nome → data
         const dateToCpfSpacing = 45   // Espaçamento data → CPF
@@ -121,24 +134,21 @@ export async function generateCardPNG(data: {
         const cpfY = dateY + dateToCpfSpacing
 
         // Nome: (negrito, 40px)
+        ctx.font = 'bold 40px Helvetica'
         const displayName = data.name && data.name.trim() ? data.name : 'Nome não informado'
-        const nameImage = await createTextImage(displayName, { fontSize: 40, fontWeight: 'bold', color: 'black' })
-        const nameImg = await loadImage(nameImage.buffer)
-        ctx.drawImage(nameImg, 50, Math.round(nameY))
+        ctx.fillText(displayName, 50, Math.round(nameY))
 
         // Data: (normal, 15px) - usar data real do usuário
+        ctx.font = '15px Helvetica'
         const formattedDate = data.certificationDate
             ? new Date(data.certificationDate).toLocaleDateString('pt-BR')
             : 'Data não informada'
-        const dateImage = await createTextImage(`Habilitado(a) desde ${formattedDate}`, { fontSize: 15, color: 'black' })
-        const dateImg = await loadImage(dateImage.buffer)
-        ctx.drawImage(dateImg, 50, Math.round(dateY))
+        ctx.fillText(`Habilitado(a) desde ${formattedDate}`, 50, Math.round(dateY))
 
         // CPF: (normal, 25px) - usar CPF real do usuário formatado
+        ctx.font = '25px Helvetica'
         const formattedCPF = data.cpf && data.cpf.trim() ? formatCPF(data.cpf) : 'CPF não informado'
-        const cpfImage = await createTextImage(formattedCPF, { fontSize: 25, color: 'black' })
-        const cpfImg = await loadImage(cpfImage.buffer)
-        ctx.drawImage(cpfImg, 50, Math.round(cpfY))
+        ctx.fillText(formattedCPF, 50, Math.round(cpfY))
 
         // Adicionar foto se existir (lado direito)
         if (data.photoPath) {
@@ -254,16 +264,17 @@ export async function generateCardPNG(data: {
         }
 
         // Adicionar código do usuário no canto inferior esquerdo
+        ctx.fillStyle = 'black'
+        ctx.textAlign = 'left'
+        ctx.textBaseline = 'top'
 
         // "Registro:" em negrito 20px - 50px das bordas esquerda e inferior
-        const registroImage = await createTextImage('Registro:', { fontSize: 20, fontWeight: 'bold', color: 'black' })
-        const registroImg = await loadImage(registroImage.buffer)
-        ctx.drawImage(registroImg, 50, height - 75)
+        ctx.font = 'bold 20px Helvetica'
+        ctx.fillText('Registro:', 50, height - 75)
 
         // Código do usuário em normal 25px - 50px das bordas esquerda e inferior
-        const codeImage = await createTextImage(data.cardNumber || 'MAF-TEST-001', { fontSize: 25, color: 'black' })
-        const codeImg = await loadImage(codeImage.buffer)
-        ctx.drawImage(codeImg, 50, height - 50)
+        ctx.font = '25px Helvetica'
+        ctx.fillText(data.cardNumber || 'MAF-TEST-001', 50, height - 50)
 
         // Retornar buffer do canvas
         return canvas.toBuffer('image/png')
