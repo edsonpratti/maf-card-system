@@ -58,26 +58,41 @@ export async function generateCardPNG(data: {
             console.log('ℹ️ Ambiente Vercel detectado - usando fontes padrão do sistema')
         }
 
-        // Função auxiliar para gerar texto com fundo integrado (mais confiável)
-        async function createTextWithBackground(text: string, options: { fontSize: number; fontWeight?: string }): Promise<Buffer> {
+        // Função auxiliar para gerar texto como imagem (evita problemas de fonte no Canvas)
+        async function createTextImage(text: string, options: {
+            fontSize: number;
+            fontWeight?: string;
+            color?: string;
+            maxWidth?: number;
+        }): Promise<{ buffer: Buffer; width: number; height: number }> {
             const fontWeight = options.fontWeight === 'bold' ? 'font-weight="bold"' : ''
-            const width = Math.max(400, text.length * options.fontSize * 0.6)
-            const height = options.fontSize + 20
+            const color = options.color || 'black'
+            const maxWidth = options.maxWidth || 800
 
+            // Criar SVG com o texto
             const svg = `
-                <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-                    <rect width="${width}" height="${height}" fill="rgba(0,0,0,0.9)" rx="5" ry="5" />
-                    <text x="15" y="${options.fontSize + 5}"
-                          font-family="${fontRegistered ? 'Montserrat' : 'Helvetica'}"
+                <svg width="${maxWidth}" height="${options.fontSize + 10}" xmlns="http://www.w3.org/2000/svg">
+                    <text x="0" y="${options.fontSize}"
+                          font-family="Helvetica"
                           font-size="${options.fontSize}"
                           ${fontWeight}
-                          fill="white">${text}</text>
+                          fill="${color}">${text}</text>
                 </svg>
             `
 
             // Converter SVG para PNG usando Sharp
-            const pngBuffer = await sharp(Buffer.from(svg)).png().toBuffer()
-            return pngBuffer
+            const pngBuffer = await sharp(Buffer.from(svg))
+                .png()
+                .toBuffer()
+
+            // Obter dimensões reais do texto
+            const metadata = await sharp(pngBuffer).metadata()
+
+            return {
+                buffer: pngBuffer,
+                width: metadata.width || maxWidth,
+                height: metadata.height || options.fontSize + 10
+            }
         }
 
         // Dimensões do cartão: 1063 × 591 pixels
@@ -95,10 +110,6 @@ export async function generateCardPNG(data: {
         // Desenhar imagem de fundo
         ctx.drawImage(backgroundImage, 0, 0, width, height)
 
-        // Textos com tamanhos específicos e centralizados verticalmente
-        ctx.fillStyle = 'black'
-        ctx.textAlign = 'left'
-
         // Calcular posições com espaçamento personalizado
         const nameToDateSpacing = 30  // Espaçamento nome → data
         const dateToCpfSpacing = 45   // Espaçamento data → CPF
@@ -110,21 +121,24 @@ export async function generateCardPNG(data: {
         const cpfY = dateY + dateToCpfSpacing
 
         // Nome: (negrito, 40px)
-        ctx.font = fontRegistered ? 'bold 40px Montserrat' : 'bold 40px Helvetica'
         const displayName = data.name && data.name.trim() ? data.name : 'Nome não informado'
-        ctx.fillText(displayName, 50, Math.round(nameY))
+        const nameImage = await createTextImage(displayName, { fontSize: 40, fontWeight: 'bold', color: 'black' })
+        const nameImg = await loadImage(nameImage.buffer)
+        ctx.drawImage(nameImg, 50, Math.round(nameY))
 
         // Data: (normal, 15px) - usar data real do usuário
-        ctx.font = fontRegistered ? '15px Montserrat' : '15px Helvetica'
         const formattedDate = data.certificationDate
             ? new Date(data.certificationDate).toLocaleDateString('pt-BR')
             : 'Data não informada'
-        ctx.fillText(`Habilitado(a) desde ${formattedDate}`, 50, Math.round(dateY))
+        const dateImage = await createTextImage(`Habilitado(a) desde ${formattedDate}`, { fontSize: 15, color: 'black' })
+        const dateImg = await loadImage(dateImage.buffer)
+        ctx.drawImage(dateImg, 50, Math.round(dateY))
 
         // CPF: (normal, 25px) - usar CPF real do usuário formatado
-        ctx.font = fontRegistered ? '25px Montserrat' : '25px Helvetica'
         const formattedCPF = data.cpf && data.cpf.trim() ? formatCPF(data.cpf) : 'CPF não informado'
-        ctx.fillText(formattedCPF, 50, Math.round(cpfY))
+        const cpfImage = await createTextImage(formattedCPF, { fontSize: 25, color: 'black' })
+        const cpfImg = await loadImage(cpfImage.buffer)
+        ctx.drawImage(cpfImg, 50, Math.round(cpfY))
 
         // Adicionar foto se existir (lado direito)
         if (data.photoPath) {
@@ -240,16 +254,16 @@ export async function generateCardPNG(data: {
         }
 
         // Adicionar código do usuário no canto inferior esquerdo
-        ctx.fillStyle = 'black'
-        ctx.textAlign = 'left'
 
         // "Registro:" em negrito 20px - 50px das bordas esquerda e inferior
-        ctx.font = fontRegistered ? 'bold 20px Montserrat' : 'bold 20px Helvetica'
-        ctx.fillText('Registro:', 50, height - 75)
+        const registroImage = await createTextImage('Registro:', { fontSize: 20, fontWeight: 'bold', color: 'black' })
+        const registroImg = await loadImage(registroImage.buffer)
+        ctx.drawImage(registroImg, 50, height - 75)
 
         // Código do usuário em normal 25px - 50px das bordas esquerda e inferior
-        ctx.font = fontRegistered ? '25px Montserrat' : '25px Helvetica'
-        ctx.fillText(data.cardNumber || 'MAF-TEST-001', 50, height - 50)
+        const codeImage = await createTextImage(data.cardNumber || 'MAF-TEST-001', { fontSize: 25, color: 'black' })
+        const codeImg = await loadImage(codeImage.buffer)
+        ctx.drawImage(codeImg, 50, height - 50)
 
         // Retornar buffer do canvas
         return canvas.toBuffer('image/png')
