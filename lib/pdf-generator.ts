@@ -83,7 +83,6 @@ export async function generateCardPNG(data: {
         // Textos com tamanhos específicos e centralizados verticalmente
         ctx.fillStyle = 'black'
         ctx.textAlign = 'left'
-        ctx.textBaseline = 'top'
 
         // Calcular posições com espaçamento personalizado
         const nameToDateSpacing = 30  // Espaçamento nome → data
@@ -228,7 +227,6 @@ export async function generateCardPNG(data: {
         // Adicionar código do usuário no canto inferior esquerdo
         ctx.fillStyle = 'black'
         ctx.textAlign = 'left'
-        ctx.textBaseline = 'top'
 
         // "Registro:" em negrito 20px - 50px das bordas esquerda e inferior
         ctx.font = 'bold 20px Helvetica'
