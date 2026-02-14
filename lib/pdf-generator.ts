@@ -28,76 +28,87 @@ export async function generateCardPNG(data: {
         // Verificar se estamos no Vercel (ambiente de produção)
         const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV !== undefined
 
-        console.log('ℹ️ Ambiente Vercel detectado - usando abordagem sem Canvas' + (isVercel ? ' (Vercel)' : ' (Local)'))
+        console.log('ℹ️ Ambiente detectado - usando abordagem híbrida' + (isVercel ? ' (Vercel)' : ' (Local)'))
 
-        // Abordagem sem Canvas: usar apenas Sharp para composição
+        // Abordagem híbrida: Canvas para elementos gráficos, Sharp para composição
+        const { createCanvas, loadImage } = await import('canvas')
         const fs = await import('fs')
         const path = await import('path')
 
-        // Carregar imagens base
-        const backgroundPath = path.join(process.cwd(), 'public', 'padrao_fundo_carteira.png')
-        let cardImage = sharp(backgroundPath)
+        // Dimensões do cartão: 1063 × 591 pixels
+        const width = 1063
+        const height = 591
 
-        // Preparar textos como imagens
+        // Criar canvas para elementos gráficos (fundo, foto, QR)
+        const canvas = createCanvas(width, height)
+        const ctx = canvas.getContext('2d')
+
+        // Carregar imagem de fundo
+        const backgroundPath = path.join(process.cwd(), 'public', 'padrao_fundo_carteira.png')
+        const backgroundImage = await loadImage(backgroundPath)
+
+        // Desenhar imagem de fundo
+        ctx.drawImage(backgroundImage, 0, 0, width, height)
+
+        // Função para renderizar texto usando Sharp (evita problemas de Fontconfig)
+        async function drawTextOnCanvas(text: string, x: number, y: number, options: {
+            fontSize: number;
+            fontWeight?: string;
+            color?: string;
+        }) {
+            const fontWeight = options.fontWeight === 'bold' ? 'font-weight="bold"' : ''
+            const color = options.color || 'black'
+
+            // Criar SVG com o texto usando fonte básica
+            const svgText = `
+                <svg width="${text.length * options.fontSize * 0.6}" height="${options.fontSize + 10}" xmlns="http://www.w3.org/2000/svg">
+                    <text x="0" y="${options.fontSize}"
+                          font-family="Arial, sans-serif"
+                          font-size="${options.fontSize}"
+                          ${fontWeight}
+                          fill="${color}">${text}</text>
+                </svg>
+            `
+
+            try {
+                // Converter SVG para PNG usando Sharp
+                const textBuffer = await sharp(Buffer.from(svgText))
+                    .png()
+                    .toBuffer()
+
+                // Carregar como imagem e desenhar no Canvas
+                const textImage = await loadImage(textBuffer)
+                ctx.drawImage(textImage, x, y - options.fontSize)
+            } catch (error) {
+                console.warn('⚠️ Erro ao renderizar texto, usando fallback:', text)
+                // Fallback: desenhar texto diretamente (pode causar Fontconfig warning)
+                ctx.font = `${options.fontWeight || 'normal'} ${options.fontSize}px Arial`
+                ctx.fillStyle = color
+                ctx.fillText(text, x, y)
+            }
+        }
+
+        // Adicionar textos usando Sharp (evita problemas de Fontconfig)
         const displayName = data.name && data.name.trim() ? data.name : 'Nome não informado'
         const formattedDate = data.certificationDate
             ? new Date(data.certificationDate).toLocaleDateString('pt-BR')
             : 'Data não informada'
         const formattedCPF = data.cpf && data.cpf.trim() ? formatCPF(data.cpf) : 'CPF não informado'
 
-        // Calcular posições
-        const nameToDateSpacing = 30
-        const dateToCpfSpacing = 45
-        const centerY = 591 / 2
+        // Calcular posições com espaçamento personalizado
+        const nameToDateSpacing = 30  // Espaçamento nome → data
+        const dateToCpfSpacing = 45   // Espaçamento data → CPF
+        const centerY = height / 2
+
+        // Centralizar o bloco de texto considerando espaçamentos diferentes
         const nameY = centerY - (nameToDateSpacing / 2) - dateToCpfSpacing
         const dateY = nameY + nameToDateSpacing
         const cpfY = dateY + dateToCpfSpacing
 
-        // Criar composições de texto
-        const textCompositions = []
-
-        // Nome
-        const nameSvg = `
-            <svg width="800" height="50">
-                <text x="0" y="35" font-family="Helvetica" font-size="40" font-weight="bold" fill="black" dominant-baseline="alphabetic">${displayName}</text>
-            </svg>`
-        const nameBuffer = await sharp(Buffer.from(nameSvg)).png().toBuffer()
-        textCompositions.push({ input: nameBuffer, left: 50, top: Math.round(nameY) })
-
-        // Data
-        const dateSvg = `
-            <svg width="800" height="25">
-                <text x="0" y="15" font-family="Helvetica" font-size="15" fill="black" dominant-baseline="alphabetic">Habilitado(a) desde ${formattedDate}</text>
-            </svg>`
-        const dateBuffer = await sharp(Buffer.from(dateSvg)).png().toBuffer()
-        textCompositions.push({ input: dateBuffer, left: 50, top: Math.round(dateY) })
-
-        // CPF
-        const cpfSvg = `
-            <svg width="800" height="35">
-                <text x="0" y="25" font-family="Helvetica" font-size="25" fill="black" dominant-baseline="alphabetic">${formattedCPF}</text>
-            </svg>`
-        const cpfBuffer = await sharp(Buffer.from(cpfSvg)).png().toBuffer()
-        textCompositions.push({ input: cpfBuffer, left: 50, top: Math.round(cpfY) })
-
-        // Registro
-        const registroSvg = `
-            <svg width="200" height="25">
-                <text x="0" y="20" font-family="Helvetica" font-size="20" font-weight="bold" fill="black" dominant-baseline="alphabetic">Registro:</text>
-            </svg>`
-        const registroBuffer = await sharp(Buffer.from(registroSvg)).png().toBuffer()
-        textCompositions.push({ input: registroBuffer, left: 50, top: 591 - 75 })
-
-        // Código
-        const codeSvg = `
-            <svg width="300" height="30">
-                <text x="0" y="25" font-family="Helvetica" font-size="25" fill="black" dominant-baseline="alphabetic">${data.cardNumber || 'MAF-TEST-001'}</text>
-            </svg>`
-        const codeBuffer = await sharp(Buffer.from(codeSvg)).png().toBuffer()
-        textCompositions.push({ input: codeBuffer, left: 50, top: 591 - 50 })
-
-        // Aplicar composições de texto
-        cardImage = cardImage.composite(textCompositions)
+        // Renderizar textos
+        await drawTextOnCanvas(displayName, 50, nameY, { fontSize: 40, fontWeight: 'bold', color: 'black' })
+        await drawTextOnCanvas(`Habilitado(a) desde ${formattedDate}`, 50, dateY, { fontSize: 15, color: 'black' })
+        await drawTextOnCanvas(formattedCPF, 50, cpfY, { fontSize: 25, color: 'black' })
 
         // Adicionar foto se existir
         if (data.photoPath) {
@@ -113,41 +124,37 @@ export async function generateCardPNG(data: {
                 if (photoData && !error) {
                     const photoBuffer = Buffer.from(await photoData.arrayBuffer())
 
-                    // Processar foto (cortar para quadrado e redimensionar)
-                    const processedPhoto = await sharp(photoBuffer)
-                        .resize(200, 200, { fit: 'cover', position: 'center' })
-                        .png()
-                        .toBuffer()
+                    // Carregar imagem da foto
+                    const photoImg = await loadImage(photoBuffer)
 
-                    // Posicionar foto (lado direito, centralizada verticalmente)
-                    cardImage = cardImage.composite([{
-                        input: processedPhoto,
-                        left: 1063 - 250,
-                        top: Math.round((591 - 200) / 2)
-                    }])
+                    const photoSize = 200
+                    // Centralizar foto no lado direito
+                    const photoX = width - photoSize - 50
+                    const photoY = (height - photoSize) / 2
+
+                    // Desenhar foto
+                    ctx.drawImage(photoImg, photoX, photoY, photoSize, photoSize)
                 }
             } catch (photoError) {
                 console.warn('⚠️ Erro ao processar foto:', photoError)
             }
         }
 
-        // Gerar QR Code
+        // Adicionar QR Code
         try {
-            const qrCodeDataURL = await QRCode.toDataURL(data.qrToken, {
+            const qrBuffer = await QRCode.toBuffer(data.qrToken, {
                 width: 150,
                 margin: 1,
-                color: { dark: '#000000', light: '#FFFFFF' }
+                errorCorrectionLevel: 'M',
+                type: 'png'
             })
 
-            // Converter data URL para buffer
-            const qrBuffer = Buffer.from(qrCodeDataURL.split(',')[1], 'base64')
+            // Carregar QR code como imagem
+            const qrImg = await loadImage(qrBuffer)
 
-            // Posicionar QR Code (canto inferior direito)
-            cardImage = cardImage.composite([{
-                input: qrBuffer,
-                left: 1063 - 200,
-                top: 591 - 200
-            }])
+            const qrX = width - 200
+            const qrY = height - 200
+            ctx.drawImage(qrImg, qrX, qrY, 150, 150)
         } catch (qrError) {
             console.warn('⚠️ Erro ao gerar QR Code:', qrError)
         }
@@ -156,27 +163,25 @@ export async function generateCardPNG(data: {
         try {
             const logoPath = path.join(process.cwd(), 'public', 'logo-maf.png')
             if (fs.existsSync(logoPath)) {
-                const logoBuffer = await sharp(logoPath)
-                    .resize(100, 100, { fit: 'inside' })
-                    .png()
-                    .toBuffer()
+                const logoImg = await loadImage(logoPath)
 
-                // Posicionar logo (canto superior direito)
-                cardImage = cardImage.composite([{
-                    input: logoBuffer,
-                    left: 1063 - 120,
-                    top: 20
-                }])
+                // Definir tamanho da logo
+                const logoSize = 100
+                const logoX = width - logoSize - 20
+                const logoY = 20
+
+                ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize)
             }
         } catch (logoError) {
             console.warn('⚠️ Erro ao adicionar logo:', logoError)
         }
 
-        // Converter para PNG
-        const finalBuffer = await cardImage.png().toBuffer()
+        // Adicionar textos do rodapé
+        await drawTextOnCanvas('Registro:', 50, height - 75, { fontSize: 20, fontWeight: 'bold', color: 'black' })
+        await drawTextOnCanvas(data.cardNumber || 'MAF-TEST-001', 50, height - 50, { fontSize: 25, color: 'black' })
 
-        console.log(`✅ Cartão gerado com sucesso! Tamanho: ${finalBuffer.length} bytes`)
-        return finalBuffer
+        // Retornar buffer do canvas
+        return canvas.toBuffer('image/png')
 
     } catch (error) {
         console.error('❌ Erro ao gerar cartão:', error)
