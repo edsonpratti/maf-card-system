@@ -17,28 +17,6 @@ function formatCPF(cpf: string): string {
     return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
 }
 
-// Função auxiliar para gerar texto com fundo integrado (mais confiável)
-async function createTextWithBackground(text: string, options: { fontSize: number; fontWeight?: string }): Promise<Buffer> {
-    const fontWeight = options.fontWeight === 'bold' ? 'font-weight="bold"' : ''
-    const width = Math.max(400, text.length * options.fontSize * 0.6)
-    const height = options.fontSize + 20
-
-    const svg = `
-        <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-            <rect width="${width}" height="${height}" fill="rgba(0,0,0,0.9)" rx="5" ry="5" />
-            <text x="15" y="${options.fontSize + 5}"
-                  font-family="Arial"
-                  font-size="${options.fontSize}"
-                  ${fontWeight}
-                  fill="white">${text}</text>
-        </svg>
-    `
-
-    // Converter SVG para PNG usando Sharp
-    const pngBuffer = await sharp(Buffer.from(svg)).png().toBuffer()
-    return pngBuffer
-}
-
 export async function generateCardPNG(data: {
     name: string
     cpf: string
@@ -48,6 +26,53 @@ export async function generateCardPNG(data: {
     certificationDate?: string | null
 }) {
     try {
+        // Registrar fontes Montserrat
+        const { registerFont, loadImage } = await import('canvas')
+        const fs = await import('fs')
+        const path = await import('path')
+
+        const montserratRegularPath = path.join(process.cwd(), 'public', 'fonts', 'montserrat-regular.woff2')
+        const montserratBoldPath = path.join(process.cwd(), 'public', 'fonts', 'montserrat-bold.woff2')
+
+        let fontRegistered = false
+
+        // Tentar registrar fontes Montserrat
+        try {
+            if (fs.existsSync(montserratRegularPath)) {
+                registerFont(montserratRegularPath, { family: 'Montserrat', weight: 'normal' })
+                console.log('✅ Fonte Montserrat Regular registrada')
+            }
+            if (fs.existsSync(montserratBoldPath)) {
+                registerFont(montserratBoldPath, { family: 'Montserrat', weight: 'bold' })
+                console.log('✅ Fonte Montserrat Bold registrada')
+            }
+            fontRegistered = true
+        } catch (fontError) {
+            console.warn('⚠️ Erro ao registrar fontes Montserrat, usando Arial como fallback:', fontError instanceof Error ? fontError.message : String(fontError))
+        }
+
+        // Função auxiliar para gerar texto com fundo integrado (mais confiável)
+        async function createTextWithBackground(text: string, options: { fontSize: number; fontWeight?: string }): Promise<Buffer> {
+            const fontWeight = options.fontWeight === 'bold' ? 'font-weight="bold"' : ''
+            const width = Math.max(400, text.length * options.fontSize * 0.6)
+            const height = options.fontSize + 20
+
+            const svg = `
+                <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="${width}" height="${height}" fill="rgba(0,0,0,0.9)" rx="5" ry="5" />
+                    <text x="15" y="${options.fontSize + 5}"
+                          font-family="${fontRegistered ? 'Montserrat' : 'Arial'}"
+                          font-size="${options.fontSize}"
+                          ${fontWeight}
+                          fill="white">${text}</text>
+                </svg>
+            `
+
+            // Converter SVG para PNG usando Sharp
+            const pngBuffer = await sharp(Buffer.from(svg)).png().toBuffer()
+            return pngBuffer
+        }
+
         // Dimensões do cartão: 1063 × 591 pixels
         const width = 1063
         const height = 591
@@ -56,11 +81,6 @@ export async function generateCardPNG(data: {
         const { createCanvas } = await import('canvas')
         const canvas = createCanvas(width, height)
         const ctx = canvas.getContext('2d')
-
-        // Carregar imagem de fundo
-        const { loadImage } = await import('canvas')
-        const fs = await import('fs')
-        const path = await import('path')
 
         const backgroundPath = path.join(process.cwd(), 'public', 'padrao_fundo_carteira.png')
         const backgroundImage = await loadImage(backgroundPath)
@@ -83,19 +103,19 @@ export async function generateCardPNG(data: {
         const cpfY = dateY + dateToCpfSpacing
 
         // Nome: (negrito, 40px)
-        ctx.font = 'bold 40px Montserrat'
+        ctx.font = fontRegistered ? 'bold 40px Montserrat' : 'bold 40px Arial'
         const displayName = data.name && data.name.trim() ? data.name : 'Nome não informado'
         ctx.fillText(displayName, 50, Math.round(nameY))
 
         // Data: (normal, 15px) - usar data real do usuário
-        ctx.font = '15px Montserrat'
+        ctx.font = fontRegistered ? '15px Montserrat' : '15px Arial'
         const formattedDate = data.certificationDate
             ? new Date(data.certificationDate).toLocaleDateString('pt-BR')
             : 'Data não informada'
         ctx.fillText(`Habilitado(a) desde ${formattedDate}`, 50, Math.round(dateY))
 
         // CPF: (normal, 25px) - usar CPF real do usuário formatado
-        ctx.font = '25px Montserrat'
+        ctx.font = fontRegistered ? '25px Montserrat' : '25px Arial'
         const formattedCPF = data.cpf && data.cpf.trim() ? formatCPF(data.cpf) : 'CPF não informado'
         ctx.fillText(formattedCPF, 50, Math.round(cpfY))
 
@@ -114,7 +134,6 @@ export async function generateCardPNG(data: {
                     const originalBuffer = Buffer.from(photoBuffer)
 
                     // Carregar imagem da foto
-                    const { loadImage } = await import('canvas')
                     const photoImg = await loadImage(originalBuffer)
 
                     const photoSize = 250
@@ -187,7 +206,6 @@ export async function generateCardPNG(data: {
             })
 
             // Carregar QR code como imagem
-            const { loadImage } = await import('canvas')
             const qrImg = await loadImage(qrBuffer)
 
             const qrX = width - 230  // 180 (tamanho) + 50 (margem) = 230
@@ -201,7 +219,6 @@ export async function generateCardPNG(data: {
         // Adicionar logo MAF no canto superior direito
         try {
             const logoPath = path.join(process.cwd(), 'public', 'logomaf.png')
-            const { loadImage } = await import('canvas')
             const logoImg = await loadImage(logoPath)
 
             // Definir tamanho da logo (2x maior)
@@ -220,11 +237,11 @@ export async function generateCardPNG(data: {
         ctx.textAlign = 'left'
 
         // "Registro:" em negrito 20px - 50px das bordas esquerda e inferior
-        ctx.font = 'bold 20px Montserrat'
+        ctx.font = fontRegistered ? 'bold 20px Montserrat' : 'bold 20px Arial'
         ctx.fillText('Registro:', 50, height - 75)
 
         // Código do usuário em normal 25px - 50px das bordas esquerda e inferior
-        ctx.font = '25px Montserrat'
+        ctx.font = fontRegistered ? '25px Montserrat' : '25px Arial'
         ctx.fillText(data.cardNumber || 'MAF-TEST-001', 50, height - 50)
 
         // Retornar buffer do canvas
