@@ -34,21 +34,28 @@ export async function generateCardPNG(data: {
         const montserratRegularPath = path.join(process.cwd(), 'public', 'fonts', 'montserrat-regular.woff2')
         const montserratBoldPath = path.join(process.cwd(), 'public', 'fonts', 'montserrat-bold.woff2')
 
+        // Verificar se estamos no Vercel (ambiente de produção)
+        const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV !== undefined
+
         let fontRegistered = false
 
-        // Tentar registrar fontes Montserrat
-        try {
-            if (fs.existsSync(montserratRegularPath)) {
-                registerFont(montserratRegularPath, { family: 'Montserrat', weight: 'normal' })
-                console.log('✅ Fonte Montserrat Regular registrada')
+        // Só tentar registrar fontes customizadas se NÃO estiver no Vercel
+        if (!isVercel) {
+            try {
+                if (fs.existsSync(montserratRegularPath)) {
+                    registerFont(montserratRegularPath, { family: 'Montserrat', weight: 'normal' })
+                    console.log('✅ Fonte Montserrat Regular registrada')
+                }
+                if (fs.existsSync(montserratBoldPath)) {
+                    registerFont(montserratBoldPath, { family: 'Montserrat', weight: 'bold' })
+                    console.log('✅ Fonte Montserrat Bold registrada')
+                }
+                fontRegistered = true
+            } catch (fontError) {
+                console.warn('⚠️ Erro ao registrar fontes Montserrat, usando Arial como fallback:', fontError instanceof Error ? fontError.message : String(fontError))
             }
-            if (fs.existsSync(montserratBoldPath)) {
-                registerFont(montserratBoldPath, { family: 'Montserrat', weight: 'bold' })
-                console.log('✅ Fonte Montserrat Bold registrada')
-            }
-            fontRegistered = true
-        } catch (fontError) {
-            console.warn('⚠️ Erro ao registrar fontes Montserrat, usando Arial como fallback:', fontError instanceof Error ? fontError.message : String(fontError))
+        } else {
+            console.log('ℹ️ Ambiente Vercel detectado - usando fontes padrão do sistema')
         }
 
         // Função auxiliar para gerar texto com fundo integrado (mais confiável)
@@ -61,7 +68,7 @@ export async function generateCardPNG(data: {
                 <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
                     <rect width="${width}" height="${height}" fill="rgba(0,0,0,0.9)" rx="5" ry="5" />
                     <text x="15" y="${options.fontSize + 5}"
-                          font-family="${fontRegistered ? 'Montserrat' : 'Arial'}"
+                          font-family="${fontRegistered ? 'Montserrat' : 'Helvetica'}"
                           font-size="${options.fontSize}"
                           ${fontWeight}
                           fill="white">${text}</text>
@@ -103,19 +110,19 @@ export async function generateCardPNG(data: {
         const cpfY = dateY + dateToCpfSpacing
 
         // Nome: (negrito, 40px)
-        ctx.font = fontRegistered ? 'bold 40px Montserrat' : 'bold 40px Arial'
+        ctx.font = fontRegistered ? 'bold 40px Montserrat' : 'bold 40px Helvetica'
         const displayName = data.name && data.name.trim() ? data.name : 'Nome não informado'
         ctx.fillText(displayName, 50, Math.round(nameY))
 
         // Data: (normal, 15px) - usar data real do usuário
-        ctx.font = fontRegistered ? '15px Montserrat' : '15px Arial'
+        ctx.font = fontRegistered ? '15px Montserrat' : '15px Helvetica'
         const formattedDate = data.certificationDate
             ? new Date(data.certificationDate).toLocaleDateString('pt-BR')
             : 'Data não informada'
         ctx.fillText(`Habilitado(a) desde ${formattedDate}`, 50, Math.round(dateY))
 
         // CPF: (normal, 25px) - usar CPF real do usuário formatado
-        ctx.font = fontRegistered ? '25px Montserrat' : '25px Arial'
+        ctx.font = fontRegistered ? '25px Montserrat' : '25px Helvetica'
         const formattedCPF = data.cpf && data.cpf.trim() ? formatCPF(data.cpf) : 'CPF não informado'
         ctx.fillText(formattedCPF, 50, Math.round(cpfY))
 
@@ -237,11 +244,11 @@ export async function generateCardPNG(data: {
         ctx.textAlign = 'left'
 
         // "Registro:" em negrito 20px - 50px das bordas esquerda e inferior
-        ctx.font = fontRegistered ? 'bold 20px Montserrat' : 'bold 20px Arial'
+        ctx.font = fontRegistered ? 'bold 20px Montserrat' : 'bold 20px Helvetica'
         ctx.fillText('Registro:', 50, height - 75)
 
         // Código do usuário em normal 25px - 50px das bordas esquerda e inferior
-        ctx.font = fontRegistered ? '25px Montserrat' : '25px Arial'
+        ctx.font = fontRegistered ? '25px Montserrat' : '25px Helvetica'
         ctx.fillText(data.cardNumber || 'MAF-TEST-001', 50, height - 50)
 
         // Retornar buffer do canvas
