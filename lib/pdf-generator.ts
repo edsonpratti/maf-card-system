@@ -58,44 +58,6 @@ export async function generateCardPNG(data: {
             console.log('ℹ️ Ambiente Vercel detectado - usando fontes padrão do sistema')
         }
 
-        // Função auxiliar para gerar texto como imagem (evita problemas de fonte no Canvas)
-        async function createTextImage(text: string, options: {
-            fontSize: number;
-            fontWeight?: string;
-            color?: string;
-            maxWidth?: number;
-        }): Promise<{ buffer: Buffer; width: number; height: number }> {
-            const fontWeight = options.fontWeight === 'bold' ? 'font-weight="bold"' : ''
-            const color = options.color || 'black'
-            const maxWidth = options.maxWidth || 800
-
-            // Criar SVG com o texto - ajustar para melhor alinhamento
-            const svg = `
-                <svg width="${maxWidth}" height="${options.fontSize + 10}" xmlns="http://www.w3.org/2000/svg">
-                    <text x="0" y="${options.fontSize}"
-                          font-family="Helvetica"
-                          font-size="${options.fontSize}"
-                          ${fontWeight}
-                          fill="${color}"
-                          dominant-baseline="alphabetic">${text}</text>
-                </svg>
-            `
-
-            // Converter SVG para PNG usando Sharp
-            const pngBuffer = await sharp(Buffer.from(svg))
-                .png()
-                .toBuffer()
-
-            // Obter dimensões reais do texto
-            const metadata = await sharp(pngBuffer).metadata()
-
-            return {
-                buffer: pngBuffer,
-                width: metadata.width || maxWidth,
-                height: metadata.height || options.fontSize + 10
-            }
-        }
-
         // Configurar ambiente para Canvas funcionar no Vercel
         if (isVercel) {
             // Desabilitar Fontconfig no Vercel
