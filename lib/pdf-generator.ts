@@ -26,63 +26,66 @@ export async function generateCardPNG(data: {
     certificationDate?: string | null
 }) {
     try {
-        // Registrar fontes Montserrat
-        const { registerFont, loadImage } = await import('canvas')
-        const fs = await import('fs')
-        const path = await import('path')
-
-        const montserratRegularPath = path.join(process.cwd(), 'public', 'fonts', 'montserrat-regular.woff2')
-        const montserratBoldPath = path.join(process.cwd(), 'public', 'fonts', 'montserrat-bold.woff2')
-
         // Verificar se estamos no Vercel (ambiente de produção)
         const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV !== undefined
 
-        let fontRegistered = false
-
-        // Só tentar registrar fontes customizadas se NÃO estiver no Vercel
-        if (!isVercel) {
-            try {
-                if (fs.existsSync(montserratRegularPath)) {
-                    registerFont(montserratRegularPath, { family: 'Montserrat', weight: 'normal' })
-                    console.log('✅ Fonte Montserrat Regular registrada')
-                }
-                if (fs.existsSync(montserratBoldPath)) {
-                    registerFont(montserratBoldPath, { family: 'Montserrat', weight: 'bold' })
-                    console.log('✅ Fonte Montserrat Bold registrada')
-                }
-                fontRegistered = true
-            } catch (fontError) {
-                console.warn('⚠️ Erro ao registrar fontes Montserrat, usando Arial como fallback:', fontError instanceof Error ? fontError.message : String(fontError))
-            }
-        } else {
-            console.log('ℹ️ Ambiente Vercel detectado - usando fontes padrão do sistema')
-        }
-
-        // Configurar ambiente para Canvas funcionar no Vercel
-        if (isVercel) {
-            // Desabilitar Fontconfig no Vercel
-            process.env.FONTCONFIG_PATH = '/dev/null'
-            process.env.FONTCONFIG_FILE = '/dev/null'
-        }
+        // Abordagem híbrida: Canvas para elementos gráficos, SVG para texto
+        const { createCanvas, loadImage } = await import('canvas')
+        const fs = await import('fs')
+        const path = await import('path')
 
         // Dimensões do cartão: 1063 × 591 pixels
         const width = 1063
         const height = 591
 
-        // Criar canvas para desenhar tudo
-        const { createCanvas } = await import('canvas')
+        // Criar canvas para elementos gráficos (fundo, foto, QR)
         const canvas = createCanvas(width, height)
         const ctx = canvas.getContext('2d')
 
+        // Carregar imagem de fundo
         const backgroundPath = path.join(process.cwd(), 'public', 'padrao_fundo_carteira.png')
         const backgroundImage = await loadImage(backgroundPath)
 
         // Desenhar imagem de fundo
         ctx.drawImage(backgroundImage, 0, 0, width, height)
 
-        // Textos com tamanhos específicos e centralizados verticalmente
-        ctx.fillStyle = 'black'
-        ctx.textAlign = 'left'
+        // Função para renderizar texto como SVG e compor no Canvas
+        async function drawTextOnCanvas(text: string, x: number, y: number, options: {
+            fontSize: number;
+            fontWeight?: string;
+            color?: string;
+        }) {
+            const fontWeight = options.fontWeight === 'bold' ? 'font-weight="bold"' : ''
+            const color = options.color || 'black'
+
+            // Criar SVG com o texto
+            const svgText = `
+                <svg width="800" height="${options.fontSize + 20}" xmlns="http://www.w3.org/2000/svg">
+                    <text x="0" y="${options.fontSize}"
+                          font-family="Helvetica"
+                          font-size="${options.fontSize}"
+                          ${fontWeight}
+                          fill="${color}"
+                          dominant-baseline="alphabetic">${text}</text>
+                </svg>
+            `
+
+            // Converter SVG para PNG usando Sharp
+            const textBuffer = await sharp(Buffer.from(svgText))
+                .png()
+                .toBuffer()
+
+            // Carregar como imagem e desenhar no Canvas
+            const textImage = await loadImage(textBuffer)
+            ctx.drawImage(textImage, x, y - options.fontSize) // Ajustar Y para alinhamento
+        }
+
+        // Adicionar textos usando SVG (evita problemas de Fontconfig)
+        const displayName = data.name && data.name.trim() ? data.name : 'Nome não informado'
+        const formattedDate = data.certificationDate
+            ? new Date(data.certificationDate).toLocaleDateString('pt-BR')
+            : 'Data não informada'
+        const formattedCPF = data.cpf && data.cpf.trim() ? formatCPF(data.cpf) : 'CPF não informado'
 
         // Calcular posições com espaçamento personalizado
         const nameToDateSpacing = 30  // Espaçamento nome → data
@@ -94,22 +97,10 @@ export async function generateCardPNG(data: {
         const dateY = nameY + nameToDateSpacing
         const cpfY = dateY + dateToCpfSpacing
 
-        // Nome: (negrito, 40px)
-        ctx.font = 'bold 40px Helvetica'
-        const displayName = data.name && data.name.trim() ? data.name : 'Nome não informado'
-        ctx.fillText(displayName, 50, Math.round(nameY))
-
-        // Data: (normal, 15px) - usar data real do usuário
-        ctx.font = '15px Helvetica'
-        const formattedDate = data.certificationDate
-            ? new Date(data.certificationDate).toLocaleDateString('pt-BR')
-            : 'Data não informada'
-        ctx.fillText(`Habilitado(a) desde ${formattedDate}`, 50, Math.round(dateY))
-
-        // CPF: (normal, 25px) - usar CPF real do usuário formatado
-        ctx.font = '25px Helvetica'
-        const formattedCPF = data.cpf && data.cpf.trim() ? formatCPF(data.cpf) : 'CPF não informado'
-        ctx.fillText(formattedCPF, 50, Math.round(cpfY))
+        // Renderizar textos
+        await drawTextOnCanvas(displayName, 50, nameY, { fontSize: 40, fontWeight: 'bold', color: 'black' })
+        await drawTextOnCanvas(`Habilitado(a) desde ${formattedDate}`, 50, dateY, { fontSize: 15, color: 'black' })
+        await drawTextOnCanvas(formattedCPF, 50, cpfY, { fontSize: 25, color: 'black' })
 
         // Adicionar foto se existir (lado direito)
         if (data.photoPath) {
@@ -225,16 +216,8 @@ export async function generateCardPNG(data: {
         }
 
         // Adicionar código do usuário no canto inferior esquerdo
-        ctx.fillStyle = 'black'
-        ctx.textAlign = 'left'
-
-        // "Registro:" em negrito 20px - 50px das bordas esquerda e inferior
-        ctx.font = 'bold 20px Helvetica'
-        ctx.fillText('Registro:', 50, height - 75)
-
-        // Código do usuário em normal 25px - 50px das bordas esquerda e inferior
-        ctx.font = '25px Helvetica'
-        ctx.fillText(data.cardNumber || 'MAF-TEST-001', 50, height - 50)
+        await drawTextOnCanvas('Registro:', 50, height - 75, { fontSize: 20, fontWeight: 'bold', color: 'black' })
+        await drawTextOnCanvas(data.cardNumber || 'MAF-TEST-001', 50, height - 50, { fontSize: 25, color: 'black' })
 
         // Retornar buffer do canvas
         return canvas.toBuffer('image/png')
