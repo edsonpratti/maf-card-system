@@ -49,6 +49,16 @@ export async function generateCardPNG(data: {
     certificationDate?: string | null
 }) {
     try {
+        // Debug: log dos dados recebidos
+        console.log('[PDF-GENERATOR] Dados recebidos:', {
+            name: data.name,
+            cpf: data.cpf,
+            cardNumber: data.cardNumber,
+            qrToken: data.qrToken ? data.qrToken.substring(0, 10) + '...' : null,
+            photoPath: data.photoPath,
+            certificationDate: data.certificationDate
+        })
+
         // Dimensões do cartão: 1063 × 591 pixels
         const width = 1063
         const height = 591
@@ -85,7 +95,8 @@ export async function generateCardPNG(data: {
 
         // Nome: (negrito, 40px)
         ctx.font = 'bold 40px Montserrat'
-        ctx.fillText(data.name, 50, Math.round(nameY))
+        const displayName = data.name && data.name.trim() ? data.name : 'Nome não informado'
+        ctx.fillText(displayName, 50, Math.round(nameY))
 
         // Data: (normal, 15px) - usar data real do usuário
         ctx.font = '15px Montserrat'
@@ -96,7 +107,7 @@ export async function generateCardPNG(data: {
 
         // CPF: (normal, 25px) - usar CPF real do usuário formatado
         ctx.font = '25px Montserrat'
-        const formattedCPF = formatCPF(data.cpf)
+        const formattedCPF = data.cpf && data.cpf.trim() ? formatCPF(data.cpf) : 'CPF não informado'
         ctx.fillText(formattedCPF, 50, Math.round(cpfY))
 
         // Adicionar foto se existir (lado direito)
