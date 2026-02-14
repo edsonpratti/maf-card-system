@@ -1,7 +1,6 @@
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
 import QRCode from "qrcode"
 import sharp from "sharp"
-import { createCanvas } from "canvas"
 
 // Função auxiliar para formatar CPF
 function formatCPF(cpf: string): string {
@@ -29,200 +28,158 @@ export async function generateCardPNG(data: {
         // Verificar se estamos no Vercel (ambiente de produção)
         const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV !== undefined
 
-        // Abordagem híbrida: Canvas para elementos gráficos, SVG para texto
-        const { createCanvas, loadImage } = await import('canvas')
+        console.log('ℹ️ Ambiente Vercel detectado - usando abordagem sem Canvas' + (isVercel ? ' (Vercel)' : ' (Local)'))
+
+        // Abordagem sem Canvas: usar apenas Sharp para composição
         const fs = await import('fs')
         const path = await import('path')
 
-        // Dimensões do cartão: 1063 × 591 pixels
-        const width = 1063
-        const height = 591
-
-        // Criar canvas para elementos gráficos (fundo, foto, QR)
-        const canvas = createCanvas(width, height)
-        const ctx = canvas.getContext('2d')
-
-        // Carregar imagem de fundo
+        // Carregar imagens base
         const backgroundPath = path.join(process.cwd(), 'public', 'padrao_fundo_carteira.png')
-        const backgroundImage = await loadImage(backgroundPath)
+        let cardImage = sharp(backgroundPath)
 
-        // Desenhar imagem de fundo
-        ctx.drawImage(backgroundImage, 0, 0, width, height)
-
-        // Função para renderizar texto como SVG e compor no Canvas
-        async function drawTextOnCanvas(text: string, x: number, y: number, options: {
-            fontSize: number;
-            fontWeight?: string;
-            color?: string;
-        }) {
-            const fontWeight = options.fontWeight === 'bold' ? 'font-weight="bold"' : ''
-            const color = options.color || 'black'
-
-            // Criar SVG com o texto
-            const svgText = `
-                <svg width="800" height="${options.fontSize + 20}" xmlns="http://www.w3.org/2000/svg">
-                    <text x="0" y="${options.fontSize}"
-                          font-family="Helvetica"
-                          font-size="${options.fontSize}"
-                          ${fontWeight}
-                          fill="${color}"
-                          dominant-baseline="alphabetic">${text}</text>
-                </svg>
-            `
-
-            // Converter SVG para PNG usando Sharp
-            const textBuffer = await sharp(Buffer.from(svgText))
-                .png()
-                .toBuffer()
-
-            // Carregar como imagem e desenhar no Canvas
-            const textImage = await loadImage(textBuffer)
-            ctx.drawImage(textImage, x, y - options.fontSize) // Ajustar Y para alinhamento
-        }
-
-        // Adicionar textos usando SVG (evita problemas de Fontconfig)
+        // Preparar textos como imagens
         const displayName = data.name && data.name.trim() ? data.name : 'Nome não informado'
         const formattedDate = data.certificationDate
             ? new Date(data.certificationDate).toLocaleDateString('pt-BR')
             : 'Data não informada'
         const formattedCPF = data.cpf && data.cpf.trim() ? formatCPF(data.cpf) : 'CPF não informado'
 
-        // Calcular posições com espaçamento personalizado
-        const nameToDateSpacing = 30  // Espaçamento nome → data
-        const dateToCpfSpacing = 45   // Espaçamento data → CPF
-        const centerY = height / 2
-
-        // Centralizar o bloco de texto considerando espaçamentos diferentes
+        // Calcular posições
+        const nameToDateSpacing = 30
+        const dateToCpfSpacing = 45
+        const centerY = 591 / 2
         const nameY = centerY - (nameToDateSpacing / 2) - dateToCpfSpacing
         const dateY = nameY + nameToDateSpacing
         const cpfY = dateY + dateToCpfSpacing
 
-        // Renderizar textos
-        await drawTextOnCanvas(displayName, 50, nameY, { fontSize: 40, fontWeight: 'bold', color: 'black' })
-        await drawTextOnCanvas(`Habilitado(a) desde ${formattedDate}`, 50, dateY, { fontSize: 15, color: 'black' })
-        await drawTextOnCanvas(formattedCPF, 50, cpfY, { fontSize: 25, color: 'black' })
+        // Criar composições de texto
+        const textCompositions = []
 
-        // Adicionar foto se existir (lado direito)
+        // Nome
+        const nameSvg = `
+            <svg width="800" height="50">
+                <text x="0" y="35" font-family="Helvetica" font-size="40" font-weight="bold" fill="black" dominant-baseline="alphabetic">${displayName}</text>
+            </svg>`
+        const nameBuffer = await sharp(Buffer.from(nameSvg)).png().toBuffer()
+        textCompositions.push({ input: nameBuffer, left: 50, top: Math.round(nameY) })
+
+        // Data
+        const dateSvg = `
+            <svg width="800" height="25">
+                <text x="0" y="15" font-family="Helvetica" font-size="15" fill="black" dominant-baseline="alphabetic">Habilitado(a) desde ${formattedDate}</text>
+            </svg>`
+        const dateBuffer = await sharp(Buffer.from(dateSvg)).png().toBuffer()
+        textCompositions.push({ input: dateBuffer, left: 50, top: Math.round(dateY) })
+
+        // CPF
+        const cpfSvg = `
+            <svg width="800" height="35">
+                <text x="0" y="25" font-family="Helvetica" font-size="25" fill="black" dominant-baseline="alphabetic">${formattedCPF}</text>
+            </svg>`
+        const cpfBuffer = await sharp(Buffer.from(cpfSvg)).png().toBuffer()
+        textCompositions.push({ input: cpfBuffer, left: 50, top: Math.round(cpfY) })
+
+        // Registro
+        const registroSvg = `
+            <svg width="200" height="25">
+                <text x="0" y="20" font-family="Helvetica" font-size="20" font-weight="bold" fill="black" dominant-baseline="alphabetic">Registro:</text>
+            </svg>`
+        const registroBuffer = await sharp(Buffer.from(registroSvg)).png().toBuffer()
+        textCompositions.push({ input: registroBuffer, left: 50, top: 591 - 75 })
+
+        // Código
+        const codeSvg = `
+            <svg width="300" height="30">
+                <text x="0" y="25" font-family="Helvetica" font-size="25" fill="black" dominant-baseline="alphabetic">${data.cardNumber || 'MAF-TEST-001'}</text>
+            </svg>`
+        const codeBuffer = await sharp(Buffer.from(codeSvg)).png().toBuffer()
+        textCompositions.push({ input: codeBuffer, left: 50, top: 591 - 50 })
+
+        // Aplicar composições de texto
+        cardImage = cardImage.composite(textCompositions)
+
+        // Adicionar foto se existir
         if (data.photoPath) {
             try {
-                // Importar Supabase dinamicamente apenas se necessário
+                // Baixar foto do Supabase
                 const { getServiceSupabase } = await import('@/lib/supabase')
                 const supabase = getServiceSupabase()
-                const { data: photoData, error: photoError } = await supabase.storage
-                    .from('photos')
+
+                const { data: photoData, error } = await supabase.storage
+                    .from('user-photos')
                     .download(data.photoPath)
 
-                if (!photoError && photoData) {
-                    const photoBuffer = await photoData.arrayBuffer()
-                    const originalBuffer = Buffer.from(photoBuffer)
+                if (photoData && !error) {
+                    const photoBuffer = Buffer.from(await photoData.arrayBuffer())
 
-                    // Carregar imagem da foto
-                    const photoImg = await loadImage(originalBuffer)
+                    // Processar foto (cortar para quadrado e redimensionar)
+                    const processedPhoto = await sharp(photoBuffer)
+                        .resize(200, 200, { fit: 'cover', position: 'center' })
+                        .png()
+                        .toBuffer()
 
-                    const photoSize = 250
-                    // Centralizar foto no cartão
-                    const photoX = (width - photoSize) / 2
-                    const photoY = (height - photoSize) / 2
-
-                    // Implementar modo COVER: redimensionar para cobrir toda a área circular
-                    const imgWidth = photoImg.width
-                    const imgHeight = photoImg.height
-                    const aspectRatio = imgWidth / imgHeight
-                    const circleAspectRatio = 1 // Círculo é sempre 1:1
-
-                    let scale, sourceX, sourceY, sourceWidth, sourceHeight
-
-                    if (aspectRatio > circleAspectRatio) {
-                        // Imagem mais larga: cortar nas laterais
-                        scale = photoSize / imgHeight
-                        sourceHeight = imgHeight
-                        sourceWidth = photoSize / scale
-                        sourceX = (imgWidth - sourceWidth) / 2
-                        sourceY = 0
-                    } else {
-                        // Imagem mais alta ou quadrada: cortar em cima/baixo
-                        scale = photoSize / imgWidth
-                        sourceWidth = imgWidth
-                        sourceHeight = photoSize / scale
-                        sourceX = 0
-                        sourceY = (imgHeight - sourceHeight) / 2
-                    }
-
-                    // Desenhar borda circular branca de 5px
-                    ctx.save()
-                    ctx.strokeStyle = 'white'
-                    ctx.lineWidth = 10 // 5px de cada lado = 10px total
-                    ctx.beginPath()
-                    ctx.arc(photoX + photoSize/2, photoY + photoSize/2, photoSize/2 + 5, 0, Math.PI * 2)
-                    ctx.stroke()
-                    ctx.restore()
-
-                    // Criar círculo para máscara
-                    ctx.save()
-                    ctx.beginPath()
-                    ctx.arc(photoX + photoSize/2, photoY + photoSize/2, photoSize/2, 0, Math.PI * 2)
-                    ctx.clip()
-
-                    // Desenhar foto em modo COVER (cortando partes que não couberem)
-                    ctx.imageSmoothingEnabled = true
-                    ctx.drawImage(
-                        photoImg,
-                        sourceX, sourceY, sourceWidth, sourceHeight, // Parte da imagem original
-                        photoX, photoY, photoSize, photoSize // Destino no canvas
-                    )
-                    ctx.restore()
+                    // Posicionar foto (lado direito, centralizada verticalmente)
+                    cardImage = cardImage.composite([{
+                        input: processedPhoto,
+                        left: 1063 - 250,
+                        top: Math.round((591 - 200) / 2)
+                    }])
                 }
-            } catch (photoErr) {
-                console.error('Erro ao carregar foto:', photoErr)
-                // Continua sem a foto em caso de erro
+            } catch (photoError) {
+                console.warn('⚠️ Erro ao processar foto:', photoError)
             }
         }
 
-        // Adicionar QR Code (canto inferior direito)
+        // Gerar QR Code
         try {
-            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://maf-card-system.vercel.app'
-            const qrBuffer = await QRCode.toBuffer(`${baseUrl}/validar/${data.qrToken}`, {
-                width: 180,
+            const qrCodeDataURL = await QRCode.toDataURL(data.qrToken, {
+                width: 150,
                 margin: 1,
-                errorCorrectionLevel: 'M',
-                type: 'png'
+                color: { dark: '#000000', light: '#FFFFFF' }
             })
 
-            // Carregar QR code como imagem
-            const qrImg = await loadImage(qrBuffer)
+            // Converter data URL para buffer
+            const qrBuffer = Buffer.from(qrCodeDataURL.split(',')[1], 'base64')
 
-            const qrX = width - 230  // 180 (tamanho) + 50 (margem) = 230
-            const qrY = height - 230 // 180 (tamanho) + 50 (margem) = 230
-            ctx.drawImage(qrImg, qrX, qrY, 180, 180)
-
+            // Posicionar QR Code (canto inferior direito)
+            cardImage = cardImage.composite([{
+                input: qrBuffer,
+                left: 1063 - 200,
+                top: 591 - 200
+            }])
         } catch (qrError) {
-            console.error('Erro ao gerar QR Code:', qrError)
+            console.warn('⚠️ Erro ao gerar QR Code:', qrError)
         }
 
-        // Adicionar logo MAF no canto superior direito
+        // Adicionar logo MAF
         try {
-            const logoPath = path.join(process.cwd(), 'public', 'logomaf.png')
-            const logoImg = await loadImage(logoPath)
+            const logoPath = path.join(process.cwd(), 'public', 'logo-maf.png')
+            if (fs.existsSync(logoPath)) {
+                const logoBuffer = await sharp(logoPath)
+                    .resize(100, 100, { fit: 'inside' })
+                    .png()
+                    .toBuffer()
 
-            // Definir tamanho da logo (2x maior)
-            const logoSize = 160
-            const logoX = width - logoSize - 40 // 40px de margem da borda direita (afastada)
-            const logoY = 20 // 20px do topo
-
-            ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize)
-
+                // Posicionar logo (canto superior direito)
+                cardImage = cardImage.composite([{
+                    input: logoBuffer,
+                    left: 1063 - 120,
+                    top: 20
+                }])
+            }
         } catch (logoError) {
-            console.error('Erro ao carregar logo MAF:', logoError)
+            console.warn('⚠️ Erro ao adicionar logo:', logoError)
         }
 
-        // Adicionar código do usuário no canto inferior esquerdo
-        await drawTextOnCanvas('Registro:', 50, height - 75, { fontSize: 20, fontWeight: 'bold', color: 'black' })
-        await drawTextOnCanvas(data.cardNumber || 'MAF-TEST-001', 50, height - 50, { fontSize: 25, color: 'black' })
+        // Converter para PNG
+        const finalBuffer = await cardImage.png().toBuffer()
 
-        // Retornar buffer do canvas
-        return canvas.toBuffer('image/png')
+        console.log(`✅ Cartão gerado com sucesso! Tamanho: ${finalBuffer.length} bytes`)
+        return finalBuffer
+
     } catch (error) {
-        console.error('Erro em generateCardPNG:', error)
+        console.error('❌ Erro ao gerar cartão:', error)
         throw error
     }
 }
