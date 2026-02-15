@@ -185,11 +185,8 @@ export async function generateCardPNG(data: {
                 const textImage = await loadImage(textBuffer)
                 ctx.drawImage(textImage, x, y - options.fontSize)
             } catch (error) {
-                console.warn('⚠️ Erro ao renderizar texto, usando fallback:', text)
-                // Fallback: desenhar texto diretamente (pode causar Fontconfig warning)
-                ctx.font = `${options.fontWeight || 'normal'} ${options.fontSize}px Arial`
-                ctx.fillStyle = color
-                ctx.fillText(text, x, y)
+                console.error('❌ Erro crítico ao renderizar texto:', text, error)
+                throw new Error(`Falha ao renderizar texto: ${text}`)
             }
         }
 
