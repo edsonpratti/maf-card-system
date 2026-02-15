@@ -2,6 +2,9 @@ import { generateCardPNG } from '../lib/pdf-generator'
 import * as fs from 'fs'
 import * as path from 'path'
 
+// Carregar variáveis de ambiente
+require('dotenv').config({ path: path.join(process.cwd(), '.env.local') })
+
 async function testCardVercel() {
     try {
         // Simular ambiente Vercel
@@ -15,7 +18,7 @@ async function testCardVercel() {
             cpf: '12345678901',
             cardNumber: 'MAF-2024-001',
             qrToken: 'test-token-123',
-            photoPath: null,
+            photoPath: null, // Teste sem foto
             certificationDate: '2024-01-15T00:00:00Z'
         }
 

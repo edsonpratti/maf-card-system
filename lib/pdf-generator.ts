@@ -43,12 +43,117 @@ export async function generateCardPNG(data: {
         const canvas = createCanvas(width, height)
         const ctx = canvas.getContext('2d')
 
+        // Configurar máxima qualidade para renderização
+        ctx.imageSmoothingEnabled = true
+        // ctx.imageSmoothingQuality = 'high' // Not available in all Canvas implementations
+
         // Carregar imagem de fundo
         const backgroundPath = path.join(process.cwd(), 'public', 'padrao_fundo_carteira.png')
         const backgroundImage = await loadImage(backgroundPath)
 
         // Desenhar imagem de fundo
         ctx.drawImage(backgroundImage, 0, 0, width, height)
+
+        // Adicionar foto se existir (ANTES dos textos para não ser coberta)
+        if (data.photoPath) {
+            try {
+                let photoBuffer: Buffer | null = null
+
+                // Verificar se é um caminho local (para testes) ou do Supabase
+                let triedLocal = false
+
+                // Primeiro tentar como local (para testes)
+                if (data.photoPath && !data.photoPath.startsWith('http')) {
+                    const localPhotoPath = path.join(process.cwd(), 'public', data.photoPath)
+                    if (fs.existsSync(localPhotoPath)) {
+                        photoBuffer = fs.readFileSync(localPhotoPath)
+                        console.log('📸 Usando foto local para teste:', localPhotoPath)
+                        triedLocal = true
+                    }
+                }
+
+                // Se não conseguiu carregar como local, tentar do Supabase
+                if (!photoBuffer && data.photoPath && !data.photoPath.startsWith('http')) {
+                    const { createClient } = await import('@supabase/supabase-js')
+                    const supabase = createClient(
+                        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+                    )
+
+                    const { data: photoData, error } = await supabase.storage
+                        .from('photos')
+                        .download(data.photoPath)
+
+                    if (photoData && !error) {
+                        photoBuffer = Buffer.from(await photoData.arrayBuffer())
+                        console.log('📸 Usando foto do Supabase:', data.photoPath)
+                    } else {
+                        console.warn('⚠️ Foto não encontrada no Supabase:', error?.message || 'Erro desconhecido')
+                    }
+                }
+
+                // Only process photo if buffer was loaded successfully
+                if (photoBuffer) {
+                    // Carregar imagem da foto
+                    const photoImg = await loadImage(photoBuffer)
+
+                    const photoSize = 260
+                    // Centralizar foto horizontal e verticalmente no cartão
+                    const photoX = (width - photoSize) / 2  // Centralizado horizontalmente
+                    const photoY = (height - photoSize) / 2  // Centralizado verticalmente
+
+                    // Desenhar borda branca de 5px ao redor da foto
+                    ctx.save()
+                    ctx.strokeStyle = 'white'
+                    ctx.lineWidth = 10  // 5px de cada lado = 10px total
+                    ctx.beginPath()
+                    ctx.arc(photoX + photoSize/2, photoY + photoSize/2, photoSize/2 + 5, 0, Math.PI * 2)
+                    ctx.stroke()
+                    ctx.restore()
+
+                    // Implementar modo COVER: cortar imagem para preencher o círculo mantendo proporção
+                    const imgWidth = photoImg.width
+                    const imgHeight = photoImg.height
+                    const imgAspectRatio = imgWidth / imgHeight
+                    const circleAspectRatio = 1 // Círculo é sempre 1:1
+
+                    let sourceX, sourceY, sourceWidth, sourceHeight
+
+                    if (imgAspectRatio > circleAspectRatio) {
+                        // Imagem mais larga: cortar nas laterais
+                        sourceHeight = imgHeight
+                        sourceWidth = imgHeight // Quadrado baseado na altura
+                        sourceX = (imgWidth - sourceWidth) / 2
+                        sourceY = 0
+                    } else {
+                        // Imagem mais alta ou quadrada: cortar em cima/baixo
+                        sourceWidth = imgWidth
+                        sourceHeight = imgWidth // Quadrado baseado na largura
+                        sourceX = 0
+                        sourceY = (imgHeight - sourceHeight) / 2
+                    }
+
+                    // Criar máscara circular para a foto
+                    ctx.save()
+                    ctx.beginPath()
+                    ctx.arc(photoX + photoSize/2, photoY + photoSize/2, photoSize/2, 0, Math.PI * 2)
+                    ctx.clip()
+
+                    // Desenhar foto em modo COVER (cortando partes que não couberem)
+                    ctx.drawImage(
+                        photoImg,
+                        sourceX, sourceY, sourceWidth, sourceHeight, // Parte da imagem original
+                        photoX, photoY, photoSize, photoSize // Destino no canvas
+                    )
+                    ctx.restore()
+
+                    console.log('✅ Foto circular (modo cover) com borda branca adicionada ao cartão')
+                } // Close if (photoBuffer)
+
+            } catch (photoError) {
+                console.warn('⚠️ Erro ao processar foto:', photoError)
+            }
+        }
 
         // Função para renderizar texto usando Sharp (evita problemas de Fontconfig)
         async function drawTextOnCanvas(text: string, x: number, y: number, options: {
@@ -95,50 +200,64 @@ export async function generateCardPNG(data: {
             : 'Data não informada'
         const formattedCPF = data.cpf && data.cpf.trim() ? formatCPF(data.cpf) : 'CPF não informado'
 
+        // Função para quebrar texto em linhas baseado na largura máxima
+        function breakTextIntoLines(text: string, maxWidth: number, fontSize: number): string[] {
+            const words = text.split(' ')
+            const lines: string[] = []
+            let currentLine = ''
+
+            for (const word of words) {
+                const testLine = currentLine ? `${currentLine} ${word}` : word
+                // Estimativa aproximada da largura (caractere médio * tamanho da fonte)
+                const estimatedWidth = testLine.length * fontSize * 0.6
+
+                if (estimatedWidth <= maxWidth && currentLine) {
+                    currentLine = testLine
+                } else if (estimatedWidth <= maxWidth) {
+                    currentLine = word
+                } else {
+                    // Palavra muito longa, forçar quebra
+                    if (currentLine) {
+                        lines.push(currentLine)
+                    }
+                    currentLine = word
+                }
+            }
+
+            if (currentLine) {
+                lines.push(currentLine)
+            }
+
+            return lines
+        }
+
         // Calcular posições com espaçamento personalizado
-        const nameToDateSpacing = 30  // Espaçamento nome → data
+        const nameToDateSpacing = -5  // Espaçamento nome → data: -5px (sobreposição)
         const dateToCpfSpacing = 45   // Espaçamento data → CPF
         const centerY = height / 2
 
-        // Centralizar o bloco de texto considerando espaçamentos diferentes
-        const nameY = centerY - (nameToDateSpacing / 2) - dateToCpfSpacing
-        const dateY = nameY + nameToDateSpacing
+        // Largura máxima para o nome: 35% do cartão
+        const maxNameWidth = Math.floor(width * 0.35) // 35% da largura = ~372px
+
+        // Quebrar nome em linhas se necessário
+        const nameLines = breakTextIntoLines(displayName, maxNameWidth, 40)
+        const lineHeight = 45 // Altura de linha para texto em negrito
+
+        // Calcular posição Y inicial do nome (ajustar se múltiplas linhas)
+        const nameBlockHeight = nameLines.length * lineHeight
+        const nameY = centerY - (nameToDateSpacing / 2) - dateToCpfSpacing - (nameBlockHeight - lineHeight) / 2
+        const dateY = nameY + nameBlockHeight + nameToDateSpacing
         const cpfY = dateY + dateToCpfSpacing
 
-        // Renderizar textos
-        await drawTextOnCanvas(displayName, 50, nameY, { fontSize: 40, fontWeight: 'bold', color: 'black' })
+        // Renderizar nome (possivelmente múltiplas linhas)
+        for (let i = 0; i < nameLines.length; i++) {
+            const lineY = nameY + (i * lineHeight)
+            await drawTextOnCanvas(nameLines[i], 50, lineY, { fontSize: 40, fontWeight: 'bold', color: 'black' })
+        }
+
+        // Renderizar textos restantes
         await drawTextOnCanvas(`Habilitado(a) desde ${formattedDate}`, 50, dateY, { fontSize: 15, color: 'black' })
         await drawTextOnCanvas(formattedCPF, 50, cpfY, { fontSize: 25, color: 'black' })
-
-        // Adicionar foto se existir
-        if (data.photoPath) {
-            try {
-                // Baixar foto do Supabase
-                const { getServiceSupabase } = await import('@/lib/supabase')
-                const supabase = getServiceSupabase()
-
-                const { data: photoData, error } = await supabase.storage
-                    .from('user-photos')
-                    .download(data.photoPath)
-
-                if (photoData && !error) {
-                    const photoBuffer = Buffer.from(await photoData.arrayBuffer())
-
-                    // Carregar imagem da foto
-                    const photoImg = await loadImage(photoBuffer)
-
-                    const photoSize = 200
-                    // Centralizar foto no lado direito
-                    const photoX = width - photoSize - 50
-                    const photoY = (height - photoSize) / 2
-
-                    // Desenhar foto
-                    ctx.drawImage(photoImg, photoX, photoY, photoSize, photoSize)
-                }
-            } catch (photoError) {
-                console.warn('⚠️ Erro ao processar foto:', photoError)
-            }
-        }
 
         // Adicionar QR Code
         try {
@@ -153,7 +272,7 @@ export async function generateCardPNG(data: {
             const qrImg = await loadImage(qrBuffer)
 
             const qrX = width - 200
-            const qrY = height - 200
+            const qrY = height - 180  // Ajustado para não sobrepor a foto
             ctx.drawImage(qrImg, qrX, qrY, 150, 150)
         } catch (qrError) {
             console.warn('⚠️ Erro ao gerar QR Code:', qrError)
@@ -161,16 +280,19 @@ export async function generateCardPNG(data: {
 
         // Adicionar logo MAF
         try {
-            const logoPath = path.join(process.cwd(), 'public', 'logo-maf.png')
+            const logoPath = path.join(process.cwd(), 'public', 'logomaf.png')
             if (fs.existsSync(logoPath)) {
                 const logoImg = await loadImage(logoPath)
 
-                // Definir tamanho da logo
-                const logoSize = 100
-                const logoX = width - logoSize - 20
-                const logoY = 20
+                // Definir tamanho da logo mantendo proporção (1980x1169 ≈ 1.69:1)
+                const logoWidth = 150
+                const logoHeight = Math.round(logoWidth / 1.69) // ≈ 89px
+                const logoX = width - logoWidth - 50  // 50px da borda direita
+                const logoY = 50  // 50px do topo
 
-                ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize)
+                ctx.drawImage(logoImg, logoX, logoY, logoWidth, logoHeight)
+            } else {
+                console.warn('⚠️ Arquivo de logo não encontrado:', logoPath)
             }
         } catch (logoError) {
             console.warn('⚠️ Erro ao adicionar logo:', logoError)
