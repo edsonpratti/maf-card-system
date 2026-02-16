@@ -25,190 +25,69 @@ export async function generateCardPNG(data: {
     certificationDate?: string | null
 }) {
     try {
-        // Verificar se estamos no Vercel (ambiente de produção)
-        const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV !== undefined
-
-        console.log('ℹ️ Ambiente detectado - usando abordagem híbrida' + (isVercel ? ' (Vercel)' : ' (Local)'))
-
-        // Abordagem híbrida: Canvas para elementos gráficos, Sharp para composição
-        const { createCanvas, loadImage } = await import('canvas')
         const fs = await import('fs')
         const path = await import('path')
+
+        console.log('ℹ️ Usando abordagem 100% Sharp (sem Canvas)')
 
         // Dimensões do cartão: 1063 × 591 pixels
         const width = 1063
         const height = 591
 
-        // Criar canvas para elementos gráficos (fundo, foto, QR)
-        const canvas = createCanvas(width, height)
-        const ctx = canvas.getContext('2d')
+        // Carregar fontes TTF como base64
+        const fontRegularPath = path.join(process.cwd(), 'public', 'fonts', 'montserrat-regular.ttf')
+        const fontBoldPath = path.join(process.cwd(), 'public', 'fonts', 'montserrat-bold.ttf')
+        const fontRegularBase64 = fs.readFileSync(fontRegularPath).toString('base64')
+        const fontBoldBase64 = fs.readFileSync(fontBoldPath).toString('base64')
 
-        // Configurar máxima qualidade para renderização
-        ctx.imageSmoothingEnabled = true
-        // ctx.imageSmoothingQuality = 'high' // Not available in all Canvas implementations
-
-        // Carregar imagem de fundo
+        // Preparar imagem de fundo como base
         const backgroundPath = path.join(process.cwd(), 'public', 'padrao_fundo_carteira.png')
-        const backgroundImage = await loadImage(backgroundPath)
+        let base = sharp(backgroundPath).resize(width, height)
 
-        // Desenhar imagem de fundo
-        ctx.drawImage(backgroundImage, 0, 0, width, height)
+        // Array de composições (overlays)
+        const composites: any[] = []
 
-        // Adicionar foto se existir (ANTES dos textos para não ser coberta)
-        if (data.photoPath) {
-            try {
-                let photoBuffer: Buffer | null = null
-
-                // Verificar se é um caminho local (para testes) ou do Supabase
-                let triedLocal = false
-
-                // Primeiro tentar como local (para testes)
-                if (data.photoPath && !data.photoPath.startsWith('http')) {
-                    const localPhotoPath = path.join(process.cwd(), 'public', data.photoPath)
-                    if (fs.existsSync(localPhotoPath)) {
-                        photoBuffer = fs.readFileSync(localPhotoPath)
-                        console.log('📸 Usando foto local para teste:', localPhotoPath)
-                        triedLocal = true
-                    }
-                }
-
-                // Se não conseguiu carregar como local, tentar do Supabase
-                if (!photoBuffer && data.photoPath && !data.photoPath.startsWith('http')) {
-                    const { createClient } = await import('@supabase/supabase-js')
-                    const supabase = createClient(
-                        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-                    )
-
-                    const { data: photoData, error } = await supabase.storage
-                        .from('photos')
-                        .download(data.photoPath)
-
-                    if (photoData && !error) {
-                        photoBuffer = Buffer.from(await photoData.arrayBuffer())
-                        console.log('📸 Usando foto do Supabase:', data.photoPath)
-                    } else {
-                        console.warn('⚠️ Foto não encontrada no Supabase:', error?.message || 'Erro desconhecido')
-                    }
-                }
-
-                // Only process photo if buffer was loaded successfully
-                if (photoBuffer) {
-                    // Carregar imagem da foto
-                    const photoImg = await loadImage(photoBuffer)
-
-                    const photoSize = 260
-                    // Centralizar foto horizontal e verticalmente no cartão
-                    const photoX = (width - photoSize) / 2  // Centralizado horizontalmente
-                    const photoY = (height - photoSize) / 2  // Centralizado verticalmente
-
-                    // Desenhar borda branca de 5px ao redor da foto
-                    ctx.save()
-                    ctx.strokeStyle = 'white'
-                    ctx.lineWidth = 10  // 5px de cada lado = 10px total
-                    ctx.beginPath()
-                    ctx.arc(photoX + photoSize/2, photoY + photoSize/2, photoSize/2 + 5, 0, Math.PI * 2)
-                    ctx.stroke()
-                    ctx.restore()
-
-                    // Implementar modo COVER: cortar imagem para preencher o círculo mantendo proporção
-                    const imgWidth = photoImg.width
-                    const imgHeight = photoImg.height
-                    const imgAspectRatio = imgWidth / imgHeight
-                    const circleAspectRatio = 1 // Círculo é sempre 1:1
-
-                    let sourceX, sourceY, sourceWidth, sourceHeight
-
-                    if (imgAspectRatio > circleAspectRatio) {
-                        // Imagem mais larga: cortar nas laterais
-                        sourceHeight = imgHeight
-                        sourceWidth = imgHeight // Quadrado baseado na altura
-                        sourceX = (imgWidth - sourceWidth) / 2
-                        sourceY = 0
-                    } else {
-                        // Imagem mais alta ou quadrada: cortar em cima/baixo
-                        sourceWidth = imgWidth
-                        sourceHeight = imgWidth // Quadrado baseado na largura
-                        sourceX = 0
-                        sourceY = (imgHeight - sourceHeight) / 2
-                    }
-
-                    // Criar máscara circular para a foto
-                    ctx.save()
-                    ctx.beginPath()
-                    ctx.arc(photoX + photoSize/2, photoY + photoSize/2, photoSize/2, 0, Math.PI * 2)
-                    ctx.clip()
-
-                    // Desenhar foto em modo COVER (cortando partes que não couberem)
-                    ctx.drawImage(
-                        photoImg,
-                        sourceX, sourceY, sourceWidth, sourceHeight, // Parte da imagem original
-                        photoX, photoY, photoSize, photoSize // Destino no canvas
-                    )
-                    ctx.restore()
-
-                    console.log('✅ Foto circular (modo cover) com borda branca adicionada ao cartão')
-                } // Close if (photoBuffer)
-
-            } catch (photoError) {
-                console.warn('⚠️ Erro ao processar foto:', photoError)
-            }
-        }
-
-        // Função para renderizar texto usando Sharp com fonte embutida (elimina dependência de Fontconfig)
-        async function drawTextOnCanvas(text: string, x: number, y: number, options: {
-            fontSize: number;
-            fontWeight?: string;
-            color?: string;
-        }) {
-            const fontWeight = options.fontWeight === 'bold' ? '700' : '400'
-            const color = options.color || 'black'
-
-            // Fonte embutida em base64 (Roboto Regular subset mínimo)
-            // Esta é uma fonte sans-serif básica embutida para evitar dependências do sistema
-            const embeddedFont = `
-                @font-face {
-                    font-family: 'EmbeddedFont';
-                    src: url('data:font/woff2;base64,d09GMgABAAAAABEIAA8AAAAAJRQAABDuAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGhYbg2gcMAZgAIEoCBEICo1Ui0oLNgABNgIkA0QEIAWDcAcgDIFNG6oUS1FGcLD7xwM3sY0SBuZEj4j/v1/be+6byfz/TMhESrxD9ExCJRGSnSPRRKMSKkP+P/fl9v03M1GR/P///9R69X+yE0UhERK1CJVFN6F1qG+4vv+/5t3Zd7OOiEhCNJpMJkQiSfxPfr8PbKdRLxAqL5E8fRKJd5+ZzWz2zX/3//fVnXln9u7dZvP+zP/f/59/5v/P/5+Z/z8z8//M/P+Z+f8z8/9n5v/PzP+fmf8/M/9/Zv7/zPz/mfn/M/P/Z+b/z8z/n5n/PzP/f2b+/8z8/5n5/zPz/2fm/8/M/5+Z/z8z/5+Z/5+Z/5+Z/5+Z/5+Z/5+Z/5+Z/5+Z/5+Z/5+Z/5+Z/5+Z/z8z/39m/v/M/P+Z+f8z8/9n5v/PzP+fmf8/M/9/Zv7/zPz/mfn/M/P/Z+b/z8z/n5n/PzP/f2b+/8z8/5n5/zPz/2fm/8/M/P+Z+f8z8/9n5v/PzP+fmf8/M/9/Zv7/zPz/mfn/M/P/Z+b/z8z/n5n/PzP/f2b+/8z8/5n5/zPz/2fm/8/M/5+Z/z8z/39m/v/M/P+Z+f8z8/9n5v/PzP+fmf8/M/9/Zv7/zPz/mfn/M/P/Z+b/z8z/n5n/PzP/f2b+/8z8/5n5/zPz/2fm/8/M/5+Z/z8z/39m/v/M/P+Z+f8z8/9n5v/PzP+fmf8/M/w==') format('woff2');
-                    font-weight: 400 700;
-                }
-            `
-
-            // Criar SVG com fonte embutida
-            const svgText = `
-                <svg width="${text.length * options.fontSize * 0.6}" height="${options.fontSize + 10}" xmlns="http://www.w3.org/2000/svg">
+        // Função auxiliar para criar SVG de texto com fonte embutida
+        function createTextSVG(
+            text: string,
+            fontSize: number,
+            fontWeight: 'normal' | 'bold',
+            color: string,
+            options?: { width?: number; align?: 'left' | 'right' }
+        ): string {
+            const fontBase64 = fontWeight === 'bold' ? fontBoldBase64 : fontRegularBase64
+            const estimatedWidth = Math.max(Math.ceil(text.length * fontSize * 0.65), fontSize * 2)
+            const svgWidth = options?.width ? Math.max(options.width, estimatedWidth) : estimatedWidth
+            const align = options?.align || 'left'
+            const textX = align === 'right' ? svgWidth - 2 : 0
+            const textAnchor = align === 'right' ? 'end' : 'start'
+            const safeText = text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;')
+            
+            return `
+                <svg width="${svgWidth}" height="${fontSize + 20}" xmlns="http://www.w3.org/2000/svg">
                     <defs>
-                        <style>${embeddedFont}</style>
+                        <style>
+                            @font-face {
+                                font-family: 'Montserrat';
+                                src: url("data:font/ttf;base64,${fontBase64}") format('truetype');
+                                font-weight: ${fontWeight === 'bold' ? '700' : '400'};
+                            }
+                        </style>
                     </defs>
-                    <text x="0" y="${options.fontSize}"
-                          font-family="EmbeddedFont, sans-serif"
-                          font-size="${options.fontSize}"
-                          font-weight="${fontWeight}"
-                          fill="${color}">${text}</text>
+                      <text x="${textX}" y="${fontSize}" 
+                          font-family="Montserrat, sans-serif" 
+                          font-size="${fontSize}" 
+                          font-weight="${fontWeight === 'bold' ? '700' : '400'}"
+                          text-anchor="${textAnchor}"
+                          fill="${color}">${safeText}</text>
                 </svg>
             `
-
-            try {
-                // Converter SVG para PNG usando Sharp (sem depender de fontes do sistema)
-                const textBuffer = await sharp(Buffer.from(svgText))
-                    .png()
-                    .toBuffer()
-
-                // Carregar como imagem e desenhar no Canvas
-                const textImage = await loadImage(textBuffer)
-                ctx.drawImage(textImage, x, y - options.fontSize)
-            } catch (error) {
-                console.error('❌ Erro crítico ao renderizar texto:', text, error)
-                throw new Error(`Falha ao renderizar texto: ${text}`)
-            }
         }
-
-        // Adicionar textos usando Sharp (evita problemas de Fontconfig)
-        const displayName = data.name && data.name.trim() ? data.name : 'Nome não informado'
-        const formattedDate = data.certificationDate
-            ? new Date(data.certificationDate).toLocaleDateString('pt-BR')
-            : 'Data não informada'
-        const formattedCPF = data.cpf && data.cpf.trim() ? formatCPF(data.cpf) : 'CPF não informado'
 
         // Função para quebrar texto em linhas baseado na largura máxima
         function breakTextIntoLines(text: string, maxWidth: number, fontSize: number): string[] {
@@ -218,7 +97,6 @@ export async function generateCardPNG(data: {
 
             for (const word of words) {
                 const testLine = currentLine ? `${currentLine} ${word}` : word
-                // Estimativa aproximada da largura (caractere médio * tamanho da fonte)
                 const estimatedWidth = testLine.length * fontSize * 0.6
 
                 if (estimatedWidth <= maxWidth && currentLine) {
@@ -226,7 +104,6 @@ export async function generateCardPNG(data: {
                 } else if (estimatedWidth <= maxWidth) {
                     currentLine = word
                 } else {
-                    // Palavra muito longa, forçar quebra
                     if (currentLine) {
                         lines.push(currentLine)
                     }
@@ -241,49 +118,173 @@ export async function generateCardPNG(data: {
             return lines
         }
 
-        // Calcular posições com espaçamento personalizado
-        const nameToDateSpacing = -5  // Espaçamento nome → data: -5px (sobreposição)
-        const dateToCpfSpacing = 45   // Espaçamento data → CPF
-        const centerY = height / 2
+        // Processar foto se existir
+        if (data.photoPath) {
+            try {
+                let photoBuffer: Buffer | null = null
 
-        // Largura máxima para o nome: 35% do cartão
-        const maxNameWidth = Math.floor(width * 0.35) // 35% da largura = ~372px
+                // Tentar carregar foto local primeiro (para testes)
+                if (data.photoPath && !data.photoPath.startsWith('http')) {
+                    const localPhotoPath = path.join(process.cwd(), 'public', data.photoPath)
+                    if (fs.existsSync(localPhotoPath)) {
+                        photoBuffer = fs.readFileSync(localPhotoPath)
+                        console.log('📸 Usando foto local:', localPhotoPath)
+                    }
+                }
+
+                // Se não encontrou local, tentar Supabase
+                if (!photoBuffer && data.photoPath && !data.photoPath.startsWith('http')) {
+                    const { createClient } = await import('@supabase/supabase-js')
+                    const supabase = createClient(
+                        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+                    )
+
+                    const { data: photoData, error } = await supabase.storage
+                        .from('photos')
+                        .download(data.photoPath)
+
+                    if (photoData && !error) {
+                        photoBuffer = Buffer.from(await photoData.arrayBuffer())
+                        console.log('📸 Usando foto do Supabase:', data.photoPath)
+                    }
+                }
+
+                if (photoBuffer) {
+                    const photoSize = 260
+                    const photoX = Math.round((width - photoSize) / 2)
+                    const photoY = Math.round((height - photoSize) / 2)
+
+                    // Criar máscara circular SVG
+                    const circleMask = Buffer.from(`
+                        <svg width="${photoSize}" height="${photoSize}">
+                            <circle cx="${photoSize/2}" cy="${photoSize/2}" r="${photoSize/2}" fill="white"/>
+                        </svg>
+                    `)
+
+                    // Processar foto: resize + crop cover + máscara circular
+                    const circularPhoto = await sharp(photoBuffer)
+                        .resize(photoSize, photoSize, {
+                            fit: 'cover',
+                            position: 'center'
+                        })
+                        .composite([{
+                            input: circleMask,
+                            blend: 'dest-in'
+                        }])
+                        .png()
+                        .toBuffer()
+
+                    // Criar borda branca (anel SVG)
+                    const whiteBorder = Buffer.from(`
+                        <svg width="${photoSize + 20}" height="${photoSize + 20}">
+                            <circle cx="${(photoSize + 20)/2}" cy="${(photoSize + 20)/2}" 
+                                    r="${photoSize/2 + 5}" 
+                                    fill="none" 
+                                    stroke="white" 
+                                    stroke-width="10"/>
+                        </svg>
+                    `)
+
+                    // Adicionar borda e foto aos composites
+                    composites.push({
+                        input: await sharp(whiteBorder).png().toBuffer(),
+                        left: photoX - 10,
+                        top: photoY - 10
+                    })
+                    composites.push({
+                        input: circularPhoto,
+                        left: photoX,
+                        top: photoY
+                    })
+
+                    console.log('✅ Foto circular com borda adicionada')
+                }
+            } catch (photoError) {
+                console.warn('⚠️ Erro ao processar foto:', photoError)
+            }
+        }
+
+        // Preparar textos
+        const displayName = data.name && data.name.trim() ? data.name : 'Nome não informado'
+        const formattedDate = data.certificationDate
+            ? new Date(data.certificationDate).toLocaleDateString('pt-BR')
+            : 'Data não informada'
+        const formattedCPF = data.cpf && data.cpf.trim() ? formatCPF(data.cpf) : 'CPF não informado'
+
+        // Calcular posições com espaçamento personalizado
+        const nameToDateSpacing = 1
+        const dateToCpfSpacing = 20
+        const centerY = height / 2
+        const textBlockLeft = 50
+        const maxNameWidth = Math.floor(width * 0.30)
 
         // Quebrar nome em linhas se necessário
         const nameLines = breakTextIntoLines(displayName, maxNameWidth, 40)
-        const lineHeight = 45 // Altura de linha para texto em negrito
+        const nameFontSize = 40
+        const dateFontSize = 15
+        const cpfFontSize = 25
+        const lineHeight = nameFontSize + 10 // Altura da linha = tamanho da fonte + espaço
 
-        // Calcular posição Y inicial do nome (ajustar se múltiplas linhas)
+        // Calcular posições Y (arredondar para inteiros)
         const nameBlockHeight = nameLines.length * lineHeight
-        const nameY = centerY - (nameToDateSpacing / 2) - dateToCpfSpacing - (nameBlockHeight - lineHeight) / 2
-        const dateY = nameY + nameBlockHeight + nameToDateSpacing
-        const cpfY = dateY + dateToCpfSpacing
+        const nameY = Math.round(centerY - (nameBlockHeight / 2) - 30)
+        const dateY = Math.round(nameY + nameBlockHeight + nameToDateSpacing)
+        const cpfY = Math.round(dateY + dateFontSize + dateToCpfSpacing)
 
-        // Renderizar nome (possivelmente múltiplas linhas)
+        // Adicionar textos do nome (múltiplas linhas se necessário)
         for (let i = 0; i < nameLines.length; i++) {
-            const lineY = nameY + (i * lineHeight)
-            await drawTextOnCanvas(nameLines[i], 50, lineY, { fontSize: 40, fontWeight: 'bold', color: 'black' })
+            const lineY = Math.round(nameY + (i * lineHeight))
+            const nameSvg = createTextSVG(nameLines[i], nameFontSize, 'bold', 'black', {
+                width: maxNameWidth,
+                align: 'right'
+            })
+            composites.push({
+                input: await sharp(Buffer.from(nameSvg)).png().toBuffer(),
+                left: textBlockLeft,
+                top: lineY
+            })
         }
 
-        // Renderizar textos restantes
-        await drawTextOnCanvas(`Habilitado(a) desde ${formattedDate}`, 50, dateY, { fontSize: 15, color: 'black' })
-        await drawTextOnCanvas(formattedCPF, 50, cpfY, { fontSize: 25, color: 'black' })
+        // Adicionar texto da data
+        const dateSvg = createTextSVG(`Habilitado(a) desde ${formattedDate}`, dateFontSize, 'normal', 'black', {
+            width: maxNameWidth,
+            align: 'right'
+        })
+        composites.push({
+            input: await sharp(Buffer.from(dateSvg)).png().toBuffer(),
+            left: textBlockLeft,
+            top: dateY
+        })
+
+        // Adicionar texto do CPF
+        const cpfSvg = createTextSVG(formattedCPF, cpfFontSize, 'normal', 'black', {
+            width: maxNameWidth,
+            align: 'right'
+        })
+        composites.push({
+            input: await sharp(Buffer.from(cpfSvg)).png().toBuffer(),
+            left: textBlockLeft,
+            top: cpfY
+        })
+
+        const edgeMargin = 50
 
         // Adicionar QR Code
         try {
+            const qrSize = 150
             const qrBuffer = await QRCode.toBuffer(data.qrToken, {
-                width: 150,
+                width: qrSize,
                 margin: 1,
                 errorCorrectionLevel: 'M',
                 type: 'png'
             })
 
-            // Carregar QR code como imagem
-            const qrImg = await loadImage(qrBuffer)
-
-            const qrX = width - 200
-            const qrY = height - 180  // Ajustado para não sobrepor a foto
-            ctx.drawImage(qrImg, qrX, qrY, 150, 150)
+            composites.push({
+                input: qrBuffer,
+                left: width - edgeMargin - qrSize,
+                top: height - edgeMargin - qrSize
+            })
         } catch (qrError) {
             console.warn('⚠️ Erro ao gerar QR Code:', qrError)
         }
@@ -292,28 +293,41 @@ export async function generateCardPNG(data: {
         try {
             const logoPath = path.join(process.cwd(), 'public', 'logomaf.png')
             if (fs.existsSync(logoPath)) {
-                const logoImg = await loadImage(logoPath)
-
-                // Definir tamanho da logo mantendo proporção (1980x1169 ≈ 1.69:1)
                 const logoWidth = 150
-                const logoHeight = Math.round(logoWidth / 1.69) // ≈ 89px
-                const logoX = width - logoWidth - 50  // 50px da borda direita
-                const logoY = 50  // 50px do topo
+                const logoHeight = 89
+                const logoBuffer = await sharp(logoPath)
+                    .resize(logoWidth, logoHeight)
+                    .png()
+                    .toBuffer()
 
-                ctx.drawImage(logoImg, logoX, logoY, logoWidth, logoHeight)
-            } else {
-                console.warn('⚠️ Arquivo de logo não encontrado:', logoPath)
+                composites.push({
+                    input: logoBuffer,
+                    left: width - edgeMargin - logoWidth,
+                    top: edgeMargin
+                })
             }
         } catch (logoError) {
             console.warn('⚠️ Erro ao adicionar logo:', logoError)
         }
 
         // Adicionar textos do rodapé
-        await drawTextOnCanvas('Registro:', 50, height - 75, { fontSize: 20, fontWeight: 'bold', color: 'black' })
-        await drawTextOnCanvas(data.cardNumber || 'MAF-TEST-001', 50, height - 50, { fontSize: 25, color: 'black' })
+        const footerLabel = createTextSVG('Registro:', 20, 'bold', 'black')
+        const footerLabelTop = height - 95
+        composites.push({
+            input: await sharp(Buffer.from(footerLabel)).png().toBuffer(),
+            left: edgeMargin,
+            top: footerLabelTop
+        })
 
-        // Retornar buffer do canvas
-        return canvas.toBuffer('image/png')
+        const footerValue = createTextSVG(data.cardNumber || 'MAF-TEST-001', 25, 'normal', 'black')
+        composites.push({
+            input: await sharp(Buffer.from(footerValue)).png().toBuffer(),
+            left: edgeMargin,
+            top: footerLabelTop + 25
+        })
+
+        // Compor todas as camadas e retornar
+        return await base.composite(composites).png().toBuffer()
 
     } catch (error) {
         console.error('❌ Erro ao gerar cartão:', error)
