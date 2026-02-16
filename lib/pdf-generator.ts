@@ -77,26 +77,30 @@ export async function generateCardPNG(data: {
         const fontRegularBase64 = fs.readFileSync(fontRegularPath).toString('base64')
         const fontBoldBase64 = fs.readFileSync(fontBoldPath).toString('base64')
 
-        // Renderizar SVG->PNG de forma estável no Vercel (sem depender de fontconfig/librsvg)
-        // Preferimos @resvg/resvg-js (WASM) porque permite carregar fontes TTF explicitamente.
-        async function renderSvgToPng(svg: string, width?: number): Promise<Buffer> {
+        async function renderSvgToPng(svg: string, targetWidth?: number): Promise<Buffer> {
             try {
-                const { Resvg } = await import('@resvg/resvg-js')
+                const req = eval('require') as NodeRequire
+                const { Resvg } = req('@resvg/resvg-js')
+
                 const resvg = new Resvg(svg, {
-                    // Carrega apenas as fontes do projeto (Montserrat) e evita fontes do sistema
                     font: {
                         fontFiles: [fontRegularPath, fontBoldPath],
                         loadSystemFonts: false,
                     },
-                    // Opcional: garante largura mínima quando fornecida
-                    ...(width ? { fitTo: { mode: 'width', value: width } } : {}),
                 } as any)
 
-                const pngData = resvg.render()
-                return Buffer.from(pngData.asPng())
+                const rendered = resvg.render()
+                let png = Buffer.from(rendered.asPng())
+
+                if (targetWidth) {
+                    png = await sharp(png).resize({ width: targetWidth }).png().toBuffer()
+                }
+
+                return png
             } catch (e) {
-                // Fallback (pode voltar a depender de fontconfig; mantemos apenas para dev/local)
-                return await sharp(Buffer.from(svg)).png().toBuffer()
+                const image = sharp(Buffer.from(svg))
+                if (targetWidth) image.resize({ width: targetWidth })
+                return await image.png().toBuffer()
             }
         }
 
