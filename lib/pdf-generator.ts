@@ -30,6 +30,43 @@ export async function generateCardPNG(data: {
 
         console.log('ℹ️ Usando abordagem 100% Sharp (sem Canvas)')
 
+        // Configurar fontconfig mínimo em runtime (Vercel/Linux)
+        // para evitar: "Fontconfig error: Cannot load default config file"
+        try {
+            const fontConfigDir = '/tmp/fontconfig'
+            const fontConfigCacheDir = path.join(fontConfigDir, 'cache')
+            const fontConfigFile = path.join(fontConfigDir, 'fonts.conf')
+            const projectFontsDir = path.join(process.cwd(), 'public', 'fonts')
+
+            const escapeXml = (value: string) =>
+                value
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&apos;')
+
+            fs.mkdirSync(fontConfigCacheDir, { recursive: true })
+
+            const fontsConf = `<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+  <dir>${escapeXml(projectFontsDir)}</dir>
+  <dir>/usr/share/fonts</dir>
+  <dir>/usr/local/share/fonts</dir>
+  <cachedir>${escapeXml(fontConfigCacheDir)}</cachedir>
+  <config></config>
+</fontconfig>`
+
+            fs.writeFileSync(fontConfigFile, fontsConf)
+            process.env.FONTCONFIG_FILE = fontConfigFile
+            process.env.FONTCONFIG_PATH = fontConfigDir
+
+            console.log('✅ Fontconfig runtime configurado:', fontConfigFile)
+        } catch (fontConfigError) {
+            console.warn('⚠️ Não foi possível configurar fontconfig runtime:', fontConfigError)
+        }
+
         // Dimensões do cartão: 1063 × 591 pixels
         const width = 1063
         const height = 591
