@@ -74,20 +74,38 @@ export async function generateCardPNG(data: {
         // Carregar fontes TTF como base64
         const fontRegularPath = path.join(process.cwd(), 'public', 'fonts', 'montserrat-regular.ttf')
         const fontBoldPath = path.join(process.cwd(), 'public', 'fonts', 'montserrat-bold.ttf')
+        const fontRegularBase64 = fs.readFileSync(fontRegularPath).toString('base64')
+        const fontBoldBase64 = fs.readFileSync(fontBoldPath).toString('base64')
+
+        // Parsear fontes TTF em tempo de execução para gerar texto como PATH (evita problemas de fontconfig/tofu no Vercel)
+        const { default: opentype } = await import('opentype.js')
+
+        let regularFont: any = null
+        let boldFont: any = null
+
+        try {
+            const regularBuf = fs.readFileSync(fontRegularPath)
+            const boldBuf = fs.readFileSync(fontBoldPath)
+
+            const regularArrayBuffer = regularBuf.buffer.slice(regularBuf.byteOffset, regularBuf.byteOffset + regularBuf.byteLength)
+            const boldArrayBuffer = boldBuf.buffer.slice(boldBuf.byteOffset, boldBuf.byteOffset + boldBuf.byteLength)
+
+            regularFont = opentype.parse(regularArrayBuffer)
+            boldFont = opentype.parse(boldArrayBuffer)
+            console.log('✅ opentype.js carregou fontes TTF com sucesso')
+        } catch (fontParseError) {
+            console.warn('⚠️ Falha ao parsear TTF com opentype.js, usando fallback de texto SVG:', fontParseError)
+        }
 
         async function renderSvgToPng(svg: string, targetWidth?: number): Promise<Buffer> {
             try {
                 const req = eval('require') as NodeRequire
                 const { Resvg } = req('@resvg/resvg-js')
 
-                console.log('FONT REGULAR EXISTS?', fs.existsSync(fontRegularPath), fontRegularPath)
-                console.log('FONT BOLD EXISTS?', fs.existsSync(fontBoldPath), fontBoldPath)
-
                 const resvg = new Resvg(svg, {
                     font: {
                         fontFiles: [fontRegularPath, fontBoldPath],
-                        loadSystemFonts: true,
-                        defaultFontFamily: 'Montserrat',
+                        loadSystemFonts: false,
                     },
                 } as any)
 
@@ -124,14 +142,41 @@ export async function generateCardPNG(data: {
             const estimatedWidth = Math.max(Math.ceil(text.length * fontSize * 0.65), fontSize * 2)
             const svgWidth = options?.width ? Math.max(options.width, estimatedWidth) : estimatedWidth
             const align = options?.align || 'left'
-            const textX = align === 'right' ? svgWidth - 2 : 0
-            const textAnchor = align === 'right' ? 'end' : 'start'
+
+            if (regularFont && boldFont) {
+                const font = fontWeight === 'bold' ? boldFont : regularFont
+
+                // Cria o path do texto (baseline em y=fontSize)
+                const pathObj = font.getPath(text, 0, fontSize, fontSize)
+                const bbox = pathObj.getBoundingBox()
+
+                // Largura real do texto via bbox
+                const textWidth = Math.max(1, bbox.x2 - bbox.x1)
+
+                // Ajuste de alinhamento: se for right, desloca para encostar no fim do svg
+                // Também compensamos bbox.x1 (que pode ser negativo)
+                let dx = -bbox.x1
+                if (align === 'right') {
+                    dx = (svgWidth - textWidth) - bbox.x1
+                }
+
+                const d = pathObj.toPathData(2)
+
+                return `
+                    <svg width="${svgWidth}" height="${fontSize + 20}" xmlns="http://www.w3.org/2000/svg">
+                        <path d="${d}" fill="${color}" transform="translate(${dx}, 0)" />
+                    </svg>
+                `
+            }
+
             const safeText = text
                 .replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&apos;')
+            const textX = align === 'right' ? svgWidth - 2 : 0
+            const textAnchor = align === 'right' ? 'end' : 'start'
 
             return `
                 <svg width="${svgWidth}" height="${fontSize + 20}" xmlns="http://www.w3.org/2000/svg">
