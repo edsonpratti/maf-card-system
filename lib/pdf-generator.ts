@@ -104,21 +104,21 @@ export async function generateCardPNG(data: {
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&apos;')
-            
+
             return `
                 <svg width="${svgWidth}" height="${fontSize + 20}" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                        <style>
-                            @font-face {
-                                font-family: 'Montserrat';
-                                src: url("data:font/ttf;base64,${fontBase64}") format('truetype');
-                                font-weight: ${fontWeight === 'bold' ? '700' : '400'};
-                            }
-                        </style>
-                    </defs>
-                      <text x="${textX}" y="${fontSize}" 
-                          font-family="Montserrat, sans-serif" 
-                          font-size="${fontSize}" 
+                    <style>
+                        @font-face {
+                            font-family: 'Montserrat';
+                            src: url("data:application/font-ttf;base64,${fontBase64}") format('truetype');
+                            font-weight: ${fontWeight === 'bold' ? '700' : '400'};
+                            font-style: normal;
+                        }
+                        text { font-family: 'Montserrat'; }
+                    </style>
+                    <text x="${textX}" y="${fontSize}"
+                          font-family="Montserrat"
+                          font-size="${fontSize}"
                           font-weight="${fontWeight === 'bold' ? '700' : '400'}"
                           text-anchor="${textAnchor}"
                           fill="${color}">${safeText}</text>
