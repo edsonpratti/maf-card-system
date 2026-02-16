@@ -77,6 +77,29 @@ export async function generateCardPNG(data: {
         const fontRegularBase64 = fs.readFileSync(fontRegularPath).toString('base64')
         const fontBoldBase64 = fs.readFileSync(fontBoldPath).toString('base64')
 
+        // Renderizar SVG->PNG de forma estável no Vercel (sem depender de fontconfig/librsvg)
+        // Preferimos @resvg/resvg-js (WASM) porque permite carregar fontes TTF explicitamente.
+        async function renderSvgToPng(svg: string, width?: number): Promise<Buffer> {
+            try {
+                const { Resvg } = await import('@resvg/resvg-js')
+                const resvg = new Resvg(svg, {
+                    // Carrega apenas as fontes do projeto (Montserrat) e evita fontes do sistema
+                    font: {
+                        fontFiles: [fontRegularPath, fontBoldPath],
+                        loadSystemFonts: false,
+                    },
+                    // Opcional: garante largura mínima quando fornecida
+                    ...(width ? { fitTo: { mode: 'width', value: width } } : {}),
+                } as any)
+
+                const pngData = resvg.render()
+                return Buffer.from(pngData.asPng())
+            } catch (e) {
+                // Fallback (pode voltar a depender de fontconfig; mantemos apenas para dev/local)
+                return await sharp(Buffer.from(svg)).png().toBuffer()
+            }
+        }
+
         // Preparar imagem de fundo como base
         const backgroundPath = path.join(process.cwd(), 'public', 'padrao_fundo_carteira.png')
         let base = sharp(backgroundPath).resize(width, height)
@@ -277,7 +300,7 @@ export async function generateCardPNG(data: {
                 align: 'right'
             })
             composites.push({
-                input: await sharp(Buffer.from(nameSvg)).png().toBuffer(),
+                input: await renderSvgToPng(nameSvg, maxNameWidth),
                 left: textBlockLeft,
                 top: lineY
             })
@@ -289,7 +312,7 @@ export async function generateCardPNG(data: {
             align: 'right'
         })
         composites.push({
-            input: await sharp(Buffer.from(dateSvg)).png().toBuffer(),
+            input: await renderSvgToPng(dateSvg, maxNameWidth),
             left: textBlockLeft,
             top: dateY
         })
@@ -300,7 +323,7 @@ export async function generateCardPNG(data: {
             align: 'right'
         })
         composites.push({
-            input: await sharp(Buffer.from(cpfSvg)).png().toBuffer(),
+            input: await renderSvgToPng(cpfSvg, maxNameWidth),
             left: textBlockLeft,
             top: cpfY
         })
@@ -351,14 +374,14 @@ export async function generateCardPNG(data: {
         const footerLabel = createTextSVG('Registro:', 20, 'bold', 'black')
         const footerLabelTop = height - 95
         composites.push({
-            input: await sharp(Buffer.from(footerLabel)).png().toBuffer(),
+            input: await renderSvgToPng(footerLabel),
             left: edgeMargin,
             top: footerLabelTop
         })
 
         const footerValue = createTextSVG(data.cardNumber || 'MAF-TEST-001', 25, 'normal', 'black')
         composites.push({
-            input: await sharp(Buffer.from(footerValue)).png().toBuffer(),
+            input: await renderSvgToPng(footerValue),
             left: edgeMargin,
             top: footerLabelTop + 25
         })
