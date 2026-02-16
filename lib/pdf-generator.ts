@@ -74,18 +74,18 @@ export async function generateCardPNG(data: {
         // Carregar fontes TTF como base64
         const fontRegularPath = path.join(process.cwd(), 'public', 'fonts', 'montserrat-regular.ttf')
         const fontBoldPath = path.join(process.cwd(), 'public', 'fonts', 'montserrat-bold.ttf')
-        const fontRegularBase64 = fs.readFileSync(fontRegularPath).toString('base64')
-        const fontBoldBase64 = fs.readFileSync(fontBoldPath).toString('base64')
 
         async function renderSvgToPng(svg: string, targetWidth?: number): Promise<Buffer> {
             try {
                 const req = eval('require') as NodeRequire
                 const { Resvg } = req('@resvg/resvg-js')
 
+                console.log('FONT REGULAR EXISTS?', fs.existsSync(fontRegularPath), fontRegularPath)
+                console.log('FONT BOLD EXISTS?', fs.existsSync(fontBoldPath), fontBoldPath)
+
                 const resvg = new Resvg(svg, {
                     font: {
                         fontFiles: [fontRegularPath, fontBoldPath],
-                        // Allow system fonts as fallback to avoid tofu squares if Montserrat doesn't match.
                         loadSystemFonts: true,
                         defaultFontFamily: 'Montserrat',
                     },
@@ -113,7 +113,7 @@ export async function generateCardPNG(data: {
         // Array de composições (overlays)
         const composites: any[] = []
 
-        // Função auxiliar para criar SVG de texto com fonte embutida
+        // Função auxiliar para criar SVG de texto
         function createTextSVG(
             text: string,
             fontSize: number,
@@ -139,7 +139,7 @@ export async function generateCardPNG(data: {
                         text { font-family: 'Montserrat', 'DejaVu Sans', sans-serif; }
                     </style>
                     <text x="${textX}" y="${fontSize}"
-                          font-family="Montserrat"
+                          font-family="Montserrat, DejaVu Sans, sans-serif"
                           font-size="${fontSize}"
                           font-weight="${fontWeight === 'bold' ? '700' : '400'}"
                           text-anchor="${textAnchor}"
