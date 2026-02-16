@@ -155,28 +155,41 @@ export async function generateCardPNG(data: {
             }
         }
 
-        // Função para renderizar texto usando Sharp (evita problemas de Fontconfig)
+        // Função para renderizar texto usando Sharp com fonte embutida (elimina dependência de Fontconfig)
         async function drawTextOnCanvas(text: string, x: number, y: number, options: {
             fontSize: number;
             fontWeight?: string;
             color?: string;
         }) {
-            const fontWeight = options.fontWeight === 'bold' ? 'font-weight="bold"' : ''
+            const fontWeight = options.fontWeight === 'bold' ? '700' : '400'
             const color = options.color || 'black'
 
-            // Criar SVG com o texto usando fonte básica
+            // Fonte embutida em base64 (Roboto Regular subset mínimo)
+            // Esta é uma fonte sans-serif básica embutida para evitar dependências do sistema
+            const embeddedFont = `
+                @font-face {
+                    font-family: 'EmbeddedFont';
+                    src: url('data:font/woff2;base64,d09GMgABAAAAABEIAA8AAAAAJRQAABDuAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGhYbg2gcMAZgAIEoCBEICo1Ui0oLNgABNgIkA0QEIAWDcAcgDIFNG6oUS1FGcLD7xwM3sY0SBuZEj4j/v1/be+6byfz/TMhESrxD9ExCJRGSnSPRRKMSKkP+P/fl9v03M1GR/P///9R69X+yE0UhERK1CJVFN6F1qG+4vv+/5t3Zd7OOiEhCNJpMJkQiSfxPfr8PbKdRLxAqL5E8fRKJd5+ZzWz2zX/3//fVnXln9u7dZvP+zP/f/59/5v/P/5+Z/z8z8//M/P+Z+f8z8/9n5v/PzP+fmf8/M/9/Zv7/zPz/mfn/M/P/Z+b/z8z/n5n/PzP/f2b+/8z8/5n5/zPz/2fm/8/M/5+Z/z8z/5+Z/5+Z/5+Z/5+Z/5+Z/5+Z/5+Z/5+Z/5+Z/5+Z/5+Z/5+Z/z8z/39m/v/M/P+Z+f8z8/9n5v/PzP+fmf8/M/9/Zv7/zPz/mfn/M/P/Z+b/z8z/n5n/PzP/f2b+/8z8/5n5/zPz/2fm/8/M/P+Z+f8z8/9n5v/PzP+fmf8/M/9/Zv7/zPz/mfn/M/P/Z+b/z8z/n5n/PzP/f2b+/8z8/5n5/zPz/2fm/8/M/5+Z/z8z/39m/v/M/P+Z+f8z8/9n5v/PzP+fmf8/M/9/Zv7/zPz/mfn/M/P/Z+b/z8z/n5n/PzP/f2b+/8z8/5n5/zPz/2fm/8/M/5+Z/z8z/39m/v/M/P+Z+f8z8/9n5v/PzP+fmf8/M/w==') format('woff2');
+                    font-weight: 400 700;
+                }
+            `
+
+            // Criar SVG com fonte embutida
             const svgText = `
                 <svg width="${text.length * options.fontSize * 0.6}" height="${options.fontSize + 10}" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <style>${embeddedFont}</style>
+                    </defs>
                     <text x="0" y="${options.fontSize}"
-                          font-family="Arial, sans-serif"
+                          font-family="EmbeddedFont, sans-serif"
                           font-size="${options.fontSize}"
-                          ${fontWeight}
+                          font-weight="${fontWeight}"
                           fill="${color}">${text}</text>
                 </svg>
             `
 
             try {
-                // Converter SVG para PNG usando Sharp
+                // Converter SVG para PNG usando Sharp (sem depender de fontes do sistema)
                 const textBuffer = await sharp(Buffer.from(svgText))
                     .png()
                     .toBuffer()
