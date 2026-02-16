@@ -85,7 +85,9 @@ export async function generateCardPNG(data: {
                 const resvg = new Resvg(svg, {
                     font: {
                         fontFiles: [fontRegularPath, fontBoldPath],
-                        loadSystemFonts: false,
+                        // Allow system fonts as fallback to avoid tofu squares if Montserrat doesn't match.
+                        loadSystemFonts: true,
+                        defaultFontFamily: 'Montserrat',
                     },
                 } as any)
 
@@ -119,7 +121,6 @@ export async function generateCardPNG(data: {
             color: string,
             options?: { width?: number; align?: 'left' | 'right' }
         ): string {
-            const fontBase64 = fontWeight === 'bold' ? fontBoldBase64 : fontRegularBase64
             const estimatedWidth = Math.max(Math.ceil(text.length * fontSize * 0.65), fontSize * 2)
             const svgWidth = options?.width ? Math.max(options.width, estimatedWidth) : estimatedWidth
             const align = options?.align || 'left'
@@ -135,13 +136,7 @@ export async function generateCardPNG(data: {
             return `
                 <svg width="${svgWidth}" height="${fontSize + 20}" xmlns="http://www.w3.org/2000/svg">
                     <style>
-                        @font-face {
-                            font-family: 'Montserrat';
-                            src: url("data:application/font-ttf;base64,${fontBase64}") format('truetype');
-                            font-weight: ${fontWeight === 'bold' ? '700' : '400'};
-                            font-style: normal;
-                        }
-                        text { font-family: 'Montserrat'; }
+                        text { font-family: 'Montserrat', 'DejaVu Sans', sans-serif; }
                     </style>
                     <text x="${textX}" y="${fontSize}"
                           font-family="Montserrat"
