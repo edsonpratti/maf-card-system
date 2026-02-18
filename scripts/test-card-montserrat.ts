@@ -9,7 +9,7 @@ async function testCardGeneration() {
         const testData = {
             name: 'João Silva Santos',
             cpf: '12345678901',
-            cardNumber: 'MAF-2024-001',
+            cardNumber: 'C54321',
             qrToken: 'test-token-123',
             photoPath: null,
             certificationDate: '2024-01-15T00:00:00Z'

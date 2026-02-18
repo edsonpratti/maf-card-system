@@ -16,7 +16,7 @@ async function testCardVercel() {
         const testData = {
             name: 'João Silva Santos',
             cpf: '12345678901',
-            cardNumber: 'MAF-2024-001',
+            cardNumber: 'B98765',
             qrToken: 'test-token-123',
             photoPath: null, // Teste sem foto
             certificationDate: '2024-01-15T00:00:00Z'

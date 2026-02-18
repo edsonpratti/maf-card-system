@@ -423,7 +423,7 @@ export async function generateCardPNG(data: {
             top: footerLabelTop
         })
 
-        const footerValue = createTextSVG(data.cardNumber || 'MAF-TEST-001', 25, 'normal', 'black')
+        const footerValue = createTextSVG(data.cardNumber || 'T00000', 25, 'normal', 'black')
         composites.push({
             input: await renderSvgToPng(footerValue),
             left: edgeMargin,

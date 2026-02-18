@@ -7,6 +7,7 @@ import { cookies } from "next/headers"
 import { createServerClient } from "@supabase/ssr"
 import { redirect } from "next/navigation"
 import { sendApprovalNotificationEmail, sendWelcomeEmail } from "./first-access"
+import { generateCardNumber } from "@/lib/utils"
 
 async function createAuditLog(
     adminUserId: string,
@@ -98,9 +99,7 @@ export async function updateRequestStatus(id: string, newStatus: string, reason?
 
         // Gerar card_number se não existir
         if (!currentCard?.card_number) {
-            const timestamp = Date.now().toString(36)
-            const randomPart = Math.random().toString(36).substring(2, 8)
-            updateData.card_number = `MAF-${timestamp}-${randomPart}`.toUpperCase()
+            updateData.card_number = generateCardNumber()
         }
 
         // Gerar validation_token se não existir
@@ -822,9 +821,7 @@ export async function createUserManually(data: {
     }
 
     // Gerar card_number e validation_token
-    const timestamp = Date.now().toString(36)
-    const randomPart = Math.random().toString(36).substring(2, 8)
-    const cardNumber = `MAF-${timestamp}-${randomPart}`.toUpperCase()
+    const cardNumber = generateCardNumber()
     const validationToken = Array.from({ length: 64 }, () =>
         Math.floor(Math.random() * 16).toString(16)
     ).join('')
@@ -925,9 +922,7 @@ export async function approveMafProIdAccess(userId: string) {
 
     // Se o status mudou para APROVADA_MANUAL, gerar card_number e validation_token
     if (userData.status === "PENDENTE_MANUAL") {
-        const timestamp = Date.now().toString(36)
-        const randomPart = Math.random().toString(36).substring(2, 8)
-        const cardNumber = `MAF-${timestamp}-${randomPart}`.toUpperCase()
+        const cardNumber = generateCardNumber()
         const validationToken = Array.from({ length: 64 }, () =>
             Math.floor(Math.random() * 16).toString(16)
         ).join('')

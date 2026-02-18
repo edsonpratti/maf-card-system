@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { generateCardPNG } from "@/lib/pdf-generator"
+import { generateCardNumber } from "@/lib/utils"
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -69,9 +70,7 @@ export async function GET(
 
         // Gerar card_number
         if (!cardNumber) {
-            const timestamp = Date.now().toString(36)
-            const randomPart = Math.random().toString(36).substring(2, 8)
-            cardNumber = `MAF-${timestamp}-${randomPart}`.toUpperCase()
+            cardNumber = generateCardNumber()
         }
 
         // Gerar validation_token

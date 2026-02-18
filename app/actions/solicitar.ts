@@ -1,7 +1,7 @@
 "use server"
 
 import { getServiceSupabase } from "@/lib/supabase"
-import { cleanCPF } from "@/lib/utils"
+import { cleanCPF, generateCardNumber } from "@/lib/utils"
 import { z } from "zod"
 import { studentSchema } from "@/lib/validators"
 import { sendWelcomeEmail } from "./first-access"
@@ -162,9 +162,7 @@ export async function submitApplication(prevState: any, formData: FormData) {
         status = "AUTO_APROVADA"
 
         // Gerar card_number e validation_token para aprovação automática
-        const timestamp = Date.now().toString(36)
-        const randomPart = Math.random().toString(36).substring(2, 8)
-        cardNumber = `MAF-${timestamp}-${randomPart}`.toUpperCase()
+        cardNumber = generateCardNumber()
 
         // Gerar token seguro sem usar require()
         validationToken = Array.from({ length: 64 }, () =>
