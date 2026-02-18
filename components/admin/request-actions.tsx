@@ -2,12 +2,12 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { updateRequestStatus, deleteRequest, resendFirstAccessEmail, resendCardDownloadEmail } from "@/app/actions/admin"
+import { updateRequestStatus, deleteRequest, resendFirstAccessEmail, resendCardDownloadEmail, revertRequestStatus } from "@/app/actions/admin"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
-import { Loader2, Mail } from "lucide-react"
+import { Loader2, Mail, RotateCcw } from "lucide-react"
 
 export default function RequestActions({ request }: { request: any }) {
     const router = useRouter()
@@ -88,6 +88,42 @@ export default function RequestActions({ request }: { request: any }) {
         }
     }
 
+    const handleRevertToAnalysis = async () => {
+        if (!confirm("Reverter esta solicitação para 'Em Análise'?")) return
+        setLoading(true)
+        try {
+            const res = await revertRequestStatus(request.id, "PENDENTE_MANUAL")
+            if (res.success) {
+                toast.success(res.message)
+                router.refresh()
+            } else {
+                toast.error(res.message)
+            }
+        } catch (error) {
+            toast.error("Erro ao reverter status")
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleRevertAndApprove = async () => {
+        if (!confirm("Reverter recusa e aprovar esta solicitação?")) return
+        setLoading(true)
+        try {
+            const res = await revertRequestStatus(request.id, "APROVADA_MANUAL")
+            if (res.success) {
+                toast.success(res.message)
+                router.refresh()
+            } else {
+                toast.error(res.message)
+            }
+        } catch (error) {
+            toast.error("Erro ao reverter e aprovar")
+        } finally {
+            setLoading(false)
+        }
+    }
+
     return (
         <div className="flex gap-4">
             {request.status === "PENDENTE_MANUAL" && (
@@ -123,6 +159,22 @@ export default function RequestActions({ request }: { request: any }) {
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
+                </>
+            )}
+
+            {request.status === "RECUSADA" && (
+                <>
+                    <Button onClick={handleRevertToAnalysis} disabled={loading} variant="outline">
+                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                        Retornar para Análise
+                    </Button>
+
+                    <Button onClick={handleRevertAndApprove} disabled={loading} variant="success">
+                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                        Reverter e Aprovar
+                    </Button>
                 </>
             )}
 

@@ -11,6 +11,7 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { solicitarRecuperacaoSenha } from "@/app/actions/recuperar-senha"
+import { generateAndSend2FACode } from "@/app/actions/admin-2fa"
 
 export default function LoginForm({ admin = false }: { admin?: boolean }) {
     const [resetPassword, setResetPassword] = useState(false)
@@ -25,6 +26,7 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
         const password = formData.get("password") as string
 
         try {
+            // Primeiro, validar as credenciais
             const { data, error } = await supabase.auth.signInWithPassword({
                 email,
                 password,
@@ -39,7 +41,11 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
                 } else {
                     toast.error("Erro ao fazer login: " + error.message)
                 }
-            } else if (data.user) {
+                setLoading(false)
+                return
+            }
+
+            if (data.user) {
                 const isUserAdmin = data.user.user_metadata?.is_admin === true || data.user.app_metadata?.is_admin === true
 
                 // Verificar se está tentando acessar a área correta
@@ -58,15 +64,34 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
                     return
                 }
 
+                // Se for admin, enviar código 2FA e fazer logout temporário
+                if (admin && isUserAdmin) {
+                    // Deslogar temporariamente até validar 2FA
+                    await supabase.auth.signOut()
+                    
+                    // Enviar código 2FA
+                    const result = await generateAndSend2FACode(email)
+                    
+                    if (result.success) {
+                        toast.success(result.message)
+                        // Salvar credenciais temporariamente (apenas em memória da sessão)
+                        sessionStorage.setItem("2fa_email", email)
+                        sessionStorage.setItem("2fa_password", password)
+                        sessionStorage.setItem("2fa_timestamp", Date.now().toString())
+                        // Redirecionar para página de validação 2FA
+                        router.push(`/admin/verify-2fa?email=${encodeURIComponent(email)}`)
+                    } else {
+                        toast.error(result.message)
+                    }
+                    setLoading(false)
+                    return
+                }
+
+                // Login normal para não-admins
                 toast.success("Login realizado com sucesso!")
                 // Aguarda os cookies serem salvos antes de redirecionar
                 await new Promise(resolve => setTimeout(resolve, 500))
-
-                if (admin) {
-                    window.location.href = "/admin/dashboard"
-                } else {
-                    window.location.href = "/portal"
-                }
+                window.location.href = "/portal"
             }
         } catch (error) {
             console.error("Erro no login:", error)

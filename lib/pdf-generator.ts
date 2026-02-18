@@ -376,13 +376,17 @@ export async function generateCardPNG(data: {
 
         // Adicionar QR Code
         try {
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://mafpro.amandafernandes.com'
             const qrSize = 150
-            const qrBuffer = await QRCode.toBuffer(data.qrToken, {
-                width: qrSize,
-                margin: 1,
-                errorCorrectionLevel: 'M',
-                type: 'png'
-            })
+            const qrBuffer = await QRCode.toBuffer(
+                `${baseUrl}/validar/${data.qrToken}`,
+                {
+                    width: qrSize,
+                    margin: 1,
+                    errorCorrectionLevel: 'M',
+                    type: 'png'
+                }
+            )
 
             composites.push({
                 input: qrBuffer,
@@ -618,7 +622,7 @@ export async function generateCardPDF(data: {
 
         // QR Code no canto inferior direito com borda branca
         try {
-            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://maf-card-system.vercel.app'
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://mafpro.amandafernandes.com'
             const qrBuffer = await QRCode.toBuffer(
                 `${baseUrl}/validar/${data.qrToken}`,
                 {

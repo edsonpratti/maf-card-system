@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { checkCPFExists, submitApplication } from "@/app/actions/solicitar"
-import { Loader2, User, Phone, Mail, MapPin, FileText, CheckCircle2, AlertCircle, Upload } from "lucide-react"
+import { Loader2, User, Phone, Mail, MapPin, FileText, CheckCircle2, AlertCircle, Upload, X } from "lucide-react"
 import { formatCEP, formatPhone } from "@/lib/utils"
 
 interface RegisterModalProps {
@@ -23,6 +23,8 @@ export default function RegisterModal({ open, onOpenChange }: RegisterModalProps
     const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [cpfStatus, setCpfStatus] = useState<"initial" | "found" | "not_found" | "checking">("initial")
+    const [cepLoading, setCepLoading] = useState(false)
+    const [cepFilled, setCepFilled] = useState(false)
 
     const form = useForm<StudentFormData>({
         resolver: zodResolver(studentSchema),
@@ -31,6 +33,7 @@ export default function RegisterModal({ open, onOpenChange }: RegisterModalProps
             name: "",
             whatsapp: "",
             email: "",
+            certificationDate: "",
             address: {
                 cep: "",
                 street: "",
@@ -80,12 +83,14 @@ export default function RegisterModal({ open, onOpenChange }: RegisterModalProps
         const cep = e.target.value.replace(/\D/g, "")
         if (cep.length !== 8) return
 
+        setCepLoading(true)
         try {
             const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`)
             const data = await response.json()
 
             if (data.erro) {
                 toast.error("CEP não encontrado")
+                setCepFilled(false)
                 return
             }
 
@@ -93,10 +98,27 @@ export default function RegisterModal({ open, onOpenChange }: RegisterModalProps
             form.setValue("address.neighborhood", data.bairro)
             form.setValue("address.city", data.localidade)
             form.setValue("address.state", data.uf)
+            setCepFilled(true)
             form.setFocus("address.number")
+            toast.success("Endereço encontrado!")
         } catch (error) {
-            // Silently fail CEP lookup
+            toast.error("Erro ao buscar CEP. Preencha os dados manualmente.")
+            setCepFilled(false)
+        } finally {
+            setCepLoading(false)
         }
+    }
+
+    const handleClearAddress = () => {
+        form.setValue("address.cep", "")
+        form.setValue("address.street", "")
+        form.setValue("address.number", "")
+        form.setValue("address.complement", "")
+        form.setValue("address.neighborhood", "")
+        form.setValue("address.city", "")
+        form.setValue("address.state", "")
+        setCepFilled(false)
+        toast.info("Endereço limpo. Você pode preencher manualmente.")
     }
 
     const onSubmit = async (data: StudentFormData) => {
@@ -105,6 +127,7 @@ export default function RegisterModal({ open, onOpenChange }: RegisterModalProps
         formData.append("cpf", data.cpf)
         formData.append("name", data.name)
         formData.append("whatsapp", data.whatsapp)
+        formData.append("certificationDate", data.certificationDate)
         formData.append("email", data.email)
         formData.append("address.cep", data.address.cep)
         formData.append("address.street", data.address.street)
@@ -256,6 +279,23 @@ export default function RegisterModal({ open, onOpenChange }: RegisterModalProps
                                             {form.formState.errors.email.message}
                                         </p>
                                     )}
+
+                            <div className="space-y-2">
+                                <Label htmlFor="certificationDate-modal">Data de Habilitação</Label>
+                                <Input
+                                    id="certificationDate-modal"
+                                    type="date"
+                                    {...form.register("certificationDate")}
+                                    max={new Date().toISOString().split('T')[0]}
+                                    required
+                                />
+                                {form.formState.errors.certificationDate && (
+                                    <p className="text-sm text-red-500 flex items-center gap-1">
+                                        <AlertCircle className="h-3 w-3" />
+                                        {form.formState.errors.certificationDate.message}
+                                    </p>
+                                )}
+                            </div>
                                 </div>
                             </div>
                         </div>
@@ -269,19 +309,41 @@ export default function RegisterModal({ open, onOpenChange }: RegisterModalProps
                             
                             <div className="space-y-2">
                                 <Label htmlFor="cep-modal">CEP</Label>
-                                <Input
-                                    id="cep-modal"
-                                    {...form.register("address.cep")}
-                                    placeholder="00000-000"
-                                    onChange={(e) => {
-                                        e.target.value = formatCEP(e.target.value)
-                                        form.register("address.cep").onChange(e)
-                                    }}
-                                    onBlur={(e) => {
-                                        form.register("address.cep").onBlur(e)
-                                        handleCEPBlur(e)
-                                    }}
-                                />
+                                <div className="relative">
+                                    <Input
+                                        id="cep-modal"
+                                        {...form.register("address.cep")}
+                                        placeholder="00000-000"
+                                        disabled={cepLoading}
+                                        onChange={(e) => {
+                                            e.target.value = formatCEP(e.target.value)
+                                            form.register("address.cep").onChange(e)
+                                        }}
+                                        onBlur={(e) => {
+                                            form.register("address.cep").onBlur(e)
+                                            handleCEPBlur(e)
+                                        }}
+                                    />
+                                    {cepLoading && (
+                                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />
+                                    )}
+                                </div>
+                                {cepLoading && (
+                                    <p className="text-sm text-muted-foreground">Buscando endereço...</p>
+                                )}
+                                {cepFilled && (
+                                    <div className="flex items-center justify-between bg-primary/10 border border-primary/30 rounded-md p-2">
+                                        <p className="text-xs text-primary">✓ Endereço preenchido automaticamente</p>
+                                        <button
+                                            type="button"
+                                            onClick={handleClearAddress}
+                                            className="text-primary hover:text-primary/80 transition-colors"
+                                            title="Limpar endereço"
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                )}
                                 {form.formState.errors.address?.cep && (
                                     <p className="text-sm text-red-500 flex items-center gap-1">
                                         <AlertCircle className="h-3 w-3" />
@@ -293,7 +355,7 @@ export default function RegisterModal({ open, onOpenChange }: RegisterModalProps
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div className="space-y-2 sm:col-span-2">
                                     <Label htmlFor="street-modal">Rua</Label>
-                                    <Input id="street-modal" {...form.register("address.street")} />
+                                    <Input id="street-modal" {...form.register("address.street")} disabled={cepLoading} />
                                     {form.formState.errors.address?.street && (
                                         <p className="text-sm text-red-500 flex items-center gap-1">
                                             <AlertCircle className="h-3 w-3" />
@@ -303,7 +365,7 @@ export default function RegisterModal({ open, onOpenChange }: RegisterModalProps
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="number-modal">Número</Label>
-                                    <Input id="number-modal" {...form.register("address.number")} />
+                                    <Input id="number-modal" {...form.register("address.number")} disabled={cepLoading} />
                                     {form.formState.errors.address?.number && (
                                         <p className="text-sm text-red-500 flex items-center gap-1">
                                             <AlertCircle className="h-3 w-3" />
@@ -316,11 +378,11 @@ export default function RegisterModal({ open, onOpenChange }: RegisterModalProps
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="complement-modal">Complemento (Opcional)</Label>
-                                    <Input id="complement-modal" {...form.register("address.complement")} placeholder="Apto, Bloco, etc." />
+                                    <Input id="complement-modal" {...form.register("address.complement")} placeholder="Apto, Bloco, etc." disabled={cepLoading} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="neighborhood-modal">Bairro</Label>
-                                    <Input id="neighborhood-modal" {...form.register("address.neighborhood")} />
+                                    <Input id="neighborhood-modal" {...form.register("address.neighborhood")} disabled={cepLoading} />
                                     {form.formState.errors.address?.neighborhood && (
                                         <p className="text-sm text-red-500 flex items-center gap-1">
                                             <AlertCircle className="h-3 w-3" />
@@ -333,7 +395,13 @@ export default function RegisterModal({ open, onOpenChange }: RegisterModalProps
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div className="space-y-2 sm:col-span-2">
                                     <Label htmlFor="city-modal">Cidade</Label>
-                                    <Input id="city-modal" {...form.register("address.city")} />
+                                    <Input 
+                                        id="city-modal" 
+                                        {...form.register("address.city")} 
+                                        disabled={cepLoading}
+                                        readOnly={cepFilled}
+                                        className={cepFilled ? "bg-muted cursor-not-allowed" : ""}
+                                    />
                                     {form.formState.errors.address?.city && (
                                         <p className="text-sm text-red-500 flex items-center gap-1">
                                             <AlertCircle className="h-3 w-3" />
@@ -348,6 +416,9 @@ export default function RegisterModal({ open, onOpenChange }: RegisterModalProps
                                         {...form.register("address.state")}
                                         maxLength={2}
                                         placeholder="SP"
+                                        disabled={cepLoading}
+                                        readOnly={cepFilled}
+                                        className={cepFilled ? "bg-muted cursor-not-allowed" : ""}
                                         onChange={(e) => {
                                             e.target.value = e.target.value.toUpperCase()
                                             form.register("address.state").onChange(e)

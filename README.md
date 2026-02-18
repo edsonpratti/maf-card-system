@@ -42,6 +42,8 @@ Toda a documentação técnica está organizada na pasta [`docs/`](docs/):
    SUPABASE_SERVICE_ROLE_KEY=...
    NEXT_PUBLIC_APP_URL=http://localhost:3000
    ```
+   
+   ⚠️ **IMPORTANTE**: Em produção no Vercel, configure `NEXT_PUBLIC_APP_URL=https://mafpro.amandafernandes.com` para evitar redirecionamentos indevidos para o domínio do Vercel. Veja [docs/setup/DOMAIN_CONFIGURATION.md](docs/setup/DOMAIN_CONFIGURATION.md)
 4. **Banco de Dados**:
    Rode o script SQL disponível em `migrations/schema.sql` no Painel do Supabase (SQL Editor).
    Ele criará as tabelas `students_base`, `users_cards`, `admin_audit_logs` e os buckets necessários.

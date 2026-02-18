@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { LogOut, Home, Menu } from "lucide-react"
+import { SessionTimeout } from "@/components/session-timeout"
 
 export default async function PortalLayout({
   children,
@@ -50,6 +51,7 @@ export default async function PortalLayout({
 
   return (
     <div className="min-h-screen flex flex-col">
+      <SessionTimeout warningTime={25} logoutTime={30} redirectTo="/login" />
       <header className="border-b bg-white dark:bg-gray-950 sticky top-0 z-50">
         <div className="container flex h-14 sm:h-16 items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-4 sm:gap-6">

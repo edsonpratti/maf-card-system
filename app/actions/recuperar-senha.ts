@@ -121,7 +121,7 @@ export async function solicitarRecuperacaoSenha(email: string): Promise<Recupera
         }
 
         // 6. Montar link de recuperação
-        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+        const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://mafpro.amandafernandes.com"
         const resetLink = `${siteUrl}/recuperar-senha/${resetToken}`
 
         console.log("Link de recuperação:", resetLink)

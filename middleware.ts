@@ -37,41 +37,20 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
+        getAll() {
+          return request.cookies.getAll()
         },
-        set(name: string, value: string, options: any) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            request.cookies.set(name, value)
           })
           response = NextResponse.next({
             request: {
               headers: request.headers,
             },
           })
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-        },
-        remove(name: string, options: any) {
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options)
           })
         },
       },
@@ -114,25 +93,7 @@ export async function middleware(request: NextRequest) {
 
     // Verificar acesso ao MAF Pro ID para rotas específicas
     if (request.nextUrl.pathname.startsWith('/portal/carteira-profissional')) {
-      // Buscar informações do usuário para verificar aprovação do MAF Pro ID
-      const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            get(name: string) {
-              return request.cookies.get(name)?.value
-            },
-            set(name: string, value: string, options: any) {
-              // Not needed for read-only operation
-            },
-            remove(name: string, options: any) {
-              // Not needed for read-only operation
-            },
-          },
-        }
-      )
-
+      // Reutilizar o mesmo cliente supabase já criado acima
       const { data: userCard } = await supabase
         .from('users_cards')
         .select('maf_pro_id_approved')
@@ -149,13 +110,16 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  // Proteger rotas /admin (exceto /admin/login)
+  // Proteger rotas /admin (exceto /admin/login e /admin/verify-2fa)
   if (request.nextUrl.pathname.startsWith('/admin')) {
-    // Permitir acesso à página de login sem autenticação
-    if (request.nextUrl.pathname === '/admin/login') {
-      // Se já está autenticado e é admin, redirecionar para dashboard
+    // Permitir acesso às páginas de login e verificação 2FA sem autenticação
+    if (request.nextUrl.pathname === '/admin/login' || request.nextUrl.pathname === '/admin/verify-2fa') {
+      // Se já está autenticado e é admin, redirecionar para dashboard (exceto na verificação 2FA)
       if (user && (user.user_metadata?.is_admin === true || user.app_metadata?.is_admin === true)) {
-        return NextResponse.redirect(new URL('/admin/dashboard', request.url))
+        // Não redirecionar se estiver na página de verificação 2FA
+        if (request.nextUrl.pathname !== '/admin/verify-2fa') {
+          return NextResponse.redirect(new URL('/admin/dashboard', request.url))
+        }
       }
       return response
     }

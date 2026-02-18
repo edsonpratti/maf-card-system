@@ -3,7 +3,7 @@
 import { getServiceSupabase } from "@/lib/supabase"
 import crypto from "crypto"
 import { Resend } from "resend"
-import { welcomeEmailTemplate } from "@/lib/email-templates"
+import { welcomeEmailTemplate, rejectionEmailTemplate } from "@/lib/email-templates"
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -42,7 +42,7 @@ export async function sendWelcomeEmail(userId: string, email: string, name: stri
         console.log("✅ [WELCOME] Token salvo com sucesso")
         
         // Generate the link
-        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://mafpro.amandafernandes.com'
         const accessLink = `${baseUrl}/primeiro-acesso/${token}`
         
         console.log("🔗 [WELCOME] Link gerado:", accessLink)
@@ -196,3 +196,36 @@ export async function setUserPassword(token: string, password: string) {
         return { success: false, error: "Erro ao processar solicitação" }
     }
 }
+
+/**
+ * Envia email notificando usuário sobre recusa do cadastro
+ * Inclui a justificativa do admin e link para WhatsApp do suporte
+ */
+export async function sendRejectionEmail(email: string, name: string, rejectionReason: string) {
+    try {
+        console.log("📧 [REJECTION] Iniciando envio de email para:", { email, name })
+        
+        const emailHtml = rejectionEmailTemplate(name, rejectionReason)
+        
+        // Send email via Resend
+        const { data, error } = await resend.emails.send({
+            from: process.env.RESEND_FROM_EMAIL || 'mafpro@amandafernandes.com',
+            to: email,
+            subject: '📋 Atualização sobre sua solicitação - MAF Pro',
+            html: emailHtml
+        })
+        
+        if (error) {
+            console.error("❌ [REJECTION] Erro ao enviar email via Resend:", error)
+            return { success: false, error: `Erro ao enviar email: ${error.message || JSON.stringify(error)}` }
+        }
+        
+        console.log("✅ [REJECTION] Email de recusa enviado com sucesso! ID:", data?.id)
+        return { success: true }
+        
+    } catch (error: any) {
+        console.error("❌ [REJECTION] Erro geral:", error)
+        return { success: false, error: `Erro ao enviar email: ${error?.message || 'Erro desconhecido'}` }
+    }
+}
+

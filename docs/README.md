@@ -25,6 +25,7 @@ Documentação de funcionalidades e módulos:
 - **[IMPLEMENTACAO_PDF_CARTAO.md](features/IMPLEMENTACAO_PDF_CARTAO.md)** - Implementação da geração de PDF dos cartões
 - **[ANALISE_EMAILS.md](features/ANALISE_EMAILS.md)** - Análise detalhada do sistema de emails
 - **[RECUPERACAO_SENHA_RESEND.md](features/RECUPERACAO_SENHA_RESEND.md)** - Sistema de recuperação de senha
+- **[REJECTION_EMAIL.md](features/REJECTION_EMAIL.md)** - Email automático de recusa de cadastro com suporte via WhatsApp
 
 ### 🔒 [security/](security/)
 Documentação de segurança e permissões:

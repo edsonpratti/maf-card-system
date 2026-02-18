@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 import { createServerClient } from "@supabase/ssr"
 import { redirect } from "next/navigation"
-import { sendApprovalNotificationEmail, sendWelcomeEmail } from "./first-access"
+import { sendApprovalNotificationEmail, sendWelcomeEmail, sendRejectionEmail } from "./first-access"
 import { generateCardNumber } from "@/lib/utils"
 
 async function createAuditLog(
@@ -126,6 +126,23 @@ export async function updateRequestStatus(id: string, newStatus: string, reason?
         // O email correto de aprovação é enviado em approveMafProIdAccess
     }
 
+    // If rejected, send rejection email with reason
+    if (newStatus === "RECUSADA" && reason) {
+        // Get user data to send email
+        const { data: userData } = await supabase
+            .from("users_cards")
+            .select("email, name")
+            .eq("id", id)
+            .single()
+
+        if (userData) {
+            // Send rejection email (non-blocking, errors are logged but don't fail the operation)
+            sendRejectionEmail(userData.email, userData.name, reason).catch((error) => {
+                console.error("Erro ao enviar email de recusa:", error)
+            })
+        }
+    }
+
     // Log action
     await createAuditLog(user.id, newStatus, id, { reason })
 
@@ -171,6 +188,95 @@ export async function resendFirstAccessEmail(id: string) {
     }
 
     return { success: false, message: result.error || "Erro ao enviar email" }
+}
+
+export async function revertRequestStatus(id: string, newStatus: "PENDENTE_MANUAL" | "APROVADA_MANUAL") {
+    const user = await verifyAdminAccess()
+
+    const supabase = getServiceSupabase()
+
+    // Buscar o registro atual
+    const { data: currentRequest, error: fetchError } = await supabase
+        .from("users_cards")
+        .select("id, status, name, email, rejection_reason")
+        .eq("id", id)
+        .single()
+
+    if (fetchError || !currentRequest) {
+        return { success: false, message: "Usuário não encontrado" }
+    }
+
+    // Apenas permitir reversão se o status atual for RECUSADA
+    if (currentRequest.status !== "RECUSADA") {
+        return { success: false, message: "Apenas solicitações recusadas podem ser revertidas" }
+    }
+
+    const updateData: any = {
+        status: newStatus,
+        updated_at: new Date().toISOString(),
+        rejection_reason: null, // Limpar o motivo da recusa
+    }
+
+    // Se estiver aprovando, gerar card_number e validation_token
+    if (newStatus === "APROVADA_MANUAL") {
+        updateData.issued_at = new Date().toISOString()
+
+        // Buscar o registro para verificar se já tem card_number e validation_token
+        const { data: cardData } = await supabase
+            .from("users_cards")
+            .select("card_number, validation_token")
+            .eq("id", id)
+            .single()
+
+        // Gerar card_number se não existir
+        if (!cardData?.card_number) {
+            updateData.card_number = generateCardNumber()
+        }
+
+        // Gerar validation_token se não existir
+        if (!cardData?.validation_token) {
+            updateData.validation_token = Array.from({ length: 64 }, () =>
+                Math.floor(Math.random() * 16).toString(16)
+            ).join('')
+        }
+    }
+
+    const { error } = await supabase
+        .from("users_cards")
+        .update(updateData)
+        .eq("id", id)
+
+    if (error) {
+        return { success: false, message: error.message }
+    }
+
+    // Se foi aprovado, enviar email de primeiro acesso
+    if (newStatus === "APROVADA_MANUAL") {
+        // Verificar se já tem conta de autenticação
+        const { data: authCheck } = await supabase
+            .from("users_cards")
+            .select("auth_user_id")
+            .eq("id", id)
+            .single()
+
+        if (!authCheck?.auth_user_id) {
+            await sendWelcomeEmail(id, currentRequest.email, currentRequest.name, "APROVADA_MANUAL")
+        }
+    }
+
+    // Log action
+    await createAuditLog(user.id, `REVERT_TO_${newStatus}`, id, { 
+        previousStatus: "RECUSADA",
+        previousRejectionReason: currentRequest.rejection_reason 
+    })
+
+    revalidatePath("/admin/solicitacoes")
+    return { 
+        success: true, 
+        message: newStatus === "APROVADA_MANUAL" 
+            ? "Solicitação revertida e aprovada com sucesso!" 
+            : "Solicitação retornada para análise com sucesso!"
+    }
 }
 
 export async function deleteRequest(id: string) {
@@ -455,7 +561,7 @@ export async function resendPasswordResetEmail(id: string) {
         }
 
         // Enviar email
-        const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/recuperar-senha/${resetToken}`
+        const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'https://mafpro.amandafernandes.com'}/recuperar-senha/${resetToken}`
 
         const { data: emailData, error: emailError } = await resend.emails.send({
             from: process.env.RESEND_FROM_EMAIL || "mafpro@amandafernandes.com",
@@ -530,7 +636,7 @@ export async function resendCardDownloadEmail(id: string) {
 
     try {
         // Link direto para download do PDF
-        const downloadLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/cartao/${userData.id}`
+        const downloadLink = `${process.env.NEXT_PUBLIC_APP_URL || 'https://mafpro.amandafernandes.com'}/api/cartao/${userData.id}`
 
         const { data: emailData, error: emailError } = await resend.emails.send({
             from: process.env.RESEND_FROM_EMAIL || "mafpro@amandafernandes.com",
@@ -975,5 +1081,139 @@ export async function approveMafProIdAccess(userId: string) {
     return {
         success: true,
         message: "Acesso ao MAF Pro ID aprovado com sucesso! Email de notificação enviado."
+    }
+}
+
+export async function updateUserData(userId: string, data: {
+    name?: string
+    email?: string
+    cpf?: string
+    whatsapp?: string
+    address?: {
+        street?: string
+        number?: string
+        complement?: string
+        neighborhood?: string
+        city?: string
+        state?: string
+        cep?: string
+    }
+    photoBase64?: string | null
+    removePhoto?: boolean
+}) {
+    const admin = await verifyAdminAccess()
+    const supabase = getServiceSupabase()
+
+    try {
+        // Buscar dados atuais do usuário
+        const { data: currentUser, error: fetchError } = await supabase
+            .from("users_cards")
+            .select("*")
+            .eq("id", userId)
+            .single()
+
+        if (fetchError || !currentUser) {
+            return { success: false, message: "Usuário não encontrado" }
+        }
+
+        const updateData: any = {
+            updated_at: new Date().toISOString()
+        }
+
+        // Atualizar campos básicos
+        if (data.name) updateData.name = data.name
+        if (data.email) updateData.email = data.email
+        if (data.cpf) updateData.cpf = data.cpf
+        if (data.whatsapp) updateData.whatsapp = data.whatsapp
+
+        // Atualizar endereço
+        if (data.address) {
+            const currentAddress = currentUser.address_json as any || {}
+            updateData.address_json = {
+                ...currentAddress,
+                ...data.address
+            }
+        }
+
+        // Processar foto
+        if (data.removePhoto) {
+            // Remover foto existente
+            if (currentUser.photo_path) {
+                await supabase.storage
+                    .from("photos")
+                    .remove([currentUser.photo_path])
+            }
+            updateData.photo_path = null
+        } else if (data.photoBase64) {
+            // Upload de nova foto a partir de base64
+            try {
+                // Extrair o tipo de arquivo e os dados base64
+                const matches = data.photoBase64.match(/^data:(.+);base64,(.+)$/)
+                if (!matches) {
+                    return { success: false, message: "Formato de imagem inválido" }
+                }
+
+                const mimeType = matches[1]
+                const base64Data = matches[2]
+                
+                // Converter base64 para buffer
+                const buffer = Buffer.from(base64Data, 'base64')
+                
+                // Determinar extensão do arquivo
+                const fileExt = mimeType.split('/')[1] || 'jpg'
+                const fileName = `${userId}-${Date.now()}.${fileExt}`
+                const filePath = `${fileName}`
+
+                // Remover foto antiga se existir
+                if (currentUser.photo_path) {
+                    await supabase.storage
+                        .from("photos")
+                        .remove([currentUser.photo_path])
+                }
+
+                // Upload da nova foto
+                const { error: uploadError } = await supabase.storage
+                    .from("photos")
+                    .upload(filePath, buffer, {
+                        contentType: mimeType,
+                        upsert: false
+                    })
+
+                if (uploadError) {
+                    console.error("Erro ao fazer upload da foto:", uploadError)
+                    return { success: false, message: "Erro ao fazer upload da foto" }
+                }
+
+                updateData.photo_path = filePath
+            } catch (err) {
+                console.error("Erro ao processar foto:", err)
+                return { success: false, message: "Erro ao processar imagem" }
+            }
+        }
+
+        // Atualizar registro no banco
+        const { error: updateError } = await supabase
+            .from("users_cards")
+            .update(updateData)
+            .eq("id", userId)
+
+        if (updateError) {
+            console.error("Erro ao atualizar usuário:", updateError)
+            return { success: false, message: "Erro ao atualizar dados do usuário" }
+        }
+
+        // Registrar no audit log
+        await createAuditLog(admin.id, "UPDATE_USER_DATA", userId, {
+            userName: currentUser.name,
+            updatedFields: Object.keys(data).filter(key => data[key as keyof typeof data] !== undefined)
+        })
+
+        revalidatePath("/admin/solicitacoes")
+        revalidatePath(`/admin/solicitacoes/${userId}`)
+
+        return { success: true, message: "Dados atualizados com sucesso!" }
+    } catch (error) {
+        console.error("Erro ao atualizar usuário:", error)
+        return { success: false, message: "Erro ao processar atualização" }
     }
 }

@@ -1,6 +1,7 @@
 import { getServiceSupabase } from "@/lib/supabase"
 import { notFound } from "next/navigation"
 import RequestActions from "@/components/admin/request-actions"
+import EditUserDataForm from "@/components/admin/edit-user-data-form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -290,7 +291,21 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
 
                         <div className="pt-4 border-t">
                             <p className="text-sm font-medium mb-4">Ações Administrativas</p>
-                            <RequestActions request={request} />
+                            <div className="space-y-2">
+                                <EditUserDataForm 
+                                    user={{
+                                        id: request.id,
+                                        name: request.name,
+                                        email: request.email,
+                                        cpf: request.cpf,
+                                        whatsapp: request.whatsapp,
+                                        address_json: request.address_json,
+                                        photo_path: request.photo_path
+                                    }}
+                                    photoUrl={photoUrl}
+                                />
+                                <RequestActions request={request} />
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

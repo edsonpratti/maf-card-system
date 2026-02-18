@@ -204,3 +204,103 @@ export function cardDownloadEmailTemplate(name: string, downloadLink: string, ca
 </html>
   `.trim()
 }
+
+export function admin2FACodeEmailTemplate(name: string, code: string) {
+  return `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Código de Acesso - MAF Card System</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background-color: #7c3aed; padding: 40px 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">
+                🔐 Código de Acesso Admin
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="margin: 0 0 20px 0; color: #1f2937; font-size: 24px; font-weight: 600;">
+                Olá, ${name}! 👋
+              </h2>
+              
+              <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
+                Uma tentativa de login foi realizada na área administrativa. Use o código abaixo para <strong>confirmar seu acesso</strong>:
+              </p>
+
+              <!-- Code Display -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
+                <tr>
+                  <td align="center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px;">
+                    <p style="margin: 0 0 10px 0; color: #e0e7ff; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">
+                      Seu Código de Acesso
+                    </p>
+                    <p style="margin: 0; color: #ffffff; font-size: 48px; font-weight: 700; letter-spacing: 8px; font-family: 'Courier New', monospace;">
+                      ${code}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Warning Box -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0 0 0; background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 6px;">
+                <tr>
+                  <td style="padding: 16px;">
+                    <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.6;">
+                      ⚠️ <strong>Importante:</strong> Este código expira em <strong>10 minutos</strong> e só pode ser usado <strong>uma vez</strong>.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Security Notice -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin: 20px 0 0 0; background-color: #fee2e2; border-left: 4px solid #ef4444; border-radius: 6px;">
+                <tr>
+                  <td style="padding: 16px;">
+                    <p style="margin: 0; color: #7f1d1d; font-size: 14px; line-height: 1.6;">
+                      🚨 <strong>Não reconhece esta tentativa de login?</strong><br>
+                      Se você não tentou fazer login, ignore este email e entre em contato com a administração imediatamente. Seu acesso permanece seguro.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 30px 0 0 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
+                🔒 <strong>Dica de segurança:</strong> Nunca compartilhe este código com outras pessoas.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 14px;">
+                MAF Card System - Área Administrativa
+              </p>
+              <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+                Este é um email automático. Por favor, não responda.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim()
+}
+
