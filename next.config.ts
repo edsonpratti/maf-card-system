@@ -7,6 +7,12 @@ const nextConfig: NextConfig = {
   // Optimize for production
   compress: true,
   poweredByHeader: false,
+  experimental: {
+    // Increase body size limit for Server Actions (for file uploads)
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
+  },
 };
 
 export default nextConfig;

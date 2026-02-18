@@ -2,6 +2,30 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+  // Rotas públicas que não precisam de autenticação
+  const publicPaths = [
+    '/solicitar',
+    '/primeiro-acesso',
+    '/recuperar-senha',
+    '/validar',
+    '/enquete',
+    '/api/public'
+  ]
+
+  // Verificar se a rota é pública
+  const isPublicPath = publicPaths.some(path => 
+    request.nextUrl.pathname.startsWith(path)
+  )
+
+  // Se for rota pública, apenas retornar sem verificar autenticação
+  if (isPublicPath) {
+    return NextResponse.next({
+      request: {
+        headers: request.headers,
+      },
+    })
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
