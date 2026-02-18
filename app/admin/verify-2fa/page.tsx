@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,7 +11,7 @@ import { validate2FACode, generateAndSend2FACode } from "@/app/actions/admin-2fa
 import { supabase } from "@/lib/supabase"
 import Link from "next/link"
 
-export default function Verify2FAPage() {
+function Verify2FAContent() {
     const [code, setCode] = useState("")
     const [loading, setLoading] = useState(false)
     const [resendLoading, setResendLoading] = useState(false)
@@ -258,5 +258,20 @@ export default function Verify2FAPage() {
                 </div>
             </main>
         </div>
+    )
+}
+
+export default function Verify2FAPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-[#0a1628]">
+                <div className="text-white text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+                    <p>Carregando...</p>
+                </div>
+            </div>
+        }>
+            <Verify2FAContent />
+        </Suspense>
     )
 }
