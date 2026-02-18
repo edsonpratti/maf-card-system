@@ -26,15 +26,20 @@ async function createAuditLog(
 }
 
 export async function addStudent(prevState: any, formData: FormData) {
+    console.log("addStudent called")
     try {
         const user = await verifyAdminAccess()
+        console.log("Admin verified:", user.id)
         
         const supabase = getServiceSupabase()
         const name = formData.get("name") as string
         const cpf = (formData.get("cpf") as string).replace(/\D/g, "")
 
+        console.log("Adding student:", { name, cpf })
+
         const parsed = baseSchema.safeParse({ name, cpf })
         if (!parsed.success) {
+            console.log("Validation failed:", parsed.error)
             return { success: false, message: "Dados inválidos." }
         }
 
@@ -44,11 +49,14 @@ export async function addStudent(prevState: any, formData: FormData) {
         })
 
         if (error) {
+            console.error("Database error:", error)
             if (error.code === "23505") { // Unique violation
                 return { success: false, message: "CPF já existe na base." }
             }
             return { success: false, message: error.message }
         }
+
+        console.log("Student added successfully")
 
         // Log action (don't let audit log errors prevent success)
         try {
@@ -58,8 +66,18 @@ export async function addStudent(prevState: any, formData: FormData) {
             // Continue even if audit log fails
         }
 
-        revalidatePath("/admin/base-alunas")
-        return { success: true, message: "Aluna adicionada!" }
+        // Revalidate after successful operation
+        try {
+            revalidatePath("/admin/base-alunas")
+            console.log("Path revalidated")
+        } catch (revalidateError) {
+            console.error("Erro ao revalidar path:", revalidateError)
+            // Continue even if revalidation fails
+        }
+        
+        const result = { success: true, message: "Aluna adicionada!" }
+        console.log("Returning result:", result)
+        return result
     } catch (error) {
         console.error("Erro em addStudent:", error)
         return { success: false, message: "Erro inesperado ao adicionar aluna." }
@@ -111,7 +129,14 @@ export async function importCSV(prevState: any, formData: FormData) {
             // Continue even if audit log fails
         }
 
-        revalidatePath("/admin/base-alunas")
+        // Revalidate after successful operation
+        try {
+            revalidatePath("/admin/base-alunas")
+        } catch (revalidateError) {
+            console.error("Erro ao revalidar path:", revalidateError)
+            // Continue even if revalidation fails
+        }
+        
         return { success: true, message: `${students.length} alunas importadas!` }
     } catch (error) {
         console.error("Erro em importCSV:", error)
@@ -149,7 +174,13 @@ export async function deleteStudent(id: string) {
             }
         }
         
-        revalidatePath("/admin/base-alunas")
+        // Revalidate after successful operation
+        try {
+            revalidatePath("/admin/base-alunas")
+        } catch (revalidateError) {
+            console.error("Erro ao revalidar path:", revalidateError)
+            // Continue even if revalidation fails
+        }
     } catch (error) {
         console.error("Erro em deleteStudent:", error)
         throw error
@@ -215,7 +246,14 @@ export async function updateStudent(id: string, name: string, cpf: string) {
             // Continue even if audit log fails
         }
         
-        revalidatePath("/admin/base-alunas")
+        // Revalidate after successful operation
+        try {
+            revalidatePath("/admin/base-alunas")
+        } catch (revalidateError) {
+            console.error("Erro ao revalidar path:", revalidateError)
+            // Continue even if revalidation fails
+        }
+        
         return { success: true, message: "Aluna atualizada com sucesso!" }
     } catch (error) {
         console.error("Erro em updateStudent:", error)

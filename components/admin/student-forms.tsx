@@ -21,15 +21,16 @@ export function AddStudentForm({ onSuccess }: StudentFormProps) {
         const formData = new FormData(e.currentTarget)
         try {
             const res = await addStudent(null, formData)
-            if (res.success) {
+            if (res?.success) {
                 toast.success(res.message)
                 e.currentTarget.reset()
                 onSuccess?.()
             } else {
-                toast.error(res.message)
+                toast.error(res?.message || "Erro desconhecido ao adicionar aluna")
             }
-        } catch {
-            toast.error("Erro ao adicionar")
+        } catch (error) {
+            console.error("Erro ao adicionar aluna:", error)
+            toast.error("Erro de rede ao adicionar aluna. Verifique sua conexão.")
         } finally {
             setLoading(false)
         }
