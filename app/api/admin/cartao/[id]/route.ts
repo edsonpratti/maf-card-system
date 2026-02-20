@@ -104,7 +104,7 @@ export async function GET(
         })
     } catch (error: any) {
         console.error("[ADMIN PNG] Erro ao gerar PNG:", error)
-        return NextResponse.json(
+        return NextResponse.json(        npm run dev
             {
                 error: "Erro ao gerar o PNG do cartão",
                 details: error?.message || 'Erro desconhecido'
