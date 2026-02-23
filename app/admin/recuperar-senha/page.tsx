@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
@@ -12,7 +12,7 @@ import { Loader2, KeyRound, CheckCircle2, XCircle } from "lucide-react"
 
 type PageState = "loading" | "form" | "success" | "error"
 
-export default function AdminRecuperarSenhaPage() {
+function AdminRecuperarSenhaContent() {
     const [pageState, setPageState] = useState<PageState>("loading")
     const [loading, setLoading] = useState(false)
     const router = useRouter()
@@ -191,5 +191,17 @@ export default function AdminRecuperarSenhaPage() {
                 )}
             </Card>
         </div>
+    )
+}
+
+export default function AdminRecuperarSenhaPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-[#0a1628]">
+                <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
+            </div>
+        }>
+            <AdminRecuperarSenhaContent />
+        </Suspense>
     )
 }
