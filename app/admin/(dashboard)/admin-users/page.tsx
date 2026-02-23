@@ -1,17 +1,19 @@
 "use client"
 
-import { getAdminUsers, createAdminUser } from "@/app/actions/admin-users"
+import { getAdminUsers, createAdminUser, resetAdminPassword } from "@/app/actions/admin-users"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
+import { KeyRound, Loader2 } from "lucide-react"
 
 export default function AdminUsersPage() {
   const [admins, setAdmins] = useState<any[]>([])
   const [form, setForm] = useState({ name: "", email: "", password: "" })
   const [loading, setLoading] = useState(false)
+  const [resetLoadingEmail, setResetLoadingEmail] = useState<string | null>(null)
 
   useEffect(() => {
     getAdminUsers().then(setAdmins)
@@ -33,6 +35,17 @@ export default function AdminUsersPage() {
       toast.error(res.message)
     }
     setLoading(false)
+  }
+
+  const handleResetPassword = async (email: string) => {
+    setResetLoadingEmail(email)
+    const res = await resetAdminPassword(email)
+    if (res.success) {
+      toast.success(res.message)
+    } else {
+      toast.error(res.message)
+    }
+    setResetLoadingEmail(null)
   }
 
   return (
@@ -70,17 +83,32 @@ export default function AdminUsersPage() {
           <ul className="space-y-2">
             {admins.length === 0 && <li className="text-muted-foreground">Nenhum admin cadastrado.</li>}
             {admins.map((admin) => (
-              <li key={admin.id} className="border rounded p-2 flex flex-col">
+              <li key={admin.id} className="border rounded p-3 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold">{admin.name}</span>
-                  {admin.source === 'auth' && (
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                      Sistema
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">{admin.name}</span>
+                    {admin.source === 'auth' && (
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        Sistema
+                      </span>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 text-xs"
+                    disabled={resetLoadingEmail === admin.email}
+                    onClick={() => handleResetPassword(admin.email)}
+                  >
+                    {resetLoadingEmail === admin.email
+                      ? <Loader2 className="h-3 w-3 animate-spin" />
+                      : <KeyRound className="h-3 w-3" />
+                    }
+                    Resetar Senha
+                  </Button>
                 </div>
                 <span className="text-xs text-muted-foreground">{admin.email}</span>
-                <span className="text-xs">Cadastrado em: {new Date(admin.created_at).toLocaleString("pt-BR")}</span>
+                <span className="text-xs text-muted-foreground">Cadastrado em: {new Date(admin.created_at).toLocaleString("pt-BR")}</span>
               </li>
             ))}
           </ul>
