@@ -7,6 +7,7 @@ export async function middleware(request: NextRequest) {
     '/solicitar',
     '/primeiro-acesso',
     '/recuperar-senha',
+    '/admin/recuperar-senha',
     '/validar',
     '/enquete',
     '/api/public'

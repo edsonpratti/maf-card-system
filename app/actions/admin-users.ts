@@ -101,7 +101,7 @@ export async function resetAdminPassword(email: string) {
     type: "recovery",
     email,
     options: {
-      redirectTo: `${siteUrl}/admin/login`,
+      redirectTo: `${siteUrl}/admin/recuperar-senha`,
     },
   })
 
