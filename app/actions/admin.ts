@@ -89,6 +89,9 @@ export async function updateRequestStatus(id: string, newStatus: string, reason?
 
     if (newStatus === "APROVADA_MANUAL" || newStatus === "AUTO_APROVADA") {
         updateData.issued_at = new Date().toISOString()
+        updateData.maf_pro_id_approved = true
+        updateData.maf_pro_id_approved_at = new Date().toISOString()
+        updateData.maf_pro_id_approved_by = user.id
 
         // Buscar o registro para verificar se já tem card_number e validation_token
         const { data: currentCard } = await supabase
@@ -120,10 +123,31 @@ export async function updateRequestStatus(id: string, newStatus: string, reason?
         return { success: false, message: error.message }
     }
 
-    // If approved, send approval notification email
+    // Se aprovado, enviar email de confirmação da carteirinha e liberar MAF Pro ID
     if (newStatus === "APROVADA_MANUAL" || newStatus === "AUTO_APROVADA") {
-        // Não enviar email de primeiro acesso novamente após aprovação manual
-        // O email correto de aprovação é enviado em approveMafProIdAccess
+        const { data: userData } = await supabase
+            .from("users_cards")
+            .select("email, name")
+            .eq("id", id)
+            .single()
+
+        if (userData?.email && userData?.name) {
+            try {
+                const { Resend } = await import("resend")
+                const { mafProIdApprovedEmailTemplate } = await import("@/lib/email-templates")
+
+                const resend = new Resend(process.env.RESEND_API_KEY)
+                await resend.emails.send({
+                    from: process.env.RESEND_FROM_EMAIL || "mafpro@amandafernandes.com",
+                    to: userData.email,
+                    subject: "🎉 Sua carteirinha foi validada!",
+                    html: mafProIdApprovedEmailTemplate(userData.name)
+                })
+            } catch (emailError) {
+                console.error("Erro ao enviar email de aprovação da carteirinha:", emailError)
+                // Não falha a aprovação se o email falhar
+            }
+        }
     }
 
     // If rejected, send rejection email with reason
@@ -220,6 +244,9 @@ export async function revertRequestStatus(id: string, newStatus: "PENDENTE_MANUA
     // Se estiver aprovando, gerar card_number e validation_token
     if (newStatus === "APROVADA_MANUAL") {
         updateData.issued_at = new Date().toISOString()
+        updateData.maf_pro_id_approved = true
+        updateData.maf_pro_id_approved_at = new Date().toISOString()
+        updateData.maf_pro_id_approved_by = user.id
 
         // Buscar o registro para verificar se já tem card_number e validation_token
         const { data: cardData } = await supabase
@@ -250,17 +277,22 @@ export async function revertRequestStatus(id: string, newStatus: "PENDENTE_MANUA
         return { success: false, message: error.message }
     }
 
-    // Se foi aprovado, enviar email de primeiro acesso
+    // Se foi aprovado, enviar email de confirmação da carteirinha
     if (newStatus === "APROVADA_MANUAL") {
-        // Verificar se já tem conta de autenticação
-        const { data: authCheck } = await supabase
-            .from("users_cards")
-            .select("auth_user_id")
-            .eq("id", id)
-            .single()
+        try {
+            const { Resend } = await import("resend")
+            const { mafProIdApprovedEmailTemplate } = await import("@/lib/email-templates")
 
-        if (!authCheck?.auth_user_id) {
-            await sendWelcomeEmail(id, currentRequest.email, currentRequest.name, "APROVADA_MANUAL")
+            const resend = new Resend(process.env.RESEND_API_KEY)
+            await resend.emails.send({
+                from: process.env.RESEND_FROM_EMAIL || "mafpro@amandafernandes.com",
+                to: currentRequest.email,
+                subject: "🎉 Sua carteirinha foi validada!",
+                html: mafProIdApprovedEmailTemplate(currentRequest.name)
+            })
+        } catch (emailError) {
+            console.error("Erro ao enviar email de aprovação da carteirinha:", emailError)
+            // Não falha a aprovação se o email falhar
         }
     }
 
