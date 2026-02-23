@@ -220,9 +220,24 @@ export async function importCSV(prevState: any, formData: FormData) {
         }
 
         const supabase = getServiceSupabase()
+        // Deduplicar dentro do lote (mesmo CPF/email pode aparecer várias vezes no CSV
+        // se a aluna comprou o curso mais de uma vez — mantém apenas a primeira ocorrência)
+        const seenCpfs = new Set<string>()
+        const seenEmails = new Set<string>()
+        const dedupedStudents = students.filter((s) => {
+            if (!s.is_foreign && s.cpf) {
+                if (seenCpfs.has(s.cpf)) return false
+                seenCpfs.add(s.cpf)
+            } else if (s.is_foreign && s.email) {
+                if (seenEmails.has(s.email)) return false
+                seenEmails.add(s.email)
+            }
+            return true
+        })
+
         // Upsert brasileiras por CPF e estrangeiras por email (separados)
-        const brazilians = students.filter((s) => !s.is_foreign)
-        const foreigners = students.filter((s) => s.is_foreign)
+        const brazilians = dedupedStudents.filter((s) => !s.is_foreign)
+        const foreigners = dedupedStudents.filter((s) => s.is_foreign)
 
         if (brazilians.length > 0) {
             const { error } = await supabase.from("students_base").upsert(
@@ -245,12 +260,14 @@ export async function importCSV(prevState: any, formData: FormData) {
         }
 
         // Log action (don't let audit log errors prevent success)
+        const dupCount = students.length - dedupedStudents.length
         try {
             await createAuditLog(user.id, "UPLOAD_CSV", { 
-                count: students.length, 
+                count: dedupedStudents.length, 
                 fileName: file.name,
                 skipped: invalidRows.length,
-                foreigners: students.filter((s) => s.is_foreign).length,
+                duplicates: dupCount,
+                foreigners: foreigners.length,
             })
         } catch (auditError) {
             console.error("Erro ao criar audit log:", auditError)
@@ -265,9 +282,10 @@ export async function importCSV(prevState: any, formData: FormData) {
             // Continue even if revalidation fails
         }
         
-        const foreignCount = students.filter((s) => s.is_foreign).length
-        let message = `${students.length} alunas importadas!`
+        const foreignCount = foreigners.length
+        let message = `${dedupedStudents.length} alunas importadas!`
         if (foreignCount > 0) message += ` (${foreignCount} estrangeiras)`
+        if (dupCount > 0) message += `\nℹ️ ${dupCount} duplicatas no arquivo foram ignoradas`
         if (invalidRows.length > 0) {
             message += `\n⚠️ ${invalidRows.length} linhas foram ignoradas (dados inválidos ou incompletos)`
         }
