@@ -227,7 +227,7 @@ export async function importCSV(prevState: any, formData: FormData) {
         if (brazilians.length > 0) {
             const { error } = await supabase.from("students_base").upsert(
                 brazilians,
-                { onConflict: "cpf" }
+                { ignoreDuplicates: true }
             )
             if (error) {
                 return { success: false, message: "Erro na importação (brasileiras): " + error.message }
@@ -237,7 +237,7 @@ export async function importCSV(prevState: any, formData: FormData) {
         if (foreigners.length > 0) {
             const { error } = await supabase.from("students_base").upsert(
                 foreigners,
-                { onConflict: "email" }
+                { ignoreDuplicates: true }
             )
             if (error) {
                 return { success: false, message: "Erro na importação (estrangeiras): " + error.message }
