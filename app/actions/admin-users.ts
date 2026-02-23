@@ -100,6 +100,9 @@ export async function resetAdminPassword(email: string) {
   const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
     type: "recovery",
     email,
+    options: {
+      redirectTo: `${siteUrl}/admin/recuperar-senha`,
+    },
   })
 
   if (linkError) return { success: false, message: linkError.message }

@@ -22,20 +22,36 @@ export default function AdminRecuperarSenhaPage() {
         const tokenHash = searchParams.get("token_hash")
         const type = searchParams.get("type")
 
-        if (!tokenHash || type !== "recovery") {
-            setPageState("error")
+        if (tokenHash && type === "recovery") {
+            // Caminho 1: link gerado pelo nosso Resend (token_hash na query string)
+            supabase.auth.verifyOtp({ token_hash: tokenHash, type: "recovery" }).then(({ error }) => {
+                if (error) {
+                    console.error("[recovery] verifyOtp error:", error.message)
+                    setPageState("error")
+                } else {
+                    setPageState("form")
+                }
+            })
             return
         }
 
-        // Verifica o token via OTP hash — não depende de redirect do Supabase
-        supabase.auth.verifyOtp({ token_hash: tokenHash, type: "recovery" }).then(({ error }) => {
-            if (error) {
-                console.error("[recovery] verifyOtp error:", error.message)
-                setPageState("error")
-            } else {
+        // Caminho 2: link enviado pelo próprio Supabase (redireciona com #access_token no hash)
+        // Escuta o evento PASSWORD_RECOVERY que o Supabase JS dispara automaticamente
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+            if (event === "PASSWORD_RECOVERY") {
                 setPageState("form")
             }
         })
+
+        // Timeout: se em 5s nenhum token for detectado, mostra erro
+        const timeout = setTimeout(() => {
+            setPageState(prev => prev === "loading" ? "error" : prev)
+        }, 5000)
+
+        return () => {
+            subscription.unsubscribe()
+            clearTimeout(timeout)
+        }
     }, [searchParams])
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
