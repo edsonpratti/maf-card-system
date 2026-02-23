@@ -100,15 +100,15 @@ export async function resetAdminPassword(email: string) {
   const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
     type: "recovery",
     email,
-    options: {
-      redirectTo: `${siteUrl}/admin/recuperar-senha`,
-    },
   })
 
   if (linkError) return { success: false, message: linkError.message }
 
-  const resetLink = linkData?.properties?.action_link
-  if (!resetLink) return { success: false, message: "Erro ao gerar link de recuperação" }
+  const hashedToken = linkData?.properties?.hashed_token
+  if (!hashedToken) return { success: false, message: "Erro ao gerar token de recuperação" }
+
+  // Constrói o link direto para nossa página, sem passar pelo redirect do Supabase
+  const resetLink = `${siteUrl}/admin/recuperar-senha?token_hash=${hashedToken}&type=recovery`
 
   // Envia o email com o link
   const resend = new Resend(process.env.RESEND_API_KEY)
