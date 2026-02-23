@@ -4,30 +4,34 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { studentSchema, type StudentFormData } from "@/lib/validators"
+import { studentCombinedSchema, type StudentCombinedFormData } from "@/lib/validators"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { toast } from "sonner"
-import { checkCPFExists, submitApplication } from "@/app/actions/solicitar"
-import { Loader2, X } from "lucide-react"
+import { checkCPFExists, checkEmailExists, submitApplication } from "@/app/actions/solicitar"
+import { Loader2, X, Globe } from "lucide-react"
 import { formatCEP, formatPhone } from "@/lib/utils"
 import Link from "next/link"
 
 export default function SolicitationForm() {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
+    const [isForeign, setIsForeign] = useState(false)
     const [cpfStatus, setCpfStatus] = useState<"initial" | "found" | "not_found" | "checking">("initial")
+    const [emailStatus, setEmailStatus] = useState<"initial" | "found" | "not_found" | "checking">("initial")
     const [cepLoading, setCepLoading] = useState(false)
     const [photoPreview, setPhotoPreview] = useState<string | null>(null)
     const [cepFilled, setCepFilled] = useState(false)
 
 
-    const form = useForm<StudentFormData>({
-        resolver: zodResolver(studentSchema),
+    const form = useForm<StudentCombinedFormData>({
+        resolver: zodResolver(studentCombinedSchema),
         defaultValues: {
+            isForeign: false,
             cpf: "",
+            purchaseEmail: "",
             name: "",
             whatsapp: "",
             email: "",
@@ -43,6 +47,18 @@ export default function SolicitationForm() {
             },
         },
     })
+
+    const toggleForeign = () => {
+        const next = !isForeign
+        setIsForeign(next)
+        form.setValue("isForeign", next)
+        form.setValue("cpf", "")
+        form.setValue("purchaseEmail", "")
+        // If switching back to Brazilian mode, clear the email that was auto-filled
+        if (isForeign) form.setValue("email", "")
+        setCpfStatus("initial")
+        setEmailStatus("initial")
+    }
 
     // Update handleCPFBlur to validate first
     const handleCPFBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
@@ -63,7 +79,6 @@ export default function SolicitationForm() {
             }
 
             if (result.exists && result.name) {
-
                 form.setValue("name", result.name)
                 setCpfStatus("found")
                 toast.success(result.message)
@@ -77,7 +92,44 @@ export default function SolicitationForm() {
         }
     }
 
+    const handlePurchaseEmailBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
+        const isValid = await form.trigger("purchaseEmail")
+        if (!isValid) {
+            setEmailStatus("initial")
+            return
+        }
+
+        const email = e.target.value.trim()
+        if (!email) return
+
+        setEmailStatus("checking")
+        try {
+            const result = await checkEmailExists(email)
+            if (result.alreadyApplied) {
+                toast.error(result.message)
+                setEmailStatus("initial")
+                return
+            }
+
+            // Auto-fill contact email with purchase email (user can still change it)
+            form.setValue("email", email)
+
+            if (result.exists && result.name) {
+                form.setValue("name", result.name)
+                setEmailStatus("found")
+                toast.success(result.message)
+            } else {
+                setEmailStatus("not_found")
+                toast.info(result.message)
+            }
+        } catch (error) {
+            toast.error("Erro ao verificar email")
+            setEmailStatus("initial")
+        }
+    }
+
     const cpfRegister = form.register("cpf")
+    const purchaseEmailRegister = form.register("purchaseEmail")
 
     const handleCEPBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
         const cep = e.target.value.replace(/\D/g, "")
@@ -146,10 +198,20 @@ export default function SolicitationForm() {
         }
     }
 
-    const onSubmit = async (data: StudentFormData) => {
+    // Determine validation status for certificate display
+    const needsCertificate = isForeign
+        ? emailStatus === "not_found"
+        : cpfStatus === "not_found"
+
+    const onSubmit = async (data: StudentCombinedFormData) => {
         setLoading(true)
         const formData = new FormData()
-        formData.append("cpf", data.cpf)
+        formData.append("isForeign", isForeign ? "true" : "false")
+        if (!isForeign) {
+            formData.append("cpf", data.cpf ?? "")
+        } else {
+            formData.append("purchaseEmail", data.purchaseEmail ?? "")
+        }
         formData.append("name", data.name)
         formData.append("whatsapp", data.whatsapp)
         formData.append("email", data.email)
@@ -172,10 +234,9 @@ export default function SolicitationForm() {
         }
         formData.append("photo", photoFile)
 
-        // Handle certificate upload if needed (manual via input ref or controlled input)
-        // For simplicity, assuming file input exists and we grab it from DOM or state if not using controlled
+        // Handle certificate upload if needed
         const fileInput = document.getElementById("certificate") as HTMLInputElement
-        if (cpfStatus === "not_found") {
+        if (needsCertificate) {
             const file = fileInput?.files?.[0]
             if (file) {
                 if (file.size > 5 * 1024 * 1024) {
@@ -185,7 +246,6 @@ export default function SolicitationForm() {
                 }
                 formData.append("certificate", file)
             } else {
-                // Should be caught by 'required' attribute on input, but safe to check
                 toast.error("Por favor, faça o upload do certificado.")
                 setLoading(false)
                 return
@@ -208,34 +268,81 @@ export default function SolicitationForm() {
         }
     }
 
+    const validationStatus = isForeign ? emailStatus : cpfStatus
+
     return (
         <Card className="w-full max-w-2xl mx-auto bg-white/5 backdrop-blur-md border-white/10 shadow-2xl">
             <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6">
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
-                    <div className="space-y-2">
-                        <Label htmlFor="cpf" className="text-gray-300 text-sm">CPF</Label>
-                        <Input
-                            id="cpf"
-                            placeholder="000.000.000-00"
-                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 text-base"
-                            {...cpfRegister}
-                            onBlur={(e) => {
-                                cpfRegister.onBlur(e)
-                                handleCPFBlur(e)
-                            }}
-                        />
-                        {form.formState.errors.cpf && (
-                            <p className="text-sm text-red-400">{form.formState.errors.cpf.message}</p>
-                        )}
-                    </div>
+
+                    {/* CPF ou Email de compra (para estrangeiras) */}
+                    {!isForeign ? (
+                        <div className="space-y-2">
+                            <Label htmlFor="cpf" className="text-gray-300 text-sm">CPF</Label>
+                            <Input
+                                id="cpf"
+                                placeholder="000.000.000-00"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 text-base"
+                                {...cpfRegister}
+                                onBlur={(e) => {
+                                    cpfRegister.onBlur(e)
+                                    handleCPFBlur(e)
+                                }}
+                            />
+                            {form.formState.errors.cpf && (
+                                <p className="text-sm text-red-400">{form.formState.errors.cpf.message}</p>
+                            )}
+                            {/* Link para estrangeiras */}
+                            <button
+                                type="button"
+                                onClick={toggleForeign}
+                                className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors mt-1"
+                            >
+                                <Globe className="h-3.5 w-3.5" />
+                                Sou estrangeiro(a) e não possuo CPF — clique aqui
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-2">
+                                <Globe className="h-4 w-4 text-blue-400 shrink-0" />
+                                <p className="text-xs text-blue-300">
+                                    Modo estrangeiro ativado. Informe o email usado na compra do curso MAF.
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={toggleForeign}
+                                    className="ml-auto text-blue-400 hover:text-blue-300 transition-colors shrink-0"
+                                    title="Cancelar modo estrangeiro"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </div>
+                            <Label htmlFor="purchaseEmail" className="text-gray-300 text-sm">Email de compra do MAF</Label>
+                            <Input
+                                id="purchaseEmail"
+                                type="email"
+                                placeholder="email@usado.na.compra.com"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500/20 h-11 text-base"
+                                {...purchaseEmailRegister}
+                                onBlur={(e) => {
+                                    purchaseEmailRegister.onBlur(e)
+                                    handlePurchaseEmailBlur(e)
+                                }}
+                            />
+                            {form.formState.errors.purchaseEmail && (
+                                <p className="text-sm text-red-400">{form.formState.errors.purchaseEmail.message}</p>
+                            )}
+                        </div>
+                    )}
 
                     <div className="space-y-2">
                         <Label htmlFor="name" className="text-gray-300 text-sm">Nome Completo</Label>
                         <Input
                             id="name"
                             {...form.register("name")}
-                            readOnly={cpfStatus === "found"}
-                            className={`bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 text-base ${cpfStatus === "found" ? "bg-white/10 text-gray-400" : ""}`}
+                            readOnly={validationStatus === "found"}
+                            className={`bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 text-base ${validationStatus === "found" ? "bg-white/10 text-gray-400" : ""}`}
                         />
                         {form.formState.errors.name && (
                             <p className="text-sm text-red-400">{form.formState.errors.name.message}</p>
@@ -304,13 +411,25 @@ export default function SolicitationForm() {
                             )}
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="email" className="text-gray-300 text-sm">E-mail</Label>
+                            <Label htmlFor="email" className="text-gray-300 text-sm">
+                                E-mail
+                                {isForeign && emailStatus !== "initial" && emailStatus !== "checking" && (
+                                    <span className="ml-2 text-xs text-blue-400 font-normal">(preenchido pelo email de compra)</span>
+                                )}
+                            </Label>
                             <Input
                                 id="email"
                                 type="email"
                                 {...form.register("email")}
-                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 text-base"
+                                className={`bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 text-base ${
+                                    isForeign && emailStatus !== "initial" && emailStatus !== "checking"
+                                        ? "border-blue-500/30 bg-blue-500/5"
+                                        : ""
+                                }`}
                             />
+                            {isForeign && emailStatus !== "initial" && emailStatus !== "checking" && (
+                                <p className="text-xs text-blue-400/70">Altere somente se quiser usar um email diferente para acessar o portal.</p>
+                            )}
                             {form.formState.errors.email && (
                                 <p className="text-sm text-red-400">{form.formState.errors.email.message}</p>
                             )}
@@ -430,7 +549,7 @@ export default function SolicitationForm() {
                         </div>
                     </div>
 
-                    {cpfStatus === "not_found" && (
+                    {needsCertificate && (
                         <div className="space-y-2 border border-yellow-500/30 p-3 sm:p-4 rounded-lg bg-yellow-500/10">
                             <Label htmlFor="certificate" className="text-yellow-400 text-sm">Upload do Certificado (Obrigatório)</Label>
                             <Input
@@ -441,7 +560,10 @@ export default function SolicitationForm() {
                                 className="bg-white/5 border-white/10 text-white file:bg-emerald-500 file:text-white file:border-0 file:rounded-md file:px-2 sm:file:px-3 file:py-1 file:mr-2 sm:file:mr-3 file:cursor-pointer file:text-xs sm:file:text-sm h-auto py-2"
                             />
                             <p className="text-xs text-yellow-400/80">
-                                Como seu CPF não foi encontrado automaticamente, precisamos validar seu certificado manualmente. Formatos aceitos: JPG, PNG ou PDF. Tamanho máximo: 5MB.
+                                {isForeign
+                                    ? "Como seu email não foi encontrado automaticamente na base de alunas, precisamos validar seu certificado manualmente."
+                                    : "Como seu CPF não foi encontrado automaticamente, precisamos validar seu certificado manualmente."
+                                } Formatos aceitos: JPG, PNG ou PDF. Tamanho máximo: 5MB.
                             </p>
                         </div>
                     )}
@@ -452,7 +574,7 @@ export default function SolicitationForm() {
                         disabled={loading}
                     >
                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {cpfStatus === "found" ? "Solicitar Carteirinha Automática" : "Enviar Solicitação para Análise"}
+                        {validationStatus === "found" ? "Solicitar Carteirinha Automática" : "Enviar Solicitação para Análise"}
                     </Button>
 
                     <div className="text-center pt-4 border-t border-white/10">
@@ -468,3 +590,5 @@ export default function SolicitationForm() {
         </Card>
     )
 }
+
+

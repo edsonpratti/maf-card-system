@@ -90,25 +90,107 @@ export async function checkCPFExists(cpf: string) {
     }
 }
 
+export async function checkEmailExists(purchaseEmail: string) {
+    const email = purchaseEmail.trim().toLowerCase()
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return {
+            exists: false,
+            alreadyApplied: false,
+            message: "Email inválido."
+        }
+    }
+
+    // Rate limiting by email
+    if (!checkRateLimit(`email-check-${email}`, 5, 60000)) {
+        return {
+            exists: false,
+            alreadyApplied: false,
+            message: "Muitas tentativas. Aguarde um minuto."
+        }
+    }
+
+    const supabase = getServiceSupabase()
+
+    // Check if already applied (by email, for foreign students)
+    const { data: existingUser } = await supabase
+        .from("users_cards")
+        .select("id, status")
+        .eq("email", email)
+        .eq("is_foreign", true)
+        .single()
+
+    if (existingUser) {
+        return {
+            exists: true,
+            alreadyApplied: true,
+            status: existingUser.status,
+            message: "Email já cadastrado. Acesse o portal para ver status."
+        }
+    }
+
+    // Check students_base by email (foreign students)
+    const { data: student } = await supabase
+        .from("students_base")
+        .select("name")
+        .eq("email", email)
+        .eq("is_foreign", true)
+        .single()
+
+    if (student) {
+        return {
+            exists: true,
+            alreadyApplied: false,
+            name: student.name,
+            message: "Email encontrado na base de alunas! Cadastro será aprovado automaticamente."
+        }
+    }
+
+    return {
+        exists: false,
+        alreadyApplied: false,
+        message: "Email não encontrado. Você precisará enviar seu certificado para análise."
+    }
+}
+
 export async function submitApplication(prevState: any, formData: FormData) {
     const supabase = getServiceSupabase()
 
-    // Checar se o CPF já existe na tabela users_cards
-    const cpfToCheck = cleanCPF(formData.get("cpf") as string)
-    if (cpfToCheck && cpfToCheck.length === 11) {
-        const { data: existingUser } = await supabase
-            .from("users_cards")
-            .select("id")
-            .eq("cpf", cpfToCheck)
-            .single()
-        if (existingUser) {
-            return { success: false, message: "CPF já cadastrado. Acesse o portal para ver o status do seu pedido." }
+    const isForeign = formData.get("isForeign") === "true"
+
+    if (!isForeign) {
+        // ── Fluxo brasileiro: validação por CPF ──────────────────────────────
+        const cpfToCheck = cleanCPF(formData.get("cpf") as string)
+        if (cpfToCheck && cpfToCheck.length === 11) {
+            const { data: existingUser } = await supabase
+                .from("users_cards")
+                .select("id")
+                .eq("cpf", cpfToCheck)
+                .single()
+            if (existingUser) {
+                return { success: false, message: "CPF já cadastrado. Acesse o portal para ver o status do seu pedido." }
+            }
+        }
+    } else {
+        // ── Fluxo estrangeiro: validação por email de compra ─────────────────
+        const purchaseEmailRaw = (formData.get("purchaseEmail") as string)?.trim().toLowerCase()
+        if (purchaseEmailRaw) {
+            const { data: existingUser } = await supabase
+                .from("users_cards")
+                .select("id")
+                .eq("email", purchaseEmailRaw)
+                .eq("is_foreign", true)
+                .single()
+            if (existingUser) {
+                return { success: false, message: "Email já cadastrado. Acesse o portal para ver o status do seu pedido." }
+            }
         }
     }
 
     const rawData = {
         name: formData.get("name"),
-        cpf: formData.get("cpf"),
+        cpf: isForeign ? null : formData.get("cpf"),
+        purchaseEmail: isForeign ? (formData.get("purchaseEmail") as string)?.trim().toLowerCase() : null,
         whatsapp: formData.get("whatsapp"),
         email: formData.get("email"),
         certificationDate: formData.get("certificationDate"),
@@ -124,16 +206,24 @@ export async function submitApplication(prevState: any, formData: FormData) {
         // We will handle the files separately
     }
 
-    const cpfClean = cleanCPF(rawData.cpf as string)
+    const cpfClean = isForeign ? null : cleanCPF(rawData.cpf as string)
 
-    // Basic validation
-    if (!cpfClean || cpfClean.length !== 11) {
-        return { success: false, message: "CPF inválido." }
-    }
+    if (!isForeign) {
+        // Basic CPF validation
+        if (!cpfClean || cpfClean.length !== 11) {
+            return { success: false, message: "CPF inválido." }
+        }
 
-    // Rate limiting by CPF to prevent spam
-    if (!checkRateLimit(`submit-${cpfClean}`, 3, 3600000)) { // 3 attempts per hour
-        return { success: false, message: "Muitas tentativas. Aguarde antes de tentar novamente." }
+        // Rate limiting by CPF to prevent spam
+        if (!checkRateLimit(`submit-${cpfClean}`, 3, 3600000)) { // 3 attempts per hour
+            return { success: false, message: "Muitas tentativas. Aguarde antes de tentar novamente." }
+        }
+    } else {
+        // Rate limiting by purchase email for foreigners
+        const rateLimitKey = `submit-foreign-${rawData.purchaseEmail}`
+        if (!checkRateLimit(rateLimitKey, 3, 3600000)) {
+            return { success: false, message: "Muitas tentativas. Aguarde antes de tentar novamente." }
+        }
     }
 
     // Additional validation for required fields
@@ -141,18 +231,24 @@ export async function submitApplication(prevState: any, formData: FormData) {
         return { success: false, message: "Todos os campos obrigatórios devem ser preenchidos." }
     }
 
-    // Validate using Zod
-    // Note: We need to adapt the rawData to match the schema expectations if needed, 
-    // but the schema probably expects a string for everything or specific shape.
-    // For now assuming the existing validation lines were correct or we can just comment them out if they cause issues with File objects not being in rawData.
-    // However, the previous code had them.
-
     // Check base again to determine status
-    const { data: student } = await supabase
-        .from("students_base")
-        .select("id")
-        .eq("cpf", cpfClean)
-        .single()
+    let student = null
+    if (!isForeign && cpfClean) {
+        const { data } = await supabase
+            .from("students_base")
+            .select("id")
+            .eq("cpf", cpfClean)
+            .single()
+        student = data
+    } else if (isForeign && rawData.purchaseEmail) {
+        const { data } = await supabase
+            .from("students_base")
+            .select("id")
+            .eq("email", rawData.purchaseEmail)
+            .eq("is_foreign", true)
+            .single()
+        student = data
+    }
 
     let status = "PENDENTE_MANUAL"
     let cardNumber = null
@@ -244,7 +340,8 @@ export async function submitApplication(prevState: any, formData: FormData) {
         }
 
         const fileExt = certificateFile.name.split('.').pop()
-        const fileName = `${cpfClean}_${Date.now()}.${fileExt}`
+        const fileIdentifier = cpfClean || rawData.purchaseEmail?.replace(/[@.]/g, '_') || 'foreign'
+        const fileName = `${fileIdentifier}_${Date.now()}.${fileExt}`
 
         try {
             const { data: uploadData, error: uploadError } = await supabase.storage
@@ -300,8 +397,8 @@ export async function submitApplication(prevState: any, formData: FormData) {
     // Insert
     const insertData: any = {
         name: rawData.name,
-        cpf: cpfClean,
-        cpf_hash: cpfClean,
+        cpf: cpfClean || null,
+        cpf_hash: cpfClean || null,
         whatsapp: rawData.whatsapp,
         email: rawData.email,
         address_json: rawData.address,
@@ -310,6 +407,7 @@ export async function submitApplication(prevState: any, formData: FormData) {
         photo_path: photoPath,
         certification_date: rawData.certificationDate || null,
         is_active: true,
+        is_foreign: isForeign,
         maf_pro_id_approved: status === "AUTO_APROVADA",
     }
 

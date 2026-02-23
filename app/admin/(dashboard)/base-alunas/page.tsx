@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { deleteStudent, updateStudent, getStudentsBase } from "@/app/actions/base-alunas"
-import { Trash2, Pencil, Check, X } from "lucide-react"
+import { Trash2, Pencil, Globe } from "lucide-react"
 import { StudentBaseFilters } from "@/components/admin/student-base-filters"
 import { toast } from "sonner"
 import {
@@ -18,11 +18,14 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
 
 type Student = {
     id: string
     name: string
-    cpf: string
+    cpf: string | null
+    email: string | null
+    is_foreign: boolean
     created_at: string
     is_recognized: boolean
 }
@@ -38,6 +41,8 @@ export default function BaseAlunasPage() {
     const [editingStudent, setEditingStudent] = useState<Student | null>(null)
     const [editName, setEditName] = useState("")
     const [editCpf, setEditCpf] = useState("")
+    const [editEmail, setEditEmail] = useState("")
+    const [editIsForeign, setEditIsForeign] = useState(false)
     const [editDialogOpen, setEditDialogOpen] = useState(false)
     const [saving, setSaving] = useState(false)
     
@@ -68,7 +73,8 @@ export default function BaseAlunasPage() {
 
         if (searchCPF) {
             filtered = filtered.filter((student) =>
-                student.cpf.replace(/\D/g, "").includes(searchCPF.replace(/\D/g, ""))
+                (student.cpf?.replace(/\D/g, "") ?? "").includes(searchCPF.replace(/\D/g, "")) ||
+                (student.email ?? "").toLowerCase().includes(searchCPF.toLowerCase())
             )
         }
 
@@ -97,7 +103,9 @@ export default function BaseAlunasPage() {
     const handleEditClick = (student: Student) => {
         setEditingStudent(student)
         setEditName(student.name)
-        setEditCpf(student.cpf)
+        setEditCpf(student.cpf ?? "")
+        setEditEmail(student.email ?? "")
+        setEditIsForeign(student.is_foreign)
         setEditDialogOpen(true)
     }
 
@@ -105,7 +113,7 @@ export default function BaseAlunasPage() {
         if (!editingStudent) return
         
         setSaving(true)
-        const result = await updateStudent(editingStudent.id, editName, editCpf)
+        const result = await updateStudent(editingStudent.id, editName, editCpf, editEmail, editIsForeign)
         setSaving(false)
         
         if (result.success) {
@@ -118,17 +126,20 @@ export default function BaseAlunasPage() {
         }
     }
 
-    const formatCPF = (cpf: string) => {
+    const formatCPF = (cpf: string | null) => {
+        if (!cpf) return "—"
         const cleaned = cpf.replace(/\D/g, "")
         return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4")
     }
+
+    const foreignCount = students.filter((s) => s.is_foreign).length
 
     return (
         <div className="space-y-6 sm:space-y-8">
             <div className="space-y-2">
                 <h1 className="text-2xl sm:text-3xl font-bold">Base de Alunas Habilitadas</h1>
                 <p className="text-sm sm:text-base text-muted-foreground">
-                    Alunas com habilitação reconhecida pelo sistema. CPFs cadastrados aqui são aprovados automaticamente.
+                    Alunas com habilitação reconhecida pelo sistema. CPFs (ou emails para estrangeiras) cadastrados aqui são aprovados automaticamente.
                 </p>
             </div>
 
@@ -159,8 +170,20 @@ export default function BaseAlunasPage() {
                     filteredStudents.map((student) => (
                         <div key={student.id} className="border rounded-lg p-4 bg-card flex items-center justify-between gap-4">
                             <div className="flex-1 min-w-0">
-                                <p className="font-medium truncate">{student.name}</p>
-                                <p className="text-sm text-muted-foreground">{formatCPF(student.cpf)}</p>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="font-medium truncate">{student.name}</p>
+                                    {student.is_foreign && (
+                                        <Badge variant="secondary" className="text-xs flex items-center gap-1 shrink-0">
+                                            <Globe className="h-3 w-3" />
+                                            Estrangeira
+                                        </Badge>
+                                    )}
+                                </div>
+                                {student.is_foreign ? (
+                                    <p className="text-sm text-muted-foreground truncate">{student.email}</p>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">{formatCPF(student.cpf)}</p>
+                                )}
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
                                 <Button 
@@ -201,7 +224,8 @@ export default function BaseAlunasPage() {
                     <TableHeader>
                         <TableRow>
                             <TableHead>Nome</TableHead>
-                            <TableHead>CPF</TableHead>
+                            <TableHead>CPF / Email</TableHead>
+                            <TableHead>Tipo</TableHead>
                             <TableHead>Cadastro</TableHead>
                             <TableHead className="text-right">Ações</TableHead>
                         </TableRow>
@@ -209,7 +233,7 @@ export default function BaseAlunasPage() {
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={4} className="text-center h-24">
+                                <TableCell colSpan={5} className="text-center h-24">
                                     Carregando...
                                 </TableCell>
                             </TableRow>
@@ -217,7 +241,22 @@ export default function BaseAlunasPage() {
                             filteredStudents.map((student) => (
                                 <TableRow key={student.id}>
                                     <TableCell className="font-medium">{student.name}</TableCell>
-                                    <TableCell>{formatCPF(student.cpf)}</TableCell>
+                                    <TableCell className="text-muted-foreground text-sm">
+                                        {student.is_foreign
+                                            ? student.email
+                                            : formatCPF(student.cpf)
+                                        }
+                                    </TableCell>
+                                    <TableCell>
+                                        {student.is_foreign ? (
+                                            <Badge variant="secondary" className="flex items-center gap-1 w-fit text-xs">
+                                                <Globe className="h-3 w-3" />
+                                                Estrangeira
+                                            </Badge>
+                                        ) : (
+                                            <Badge variant="outline" className="text-xs">Brasileira</Badge>
+                                        )}
+                                    </TableCell>
                                     <TableCell>{new Date(student.created_at).toLocaleDateString('pt-BR')}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-1">
@@ -247,7 +286,7 @@ export default function BaseAlunasPage() {
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={4} className="text-center h-24">
+                                <TableCell colSpan={5} className="text-center h-24">
                                     {searchTerm || searchCPF
                                         ? "Nenhuma aluna encontrada com os filtros aplicados."
                                         : "Nenhuma aluna cadastrada."}
@@ -261,6 +300,9 @@ export default function BaseAlunasPage() {
             <div className="rounded-lg border p-4 bg-muted/50">
                 <p className="text-sm text-muted-foreground">
                     <strong>Total de alunas habilitadas:</strong> {students.length}
+                    {foreignCount > 0 && (
+                        <> | <strong>Estrangeiras:</strong> {foreignCount}</>
+                    )}
                     {filteredStudents.length !== students.length && (
                         <> | <strong>Filtradas:</strong> {filteredStudents.length}</>
                     )}
@@ -286,15 +328,43 @@ export default function BaseAlunasPage() {
                                 placeholder="Nome completo da aluna"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="edit-cpf">CPF</Label>
-                            <Input
-                                id="edit-cpf"
-                                value={editCpf}
-                                onChange={(e) => setEditCpf(e.target.value)}
-                                placeholder="000.000.000-00"
-                            />
+                        {/* Toggle estrangeira */}
+                        <div className="flex items-center gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setEditIsForeign(!editIsForeign)}
+                                className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-md border transition-colors ${
+                                    editIsForeign
+                                        ? "bg-blue-500/20 border-blue-500/40 text-blue-600 dark:text-blue-400"
+                                        : "border-border text-muted-foreground hover:text-foreground"
+                                }`}
+                            >
+                                <Globe className="h-3.5 w-3.5" />
+                                {editIsForeign ? "Estrangeira ✓" : "Estrangeira (sem CPF)"}
+                            </button>
                         </div>
+                        {!editIsForeign ? (
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-cpf">CPF</Label>
+                                <Input
+                                    id="edit-cpf"
+                                    value={editCpf}
+                                    onChange={(e) => setEditCpf(e.target.value)}
+                                    placeholder="000.000.000-00"
+                                />
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-email">Email de compra</Label>
+                                <Input
+                                    id="edit-email"
+                                    type="email"
+                                    value={editEmail}
+                                    onChange={(e) => setEditEmail(e.target.value)}
+                                    placeholder="email@compra.com"
+                                />
+                            </div>
+                        )}
                     </div>
                     <DialogFooter>
                         <Button variant="secondary" onClick={() => setEditDialogOpen(false)}>
@@ -316,7 +386,7 @@ export default function BaseAlunasPage() {
                             Tem certeza que deseja remover <strong>{studentToDelete?.name}</strong> da base de alunas habilitadas?
                             <br /><br />
                             <span className="text-yellow-600 dark:text-yellow-400">
-                                Atenção: Esta ação não pode ser desfeita. O CPF não será mais aprovado automaticamente.
+                                Atenção: Esta ação não pode ser desfeita. {studentToDelete?.is_foreign ? "O email" : "O CPF"} não será mais aprovado automaticamente.
                             </span>
                         </DialogDescription>
                     </DialogHeader>
@@ -333,3 +403,5 @@ export default function BaseAlunasPage() {
         </div>
     )
 }
+
+

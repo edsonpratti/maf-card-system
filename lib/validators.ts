@@ -14,21 +14,55 @@ export const cpfSchema = z.string().refine(isValidCPF, {
     message: "CPF inválido",
 })
 
+const addressSchema = z.object({
+    cep: z.string().min(8, "CEP inválido"),
+    street: z.string().min(3, "Rua inválida"),
+    number: z.string().min(1, "Número obrigatório"),
+    complement: z.string().optional(),
+    neighborhood: z.string().min(3, "Bairro obrigatório"),
+    city: z.string().min(3, "Cidade obrigatória"),
+    state: z.string().length(2, "UF inválida"),
+})
+
 export const studentSchema = z.object({
     name: z.string().min(3, "Nome muito curto"),
     cpf: cpfSchema,
     whatsapp: z.string().min(10, "WhatsApp inválido"),
     email: z.string().email("Email inválido"),
     certificationDate: z.string().min(1, "Data de habilitação obrigatória"),
-    address: z.object({
-        cep: z.string().min(8, "CEP inválido"),
-        street: z.string().min(3, "Rua inválida"),
-        number: z.string().min(1, "Número obrigatório"),
-        complement: z.string().optional(),
-        neighborhood: z.string().min(3, "Bairro obrigatório"),
-        city: z.string().min(3, "Cidade obrigatória"),
-        state: z.string().length(2, "UF inválida"),
-    }),
+    address: addressSchema,
 })
 
 export type StudentFormData = z.infer<typeof studentSchema>
+
+// Schema para o fluxo combinado (brasileira com CPF ou estrangeira com email de compra)
+export const studentCombinedSchema = z.object({
+    isForeign: z.boolean(),
+    cpf: z.string().optional(),
+    purchaseEmail: z.string().optional(),
+    name: z.string().min(3, "Nome muito curto"),
+    whatsapp: z.string().min(10, "WhatsApp inválido"),
+    email: z.string().email("Email inválido"),
+    certificationDate: z.string().min(1, "Data de habilitação obrigatória"),
+    address: addressSchema,
+}).superRefine((data, ctx) => {
+    if (!data.isForeign) {
+        if (!data.cpf || !isValidCPF(data.cpf)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "CPF inválido",
+                path: ["cpf"],
+            })
+        }
+    } else {
+        if (!data.purchaseEmail || !z.string().email().safeParse(data.purchaseEmail).success) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Email de compra inválido",
+                path: ["purchaseEmail"],
+            })
+        }
+    }
+})
+
+export type StudentCombinedFormData = z.infer<typeof studentCombinedSchema>
