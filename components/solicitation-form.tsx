@@ -78,8 +78,7 @@ export default function SolicitationForm() {
                 return
             }
 
-            if (result.exists && result.name) {
-                form.setValue("name", result.name)
+            if (result.exists) {
                 setCpfStatus("found")
                 toast.success(result.message)
             } else {
@@ -114,8 +113,7 @@ export default function SolicitationForm() {
             // Auto-fill contact email with purchase email (user can still change it)
             form.setValue("email", email)
 
-            if (result.exists && result.name) {
-                form.setValue("name", result.name)
+            if (result.exists) {
                 setEmailStatus("found")
                 toast.success(result.message)
             } else {
@@ -341,8 +339,7 @@ export default function SolicitationForm() {
                         <Input
                             id="name"
                             {...form.register("name")}
-                            readOnly={validationStatus === "found"}
-                            className={`bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 text-base ${validationStatus === "found" ? "bg-white/10 text-gray-400" : ""}`}
+                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 text-base"
                         />
                         {form.formState.errors.name && (
                             <p className="text-sm text-red-400">{form.formState.errors.name.message}</p>
