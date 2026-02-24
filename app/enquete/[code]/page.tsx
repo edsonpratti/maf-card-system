@@ -260,10 +260,10 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ code: s
 
     // Tela de perguntas - apenas a pergunta, sem distrações
     return (
-        <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 flex flex-col py-4 sm:py-8 px-3 sm:px-4">
-            <div className="max-w-3xl mx-auto w-full flex-1 flex flex-col">
-                {/* Question Card - centralizado */}
-                <div className="flex-1 flex items-center justify-center">
+        <div className="min-h-[100dvh] bg-gradient-to-br from-primary/5 via-background to-secondary/5 flex flex-col">
+            {/* Área scrollable com a pergunta */}
+            <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 sm:py-8 flex flex-col justify-center">
+                <div className="max-w-3xl mx-auto w-full">
                     <Card className="shadow-lg w-full">
                         <CardContent className="p-4 sm:p-8">
                             <SurveyQuestionRenderer
@@ -274,25 +274,26 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ code: s
                         </CardContent>
                     </Card>
                 </div>
+            </div>
 
-                {/* Navigation - fixo embaixo */}
-                <div className="flex items-center justify-between pt-4 sm:pt-8 gap-3">
+            {/* Navigation - sempre visível, fixo na parte inferior */}
+            <div className="sticky bottom-0 bg-gradient-to-br from-primary/5 via-background to-secondary/5 border-t border-border/40 px-3 sm:px-4 py-3 sm:py-4" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
+                <div className="max-w-3xl mx-auto w-full flex items-center justify-between gap-3">
                     <Button
                         variant="outline"
                         onClick={handlePrevious}
                         disabled={currentQuestionIndex === 0}
-                        className="h-10 sm:h-11 px-3 sm:px-4"
+                        className="h-11 px-4 gap-1.5 min-w-[100px]"
                     >
-                        <ChevronLeft className="h-4 w-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Anterior</span>
+                        <ChevronLeft className="h-4 w-4" />
+                        <span>Anterior</span>
                     </Button>
 
                     {isLastQuestion ? (
                         <Button
                             onClick={handleSubmit}
                             disabled={submitting || !canGoNext()}
-                            size="lg"
-                            className="h-10 sm:h-11 px-4 sm:px-6 text-sm sm:text-base"
+                            className="h-11 px-4 sm:px-6 min-w-[100px]"
                         >
                             {submitting ? 'Enviando...' : 'Enviar'}
                         </Button>
@@ -300,11 +301,10 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ code: s
                         <Button
                             onClick={handleNext}
                             disabled={!canNavigateNext()}
-                            size="lg"
-                            className="h-10 sm:h-11 px-3 sm:px-4"
+                            className="h-11 px-4 gap-1.5 min-w-[100px]"
                         >
-                            <span className="hidden sm:inline">Próxima</span>
-                            <ChevronRight className="h-4 w-4 sm:ml-2" />
+                            <span>Próxima</span>
+                            <ChevronRight className="h-4 w-4" />
                         </Button>
                     )}
                 </div>
