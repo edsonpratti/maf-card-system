@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,6 +17,13 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
     const [resetPassword, setResetPassword] = useState(false)
     const [loading, setLoading] = useState(false)
     const router = useRouter()
+
+    useEffect(() => {
+        if (typeof window !== "undefined" && sessionStorage.getItem("recover_password") === "true") {
+            sessionStorage.removeItem("recover_password")
+            setResetPassword(true)
+        }
+    }, [])
 
     const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -78,6 +85,10 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
                         sessionStorage.setItem("2fa_email", email)
                         sessionStorage.setItem("2fa_password", password)
                         sessionStorage.setItem("2fa_timestamp", Date.now().toString())
+                        // Em desenvolvimento, salvar o código para exibir na tela
+                        if (result.devCode) {
+                            sessionStorage.setItem("2fa_dev_code", result.devCode)
+                        }
                         // Redirecionar para página de validação 2FA
                         router.push(`/admin/verify-2fa?email=${encodeURIComponent(email)}`)
                     } else {

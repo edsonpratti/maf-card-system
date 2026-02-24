@@ -89,7 +89,7 @@ export default async function CarteiraPage() {
                                 <div>
                                     <p className="font-medium text-sm sm:text-base">Status Atual</p>
                                     <p className="text-xs sm:text-sm text-muted-foreground">
-                                        Última atualização: {new Date(userCard.updated_at || userCard.created_at).toLocaleDateString('pt-BR')}
+                                        Última atualização: {new Date(userCard.updated_at || userCard.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                                     </p>
                                 </div>
                                 <Badge variant={getStatusVariant(userCard.status)} className="self-start sm:self-auto">

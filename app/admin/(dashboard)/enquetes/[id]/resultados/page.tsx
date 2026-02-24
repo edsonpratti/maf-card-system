@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Download, RefreshCw, BarChart3, Users, Sparkles, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
+import { ArrowLeft, Download, RefreshCw, BarChart3, Users, Sparkles, ChevronLeft, ChevronRight, Trash2, Brain, TrendingUp, AlertTriangle, CheckCircle2, MessageSquareQuote, Lightbulb, ThumbsUp, ThumbsDown, Minus } from 'lucide-react'
 import { Survey, QuestionAnalytics } from '@/lib/types/survey-types'
 import { toast } from 'sonner'
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadialBarChart, RadialBar } from 'recharts'
@@ -61,6 +61,9 @@ export default function SurveyResultsPage({ params }: { params: Promise<{ id: st
     const [deletingResponseId, setDeletingResponseId] = useState<string | null>(null)
     const [responsesPage, setResponsesPage] = useState(1)
     const responsesPerPage = 10
+    const [aiAnalysis, setAiAnalysis] = useState<any>(null)
+    const [aiLoading, setAiLoading] = useState(false)
+    const [aiError, setAiError] = useState<string | null>(null)
 
     useEffect(() => {
         const initializePage = async () => {
@@ -609,7 +612,8 @@ export default function SurveyResultsPage({ params }: { params: Promise<{ id: st
                                                 month: '2-digit',
                                                 year: 'numeric',
                                                 hour: '2-digit',
-                                                minute: '2-digit'
+                                                minute: '2-digit',
+                                                timeZone: 'America/Sao_Paulo'
                                             })}
                                         </TableCell>
                                         {responsesData.questions.map(q => (
@@ -675,50 +679,270 @@ export default function SurveyResultsPage({ params }: { params: Promise<{ id: st
         )
     }
 
-    // Render AI Analysis placeholder
+    const handleGenerateAIAnalysis = async () => {
+        if (!surveyId) return
+        setAiLoading(true)
+        setAiError(null)
+        try {
+            const response = await fetch(`/api/admin/surveys/${surveyId}/ai-analysis`, {
+                method: 'POST',
+            })
+            if (!response.ok) {
+                const err = await response.json()
+                throw new Error(err.error || 'Erro ao gerar análise')
+            }
+            const data = await response.json()
+            setAiAnalysis(data)
+        } catch (error: any) {
+            setAiError(error.message || 'Erro desconhecido')
+        } finally {
+            setAiLoading(false)
+        }
+    }
+
+    const getSentimentConfig = (sentiment: string, score: number) => {
+        if (sentiment === 'positivo' || score >= 65) return { icon: ThumbsUp, color: 'text-green-600', bg: 'bg-green-50 border-green-200', label: 'Positivo' }
+        if (sentiment === 'negativo' || score <= 35) return { icon: ThumbsDown, color: 'text-red-600', bg: 'bg-red-50 border-red-200', label: 'Negativo' }
+        if (sentiment === 'misto') return { icon: Sparkles, color: 'text-yellow-600', bg: 'bg-yellow-50 border-yellow-200', label: 'Misto' }
+        return { icon: Minus, color: 'text-gray-600', bg: 'bg-gray-50 border-gray-200', label: 'Neutro' }
+    }
+
     const renderAIAnalysis = () => {
+        // Estado de loading
+        if (aiLoading) {
+            return (
+                <Card>
+                    <CardContent className="p-12 text-center space-y-4">
+                        <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
+                            <Brain className="w-8 h-8 text-primary" />
+                        </div>
+                        <p className="text-lg font-medium">Analisando respostas com IA...</p>
+                        <p className="text-sm text-muted-foreground">Isso pode levar alguns segundos</p>
+                    </CardContent>
+                </Card>
+            )
+        }
+
+        // Estado de erro
+        if (aiError) {
+            return (
+                <Card className="border-destructive/50">
+                    <CardContent className="p-8 text-center space-y-4">
+                        <AlertTriangle className="w-10 h-10 text-destructive mx-auto" />
+                        <p className="font-medium text-destructive">{aiError}</p>
+                        <button
+                            onClick={handleGenerateAIAnalysis}
+                            className="text-sm text-primary underline underline-offset-2"
+                        >
+                            Tentar novamente
+                        </button>
+                    </CardContent>
+                </Card>
+            )
+        }
+
+        // CTA inicial (sem análise gerada ainda)
+        if (!aiAnalysis) {
+            return (
+                <Card>
+                    <CardHeader className="text-center pb-2">
+                        <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                            <Brain className="w-8 h-8 text-primary" />
+                        </div>
+                        <CardTitle>Análise Inteligente por IA</CardTitle>
+                        <CardDescription className="max-w-md mx-auto">
+                            Utilize inteligência artificial para obter insights profundos sobre as respostas da sua enquete — análise de sentimento, padrões e recomendações estratégicas.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="text-center space-y-6 pt-2">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto">
+                            <div className="p-4 rounded-lg border bg-muted/50 text-left">
+                                <ThumbsUp className="w-5 h-5 text-primary mb-2" />
+                                <p className="font-medium text-sm">Análise de Sentimento</p>
+                                <p className="text-xs text-muted-foreground mt-1">Score do sentimento geral das respostas</p>
+                            </div>
+                            <div className="p-4 rounded-lg border bg-muted/50 text-left">
+                                <TrendingUp className="w-5 h-5 text-primary mb-2" />
+                                <p className="font-medium text-sm">Padrões e Tendências</p>
+                                <p className="text-xs text-muted-foreground mt-1">Insights automáticos por pergunta</p>
+                            </div>
+                            <div className="p-4 rounded-lg border bg-muted/50 text-left">
+                                <Lightbulb className="w-5 h-5 text-primary mb-2" />
+                                <p className="font-medium text-sm">Recomendações</p>
+                                <p className="text-xs text-muted-foreground mt-1">Sugestões estratégicas baseadas nos dados</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleGenerateAIAnalysis}
+                            className="inline-flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2.5 rounded-lg font-medium text-sm transition-colors"
+                        >
+                            <Sparkles className="w-4 h-4" />
+                            Gerar Análise com IA
+                        </button>
+                        <p className="text-xs text-muted-foreground">Powered by GPT-4o mini</p>
+                    </CardContent>
+                </Card>
+            )
+        }
+
+        // Resultado da análise
+        const { analysis, meta } = aiAnalysis
+        const sentimentCfg = getSentimentConfig(analysis.sentimento_geral, analysis.sentimento_score)
+        const SentimentIcon = sentimentCfg.icon
+
         return (
-            <Card>
-                <CardHeader className="text-center">
-                    <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                        <Sparkles className="w-8 h-8 text-primary" />
+            <div className="space-y-4">
+                {/* Header com botão de regerar */}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Brain className="w-5 h-5 text-primary" />
+                        <span className="font-semibold">Análise gerada por IA</span>
+                        <Badge variant="secondary" className="text-xs">GPT-4o mini</Badge>
                     </div>
-                    <CardTitle>Análise por IA</CardTitle>
-                    <CardDescription>
-                        Recurso em desenvolvimento
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="text-center space-y-4">
-                    <Badge variant="secondary" className="text-sm">
-                        Em implantação
-                    </Badge>
-                    <p className="text-muted-foreground max-w-md mx-auto">
-                        Em breve você poderá utilizar inteligência artificial para obter 
-                        insights automáticos sobre as respostas da sua enquete, incluindo 
-                        análise de sentimento, padrões de comportamento e recomendações.
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 max-w-2xl mx-auto">
-                        <div className="p-4 rounded-lg border bg-muted/50">
-                            <p className="font-medium text-sm">Análise de Sentimento</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                Identifique o tom das respostas
-                            </p>
-                        </div>
-                        <div className="p-4 rounded-lg border bg-muted/50">
-                            <p className="font-medium text-sm">Padrões de Comportamento</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                Descubra tendências nos dados
-                            </p>
-                        </div>
-                        <div className="p-4 rounded-lg border bg-muted/50">
-                            <p className="font-medium text-sm">Recomendações</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                Sugestões baseadas em IA
-                            </p>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    <button
+                        onClick={handleGenerateAIAnalysis}
+                        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        Regerar
+                    </button>
+                </div>
+
+                {/* Sumário executivo */}
+                <Card>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <MessageSquareQuote className="w-4 h-4 text-primary" />
+                            Sumário Executivo
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm leading-relaxed text-muted-foreground">{analysis.sumario_executivo}</p>
+                    </CardContent>
+                </Card>
+
+                {/* Sentimento + Score */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card className={`border ${sentimentCfg.bg} col-span-1`}>
+                        <CardContent className="p-4 flex items-center gap-4">
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${sentimentCfg.bg} border ${sentimentCfg.bg}`}>
+                                <SentimentIcon className={`w-6 h-6 ${sentimentCfg.color}`} />
+                            </div>
+                            <div>
+                                <p className="text-xs text-muted-foreground">Sentimento Geral</p>
+                                <p className={`text-lg font-bold capitalize ${sentimentCfg.color}`}>{sentimentCfg.label}</p>
+                                <p className="text-xs text-muted-foreground">Score: {analysis.sentimento_score}/100</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Pontos positivos */}
+                    <Card className="col-span-1">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm flex items-center gap-2 text-green-700">
+                                <CheckCircle2 className="w-4 h-4" />
+                                Pontos Positivos
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <ul className="space-y-1.5">
+                                {analysis.pontos_positivos?.map((p: string, i: number) => (
+                                    <li key={i} className="text-xs text-muted-foreground flex gap-2">
+                                        <span className="text-green-500 mt-0.5">✓</span>
+                                        {p}
+                                    </li>
+                                ))}
+                            </ul>
+                        </CardContent>
+                    </Card>
+
+                    {/* Pontos de atenção */}
+                    <Card className="col-span-1">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm flex items-center gap-2 text-yellow-700">
+                                <AlertTriangle className="w-4 h-4" />
+                                Pontos de Atenção
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <ul className="space-y-1.5">
+                                {analysis.pontos_atencao?.map((p: string, i: number) => (
+                                    <li key={i} className="text-xs text-muted-foreground flex gap-2">
+                                        <span className="text-yellow-500 mt-0.5">⚠</span>
+                                        {p}
+                                    </li>
+                                ))}
+                            </ul>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Análise por pergunta */}
+                {analysis.analise_por_pergunta?.length > 0 && (
+                    <Card>
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <BarChart3 className="w-4 h-4 text-primary" />
+                                Análise por Pergunta
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {analysis.analise_por_pergunta.map((item: any, i: number) => (
+                                <div key={i} className="border rounded-lg p-4 space-y-2">
+                                    <p className="font-medium text-sm">{item.pergunta}</p>
+                                    <p className="text-sm text-muted-foreground">{item.insight}</p>
+                                    {item.destaque && (
+                                        <div className="inline-flex items-center gap-1.5 bg-primary/5 border border-primary/20 rounded-md px-2.5 py-1">
+                                            <Sparkles className="w-3 h-3 text-primary" />
+                                            <span className="text-xs text-primary font-medium">{item.destaque}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Recomendações */}
+                {analysis.recomendacoes?.length > 0 && (
+                    <Card>
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <Lightbulb className="w-4 h-4 text-primary" />
+                                Recomendações Estratégicas
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <ol className="space-y-2">
+                                {analysis.recomendacoes.map((rec: string, i: number) => (
+                                    <li key={i} className="flex gap-3 text-sm">
+                                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">
+                                            {i + 1}
+                                        </span>
+                                        <span className="text-muted-foreground">{rec}</span>
+                                    </li>
+                                ))}
+                            </ol>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Conclusão */}
+                {analysis.conclusao && (
+                    <Card className="bg-muted/30">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm text-muted-foreground">Conclusão</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm leading-relaxed">{analysis.conclusao}</p>
+                        </CardContent>
+                    </Card>
+                )}
+
+                <p className="text-xs text-center text-muted-foreground">
+                    Análise gerada em {new Date(meta.generated_at).toLocaleString('pt-BR')} · {meta.total_responses} respostas analisadas
+                </p>
+            </div>
         )
     }
 

@@ -1,5 +1,5 @@
 import { ModuleCard } from "@/components/admin/module-card"
-import { CreditCard, ClipboardList, Users, Settings } from "lucide-react"
+import { CreditCard, ClipboardList, Users, Settings, ListTodo } from "lucide-react"
 
 export default function DashboardPage() {
     return (
@@ -25,6 +25,14 @@ export default function DashboardPage() {
                     description="Gerador de enquetes e questionários interativos. Crie, gerencie e analise pesquisas e quizzes para engajamento da comunidade."
                     icon={ClipboardList}
                     href="/admin/enquetes"
+                    status="active"
+                />
+
+                <ModuleCard
+                    title="MAF Pro Tasks"
+                    description="Sistema de gerenciamento de tarefas internas da equipe administrativa. Crie, atribua e acompanhe o progresso das tarefas por prioridade e status."
+                    icon={ListTodo}
+                    href="/admin/tarefas"
                     status="active"
                 />
 

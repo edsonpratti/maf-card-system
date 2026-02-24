@@ -128,12 +128,12 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                                     <Calendar className="h-4 w-4" />
                                     Data da Solicitação
                                 </p>
-                                <p>{new Date(request.created_at).toLocaleString('pt-BR')}</p>
+                                <p>{new Date(request.created_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
                             </div>
                             {request.updated_at && request.updated_at !== request.created_at && (
                                 <div>
                                     <p className="text-sm font-medium text-muted-foreground">Última Atualização</p>
-                                    <p>{new Date(request.updated_at).toLocaleString('pt-BR')}</p>
+                                    <p>{new Date(request.updated_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
                                 </div>
                             )}
                         </div>
@@ -152,7 +152,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                         {request.issued_at && (
                             <div>
                                 <p className="text-sm font-medium text-muted-foreground">Emitido em</p>
-                                <p>{new Date(request.issued_at).toLocaleString('pt-BR')}</p>
+                                <p>{new Date(request.issued_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
                             </div>
                         )}
                         {request.card_number && (

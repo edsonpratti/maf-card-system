@@ -31,13 +31,20 @@ export async function getRequests(filters?: {
     cpf?: string
     startDate?: string
     endDate?: string
+    page?: number
+    pageSize?: number
 }) {
     await verifyAdminAccess()
 
     const supabase = getServiceSupabase()
+    const pageSize = filters?.pageSize ?? 30
+    const page = filters?.page ?? 1
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+
     let query = supabase
         .from("users_cards")
-        .select("*")
+        .select("*", { count: "exact" })
         .order("created_at", { ascending: false })
 
     if (filters?.status && filters.status !== "ALL") {
@@ -64,13 +71,13 @@ export async function getRequests(filters?: {
         query = query.lte("created_at", endDateTime.toISOString())
     }
 
-    const { data, error } = await query
+    const { data, error, count } = await query.range(from, to)
 
     if (error) {
-        return []
+        return { data: [], total: 0 }
     }
 
-    return data
+    return { data: data ?? [], total: count ?? 0 }
 }
 
 export async function updateRequestStatus(id: string, newStatus: string, reason?: string) {
@@ -582,6 +589,7 @@ export async function resendPasswordResetEmail(id: string) {
             .from("password_reset_tokens")
             .insert({
                 user_id: userData.auth_user_id,
+                email: userData.email,
                 token: resetToken,
                 expires_at: expiresAt.toISOString(),
                 used: false

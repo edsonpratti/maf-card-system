@@ -153,6 +153,37 @@ export async function checkEmailExists(purchaseEmail: string) {
     }
 }
 
+export async function checkContactEmailExists(contactEmail: string) {
+    const email = contactEmail.trim().toLowerCase()
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return { alreadyRegistered: false, message: "Email inválido." }
+    }
+
+    // Rate limiting
+    if (!checkRateLimit(`contact-email-check-${email}`, 5, 60000)) {
+        return { alreadyRegistered: false, message: "Muitas tentativas. Aguarde um minuto." }
+    }
+
+    const supabase = getServiceSupabase()
+
+    // Check if email is already registered in users_cards (auth account created)
+    const { data: existingUser } = await supabase
+        .from("users_cards")
+        .select("id, auth_user_id")
+        .eq("email", email)
+        .single()
+
+    if (existingUser) {
+        return {
+            alreadyRegistered: true,
+            message: "Este email já possui uma conta cadastrada.",
+        }
+    }
+
+    return { alreadyRegistered: false, message: "" }
+}
+
 export async function submitApplication(prevState: any, formData: FormData) {
     const supabase = getServiceSupabase()
 

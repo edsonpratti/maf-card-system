@@ -3,7 +3,7 @@ import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { LogOut, Home, Menu } from "lucide-react"
+import { LogOut, Home, Menu, UserCircle } from "lucide-react"
 import { SessionTimeout } from "@/components/session-timeout"
 
 export default async function PortalLayout({
@@ -64,6 +64,12 @@ export default async function PortalLayout({
             <span className="text-xs sm:text-sm text-muted-foreground hidden md:inline truncate max-w-[200px]">
               {user.email}
             </span>
+            <Button asChild variant="ghost" size="sm" className="h-8 sm:h-9 px-2 sm:px-3" title="Meu Perfil">
+              <Link href="/portal/perfil">
+                <UserCircle className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Perfil</span>
+              </Link>
+            </Button>
             <form action={signOut}>
               <Button variant="outline" size="sm" type="submit" className="h-8 sm:h-9 px-2 sm:px-3">
                 <LogOut className="h-4 w-4 sm:mr-2" />

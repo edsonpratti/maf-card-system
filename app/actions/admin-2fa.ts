@@ -85,7 +85,20 @@ export async function generateAndSend2FACode(email: string, userId?: string) {
 
     console.log("✅ [2FA] Código salvo no banco")
 
-    // 4. Enviar email
+    // 4. Em modo desenvolvimento, pular envio de email e retornar código diretamente
+    if (process.env.NODE_ENV === 'development') {
+      console.log("\n============================================")
+      console.log("🚀 [DEV MODE] CÓDIGO 2FA:", code)
+      console.log("============================================\n")
+      return {
+        success: true,
+        message: "[DEV] Código gerado — veja no terminal ou na tela.",
+        email,
+        devCode: code
+      }
+    }
+
+    // 5. Enviar email (produção)
     const userName = user.user_metadata?.name || user.email?.split("@")[0] || "Admin"
     const htmlContent = admin2FACodeEmailTemplate(userName, code)
 

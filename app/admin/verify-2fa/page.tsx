@@ -15,6 +15,7 @@ function Verify2FAContent() {
     const [code, setCode] = useState("")
     const [loading, setLoading] = useState(false)
     const [resendLoading, setResendLoading] = useState(false)
+    const [devCode, setDevCode] = useState<string | null>(null)
     const router = useRouter()
     const searchParams = useSearchParams()
     const email = searchParams.get("email")
@@ -23,6 +24,11 @@ function Verify2FAContent() {
         if (!email) {
             toast.error("Email não informado")
             router.push("/admin/login")
+        }
+        // Em desenvolvimento, recuperar código do sessionStorage
+        const storedDevCode = sessionStorage.getItem("2fa_dev_code")
+        if (storedDevCode) {
+            setDevCode(storedDevCode)
         }
     }, [email, router])
 
@@ -90,6 +96,7 @@ function Verify2FAContent() {
                 sessionStorage.removeItem("2fa_email")
                 sessionStorage.removeItem("2fa_password")
                 sessionStorage.removeItem("2fa_timestamp")
+                sessionStorage.removeItem("2fa_dev_code")
 
                 if (error) {
                     console.error("Erro ao fazer login:", error)
@@ -128,6 +135,11 @@ function Verify2FAContent() {
 
             if (result.success) {
                 toast.success("Novo código enviado!")
+                // Em desenvolvimento, atualizar o código exibido na tela
+                if (result.devCode) {
+                    setDevCode(result.devCode)
+                    sessionStorage.setItem("2fa_dev_code", result.devCode)
+                }
             } else {
                 toast.error(result.message)
             }
@@ -247,15 +259,39 @@ function Verify2FAContent() {
                     </CardContent>
                 </Card>
 
-                {/* Info Box */}
-                <div className="max-w-md mx-auto mt-6 p-4 bg-white/5 backdrop-blur-md border border-white/10 rounded-lg">
-                    <div className="flex items-start gap-3">
-                        <span className="text-yellow-400 text-xl flex-shrink-0">💡</span>
-                        <p className="text-sm text-gray-300">
-                            Por questões de segurança, todos os administradores precisam validar seu acesso com um código enviado por email.
-                        </p>
+                {/* Dev Mode Banner */}
+                {devCode && (
+                    <div className="max-w-md mx-auto mt-6 p-4 bg-yellow-500/10 backdrop-blur-md border border-yellow-500/40 rounded-lg">
+                        <div className="flex items-start gap-3">
+                            <span className="text-yellow-400 text-xl flex-shrink-0">🚧</span>
+                            <div>
+                                <p className="text-sm text-yellow-300 font-semibold mb-1">Modo Desenvolvimento</p>
+                                <p className="text-xs text-yellow-200/70 mb-2">O email não foi enviado. Use o código abaixo:</p>
+                                <button
+                                    type="button"
+                                    onClick={() => setCode(devCode)}
+                                    className="font-mono text-2xl font-bold tracking-widest text-yellow-300 hover:text-yellow-100 transition-colors cursor-pointer"
+                                    title="Clique para preencher automaticamente"
+                                >
+                                    {devCode}
+                                </button>
+                                <p className="text-xs text-yellow-200/50 mt-1">Clique no código para preencher automaticamente</p>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                )}
+
+                {/* Info Box */}
+                {!devCode && (
+                    <div className="max-w-md mx-auto mt-6 p-4 bg-white/5 backdrop-blur-md border border-white/10 rounded-lg">
+                        <div className="flex items-start gap-3">
+                            <span className="text-yellow-400 text-xl flex-shrink-0">💡</span>
+                            <p className="text-sm text-gray-300">
+                                Por questões de segurança, todos os administradores precisam validar seu acesso com um código enviado por email.
+                            </p>
+                        </div>
+                    </div>
+                )}
             </main>
         </div>
     )

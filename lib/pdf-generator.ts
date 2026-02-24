@@ -312,7 +312,7 @@ export async function generateCardPNG(data: {
         // Preparar textos
         const displayName = data.name && data.name.trim() ? data.name : 'Nome não informado'
         const formattedDate = data.certificationDate
-            ? new Date(data.certificationDate).toLocaleDateString('pt-BR')
+            ? new Date(data.certificationDate).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
             : 'Data não informada'
         const formattedCPF = data.cpf && data.cpf.trim() ? formatCPF(data.cpf) : 'CPF não informado'
 

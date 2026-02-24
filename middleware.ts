@@ -10,7 +10,9 @@ export async function middleware(request: NextRequest) {
     '/admin/recuperar-senha',
     '/validar',
     '/enquete',
-    '/api/public'
+    '/api/public',
+    '/resultados-enquetes', // Dashboard público de resultados do MAF Pro Quiz
+    '/portal/perfil/confirmar-email', // Confirmação de troca de email (token é a segurança)
   ]
 
   // Verificar se a rota é pública

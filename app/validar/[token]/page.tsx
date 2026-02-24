@@ -34,7 +34,7 @@ export default async function ValidarPage({ params }: { params: Promise<{ token:
                                 <p><strong>Nome:</strong> {card?.name}</p>
                                 <p><strong>CPF:</strong> ***.***.{card?.cpf.slice(-2)}</p>
                                 <p><strong>Carteira Nº:</strong> {card?.card_number}</p>
-                                <p><strong>Emissão:</strong> {new Date(card?.issued_at).toLocaleDateString('pt-BR')}</p>
+                                <p><strong>Emissão:</strong> {new Date(card?.issued_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
                             </div>
                         </>
                     )}

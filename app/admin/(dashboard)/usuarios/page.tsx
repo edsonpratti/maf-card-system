@@ -387,7 +387,7 @@ export default function AlunasCadastradasPage() {
                                 </div>
                                 <div>
                                     <p className="text-muted-foreground text-xs">Cadastro</p>
-                                    <p>{new Date(student.created_at).toLocaleDateString('pt-BR')}</p>
+                                    <p>{new Date(student.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
                                 </div>
                                 <div>
                                     <p className="text-muted-foreground text-xs">WhatsApp</p>
@@ -542,20 +542,20 @@ export default function AlunasCadastradasPage() {
                                     )}
                                     {isColumnVisible("created_at") && (
                                         <TableCell className="whitespace-nowrap">
-                                            {new Date(student.created_at).toLocaleDateString('pt-BR')}
+                                            {new Date(student.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                                         </TableCell>
                                     )}
                                     {isColumnVisible("issued_at") && (
                                         <TableCell className="whitespace-nowrap">
                                             {student.issued_at 
-                                                ? new Date(student.issued_at).toLocaleDateString('pt-BR')
+                                                ? new Date(student.issued_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
                                                 : '-'
                                             }
                                         </TableCell>
                                     )}
                                     {isColumnVisible("updated_at") && (
                                         <TableCell className="whitespace-nowrap">
-                                            {new Date(student.updated_at).toLocaleDateString('pt-BR')}
+                                            {new Date(student.updated_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                                         </TableCell>
                                     )}
                                     {isColumnVisible("actions") && (

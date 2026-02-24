@@ -10,10 +10,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { toast } from "sonner"
-import { checkCPFExists, checkEmailExists, submitApplication } from "@/app/actions/solicitar"
-import { Loader2, X, Globe } from "lucide-react"
-import { formatCEP, formatPhone } from "@/lib/utils"
+import { checkCPFExists, checkEmailExists, checkContactEmailExists, submitApplication } from "@/app/actions/solicitar"
+import { Loader2, X, Globe, AlertTriangle, LogIn, KeyRound } from "lucide-react"
 import Link from "next/link"
+import { formatCEP, formatPhone } from "@/lib/utils"
 
 export default function SolicitationForm() {
     const router = useRouter()
@@ -21,6 +21,7 @@ export default function SolicitationForm() {
     const [isForeign, setIsForeign] = useState(false)
     const [cpfStatus, setCpfStatus] = useState<"initial" | "found" | "not_found" | "checking">("initial")
     const [emailStatus, setEmailStatus] = useState<"initial" | "found" | "not_found" | "checking">("initial")
+    const [contactEmailRegistered, setContactEmailRegistered] = useState(false)
     const [cepLoading, setCepLoading] = useState(false)
     const [photoPreview, setPhotoPreview] = useState<string | null>(null)
     const [cepFilled, setCepFilled] = useState(false)
@@ -123,6 +124,22 @@ export default function SolicitationForm() {
         } catch (error) {
             toast.error("Erro ao verificar email")
             setEmailStatus("initial")
+        }
+    }
+
+    const handleContactEmailBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
+        const isValid = await form.trigger("email")
+        if (!isValid) {
+            setContactEmailRegistered(false)
+            return
+        }
+        const email = e.target.value.trim()
+        if (!email) return
+        try {
+            const result = await checkContactEmailExists(email)
+            setContactEmailRegistered(result.alreadyRegistered)
+        } catch {
+            setContactEmailRegistered(false)
         }
     }
 
@@ -419,16 +436,53 @@ export default function SolicitationForm() {
                                 type="email"
                                 {...form.register("email")}
                                 className={`bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 text-base ${
-                                    isForeign && emailStatus !== "initial" && emailStatus !== "checking"
-                                        ? "border-blue-500/30 bg-blue-500/5"
-                                        : ""
+                                    contactEmailRegistered
+                                        ? "border-orange-500/50"
+                                        : isForeign && emailStatus !== "initial" && emailStatus !== "checking"
+                                            ? "border-blue-500/30 bg-blue-500/5"
+                                            : ""
                                 }`}
+                                onBlur={(e) => {
+                                    form.register("email").onBlur(e)
+                                    handleContactEmailBlur(e)
+                                }}
+                                onChange={(e) => {
+                                    form.register("email").onChange(e)
+                                    setContactEmailRegistered(false)
+                                }}
                             />
                             {isForeign && emailStatus !== "initial" && emailStatus !== "checking" && (
                                 <p className="text-xs text-blue-400/70">Altere somente se quiser usar um email diferente para acessar o portal.</p>
                             )}
                             {form.formState.errors.email && (
                                 <p className="text-sm text-red-400">{form.formState.errors.email.message}</p>
+                            )}
+                            {contactEmailRegistered && (
+                                <div className="flex flex-col gap-2 bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 mt-1">
+                                    <div className="flex items-start gap-2">
+                                        <AlertTriangle className="h-4 w-4 text-orange-400 shrink-0 mt-0.5" />
+                                        <p className="text-sm text-orange-300">
+                                            Este email já possui uma conta cadastrada. Faça login ou recupere sua senha.
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Link
+                                            href="/login"
+                                            className="flex items-center gap-1.5 flex-1 justify-center bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 hover:text-emerald-200 text-xs font-medium py-1.5 px-3 rounded-md transition-colors"
+                                        >
+                                            <LogIn className="h-3.5 w-3.5" />
+                                            Fazer login
+                                        </Link>
+                                        <Link
+                                            href="/login"
+                                            onClick={() => sessionStorage.setItem("recover_password", "true")}
+                                            className="flex items-center gap-1.5 flex-1 justify-center bg-white/5 hover:bg-white/10 border border-white/20 text-gray-300 hover:text-white text-xs font-medium py-1.5 px-3 rounded-md transition-colors"
+                                        >
+                                            <KeyRound className="h-3.5 w-3.5" />
+                                            Recuperar senha
+                                        </Link>
+                                    </div>
+                                </div>
                             )}
                         </div>
                     </div>

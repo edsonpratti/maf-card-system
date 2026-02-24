@@ -257,7 +257,7 @@ export default function BaseAlunasPage() {
                                             <Badge variant="outline" className="text-xs">Brasileira</Badge>
                                         )}
                                     </TableCell>
-                                    <TableCell>{new Date(student.created_at).toLocaleDateString('pt-BR')}</TableCell>
+                                    <TableCell>{new Date(student.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-1">
                                             <Button 

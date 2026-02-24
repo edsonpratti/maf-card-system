@@ -6,7 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { RequestFilters } from "@/components/admin/request-filters"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { CheckCircle, XCircle, Clock, FileCheck } from "lucide-react"
+import { CheckCircle, XCircle, Clock, FileCheck, ChevronLeft, ChevronRight } from "lucide-react"
+
+const PAGE_SIZE = 30
 
 export default async function SolicitacoesPage({
     searchParams,
@@ -17,20 +19,52 @@ export default async function SolicitacoesPage({
         cpf?: string
         startDate?: string
         endDate?: string
+        page?: string
     }
 }) {
+    const currentPage = Math.max(1, parseInt(searchParams.page || "1", 10))
+
     const filters = {
         status: searchParams.status || "ALL",
         name: searchParams.name,
         cpf: searchParams.cpf,
         startDate: searchParams.startDate,
         endDate: searchParams.endDate,
+        page: currentPage,
+        pageSize: PAGE_SIZE,
     }
     
-    const [requests, stats] = await Promise.all([
+    const [{ data: requests, total }, stats] = await Promise.all([
         getRequests(filters),
         getValidationStats()
     ])
+
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+    // Build a URL preserving all current search params but overriding page
+    function pageUrl(p: number) {
+        const params = new URLSearchParams()
+        if (searchParams.status && searchParams.status !== "ALL") params.set("status", searchParams.status)
+        if (searchParams.name) params.set("name", searchParams.name)
+        if (searchParams.cpf) params.set("cpf", searchParams.cpf)
+        if (searchParams.startDate) params.set("startDate", searchParams.startDate)
+        if (searchParams.endDate) params.set("endDate", searchParams.endDate)
+        if (p > 1) params.set("page", String(p))
+        const qs = params.toString()
+        return `/admin/solicitacoes${qs ? `?${qs}` : ""}`
+    }
+
+    function getPageNumbers(): (number | "...")[] {
+        if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1)
+        const pages: (number | "...")[] = [1]
+        if (currentPage > 3) pages.push("...")
+        for (let p = Math.max(2, currentPage - 1); p <= Math.min(totalPages - 1, currentPage + 1); p++) {
+            pages.push(p)
+        }
+        if (currentPage < totalPages - 2) pages.push("...")
+        pages.push(totalPages)
+        return pages
+    }
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -125,7 +159,7 @@ export default async function SolicitacoesPage({
                                     <TableCell>{req.cpf}</TableCell>
                                     <TableCell className="text-sm">{req.email || '-'}</TableCell>
                                     <TableCell>{getStatusBadge(req.status)}</TableCell>
-                                    <TableCell>{new Date(req.created_at).toLocaleDateString('pt-BR')}</TableCell>
+                                    <TableCell>{new Date(req.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</TableCell>
                                     <TableCell className="text-right">
                                         <Button asChild size="sm" variant="ghost">
                                             <Link href={`/admin/solicitacoes/${req.id}`}>Ver Detalhes</Link>
@@ -159,7 +193,7 @@ export default async function SolicitacoesPage({
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className="text-xs text-muted-foreground">
-                                        {new Date(req.created_at).toLocaleDateString('pt-BR')}
+                                        {new Date(req.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                                     </span>
                                     <Button asChild size="sm" variant="outline" className="h-8 text-xs">
                                         <Link href={`/admin/solicitacoes/${req.id}`}>Ver Detalhes</Link>
@@ -177,11 +211,71 @@ export default async function SolicitacoesPage({
                 )}
             </div>
 
+            {/* Paginação */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-1 flex-wrap">
+                    <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        disabled={currentPage === 1}
+                    >
+                        {currentPage === 1 ? (
+                            <span><ChevronLeft className="h-4 w-4" /></span>
+                        ) : (
+                            <Link href={pageUrl(currentPage - 1)} aria-label="Página anterior">
+                                <ChevronLeft className="h-4 w-4" />
+                            </Link>
+                        )}
+                    </Button>
+
+                    {getPageNumbers().map((p, i) =>
+                        p === "..." ? (
+                            <span key={`ellipsis-${i}`} className="px-1 text-muted-foreground text-sm select-none">…</span>
+                        ) : (
+                            <Button
+                                key={p}
+                                asChild={p !== currentPage}
+                                variant={p === currentPage ? "default" : "outline"}
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                            >
+                                {p === currentPage ? (
+                                    <span>{p}</span>
+                                ) : (
+                                    <Link href={pageUrl(p as number)}>{p}</Link>
+                                )}
+                            </Button>
+                        )
+                    )}
+
+                    <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        disabled={currentPage === totalPages}
+                    >
+                        {currentPage === totalPages ? (
+                            <span><ChevronRight className="h-4 w-4" /></span>
+                        ) : (
+                            <Link href={pageUrl(currentPage + 1)} aria-label="Próxima página">
+                                <ChevronRight className="h-4 w-4" />
+                            </Link>
+                        )}
+                    </Button>
+                </div>
+            )}
+
             <div className="rounded-lg border p-4 bg-muted/50">
                 <p className="text-sm text-muted-foreground">
                     <strong>Total de solicitações:</strong> {stats.total}
-                    {requests && requests.length !== stats.total && (
-                        <> | <strong>Filtradas:</strong> {requests.length}</>
+                    {total !== stats.total && (
+                        <> | <strong>Filtradas:</strong> {total}</>
+                    )}
+                    {total > 0 && (
+                        <> | <strong>Página:</strong> {currentPage} de {totalPages}</>
                     )}
                 </p>
             </div>

@@ -63,6 +63,7 @@ function formatDate(dateString: string) {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
+        timeZone: 'America/Sao_Paulo',
     }).format(date)
 }
 

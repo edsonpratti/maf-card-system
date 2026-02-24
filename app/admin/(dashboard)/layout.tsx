@@ -1,4 +1,5 @@
 import { adminLogout, getCurrentAdmin } from "@/app/actions/admin"
+import { getMyAdminInfo } from "@/app/actions/admin-users"
 import { DashboardShell } from "@/components/admin/dashboard-shell"
 import { redirect } from "next/navigation"
 
@@ -9,20 +10,22 @@ export default async function DashboardLayout({
 }) {
     const user = await getCurrentAdmin()
     
-    // Verificar se o usuário está autenticado
     if (!user) {
         redirect("/admin/login")
     }
     
-    // Verificar se o usuário é admin
     const isAdmin = user.user_metadata?.is_admin === true || user.app_metadata?.is_admin === true
     if (!isAdmin) {
         redirect("/")
     }
+
+    const adminInfo = await getMyAdminInfo()
     
     return (
         <DashboardShell 
-            userEmail={user?.email} 
+            userEmail={user?.email}
+            adminRole={adminInfo?.role ?? "master"}
+            adminPermissions={adminInfo?.permissions ?? []}
             logoutAction={adminLogout}
         >
             {children}
