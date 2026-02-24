@@ -3,9 +3,12 @@ import { getServiceSupabase } from '@/lib/supabase';
 import { verifyAdminAccess, handleAuthError } from '@/lib/auth';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy-initialize so the client is only created at request time (not during build)
+function getOpenAI() {
+    return new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+    });
+}
 
 // POST /api/admin/surveys/[id]/ai-analysis - Generate AI analysis for survey responses
 export async function POST(
@@ -130,7 +133,7 @@ Retorne SOMENTE um JSON válido com esta estrutura exata:
   "conclusao": "Parágrafo final com conclusão e próximos passos sugeridos"
 }`;
 
-        const completion = await openai.chat.completions.create({
+        const completion = await getOpenAI().chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [
                 { role: 'system', content: systemPrompt },
