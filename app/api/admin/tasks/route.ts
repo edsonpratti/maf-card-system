@@ -55,14 +55,14 @@ export async function POST(request: NextRequest) {
         const { data, error } = await supabase
             .from('tasks')
             .insert({
-                title:       body.title.trim(),
-                description: body.description?.trim() || null,
-                status:      body.status ?? 'todo',
-                priority:    body.priority ?? 'medium',
-                assigned_to: body.assigned_to?.trim() || null,
-                due_date:    body.due_date || null,
-                tags:        body.tags ?? [],
-                created_by:  admin.email ?? 'admin',
+                title:          body.title.trim(),
+                description:    body.description?.trim() || null,
+                done:           false,
+                priority:       body.priority ?? 'medium',
+                assignee_email: body.assignee_email?.trim() || null,
+                due_datetime:   body.due_datetime || null,
+                column_id:      body.column_id || null,
+                created_by:     admin.email ?? 'admin',
             })
             .select()
             .single()

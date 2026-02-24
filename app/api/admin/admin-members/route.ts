@@ -29,7 +29,10 @@ export async function GET() {
                 role: 'master' as const,
             }))
         } else {
-            tableAdmins = withRole ?? []
+            tableAdmins = (withRole ?? []).map((u) => ({
+                ...u,
+                role: (u.role === 'operator' ? 'operator' : 'master') as 'master' | 'operator',
+            }))
         }
 
         // Inclui o admin logado se ele não estiver na tabela admin_users
@@ -49,7 +52,7 @@ export async function GET() {
                     id: `auth-${currentUser?.id}`,
                     name,
                     email: currentEmail,
-                    role: 'master',
+                    role: 'master' as const,
                 },
             ].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
         }
