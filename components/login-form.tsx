@@ -69,8 +69,8 @@ export default function LoginForm({ admin = false }: { admin?: boolean }) {
                     // Deslogar temporariamente até validar 2FA
                     await supabase.auth.signOut()
                     
-                    // Enviar código 2FA
-                    const result = await generateAndSend2FACode(email)
+                    // Enviar código 2FA (passa userId para lookup direto, sem paginação)
+                    const result = await generateAndSend2FACode(email, data.user.id)
                     
                     if (result.success) {
                         toast.success(result.message)

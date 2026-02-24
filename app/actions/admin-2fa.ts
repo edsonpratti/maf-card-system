@@ -21,28 +21,32 @@ function generateCode(): string {
 /**
  * Gera e envia um código 2FA para o email do administrador
  */
-export async function generateAndSend2FACode(email: string) {
+export async function generateAndSend2FACode(email: string, userId?: string) {
   try {
     console.log("🔐 [2FA] Gerando código para:", email)
 
     // 1. Verificar se o usuário é admin
-    const { data: authUser, error: authError } = await supabase.auth.admin.listUsers()
-    
-    if (authError) {
-      console.error("❌ [2FA] Erro ao buscar usuários:", authError)
-      return {
-        success: false,
-        message: "Erro ao verificar usuário"
-      }
-    }
+    // Usa getUserById (direto, sem paginação) se userId fornecido; fallback por email
+    let user: any
 
-    const user = authUser.users.find(u => u.email === email)
-    
-    if (!user) {
-      console.log("❌ [2FA] Usuário não encontrado:", email)
-      return {
-        success: false,
-        message: "Usuário não encontrado"
+    if (userId) {
+      const { data, error } = await supabase.auth.admin.getUserById(userId)
+      if (error || !data?.user) {
+        console.error("❌ [2FA] Erro ao buscar usuário por ID:", error)
+        return { success: false, message: "Usuário não encontrado" }
+      }
+      user = data.user
+    } else {
+      // Fallback: busca por email com paginação generosa
+      const { data: authUser, error: authError } = await supabase.auth.admin.listUsers({ perPage: 1000 })
+      if (authError) {
+        console.error("❌ [2FA] Erro ao buscar usuários:", authError)
+        return { success: false, message: "Erro ao verificar usuário" }
+      }
+      user = authUser.users.find(u => u.email === email)
+      if (!user) {
+        console.log("❌ [2FA] Usuário não encontrado:", email)
+        return { success: false, message: "Usuário não encontrado" }
       }
     }
 
