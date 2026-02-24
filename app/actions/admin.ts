@@ -589,7 +589,6 @@ export async function resendPasswordResetEmail(id: string) {
             .from("password_reset_tokens")
             .insert({
                 user_id: userData.auth_user_id,
-                email: userData.email,
                 token: resetToken,
                 expires_at: expiresAt.toISOString(),
                 used: false

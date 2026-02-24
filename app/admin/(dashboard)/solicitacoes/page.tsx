@@ -13,23 +13,24 @@ const PAGE_SIZE = 30
 export default async function SolicitacoesPage({
     searchParams,
 }: {
-    searchParams: { 
+    searchParams: Promise<{ 
         status?: string
         name?: string
         cpf?: string
         startDate?: string
         endDate?: string
         page?: string
-    }
+    }>
 }) {
-    const currentPage = Math.max(1, parseInt(searchParams.page || "1", 10))
+    const { status, name, cpf, startDate, endDate, page } = await searchParams
+    const currentPage = Math.max(1, parseInt(page || "1", 10))
 
     const filters = {
-        status: searchParams.status || "ALL",
-        name: searchParams.name,
-        cpf: searchParams.cpf,
-        startDate: searchParams.startDate,
-        endDate: searchParams.endDate,
+        status: status || "ALL",
+        name,
+        cpf,
+        startDate,
+        endDate,
         page: currentPage,
         pageSize: PAGE_SIZE,
     }
@@ -44,11 +45,11 @@ export default async function SolicitacoesPage({
     // Build a URL preserving all current search params but overriding page
     function pageUrl(p: number) {
         const params = new URLSearchParams()
-        if (searchParams.status && searchParams.status !== "ALL") params.set("status", searchParams.status)
-        if (searchParams.name) params.set("name", searchParams.name)
-        if (searchParams.cpf) params.set("cpf", searchParams.cpf)
-        if (searchParams.startDate) params.set("startDate", searchParams.startDate)
-        if (searchParams.endDate) params.set("endDate", searchParams.endDate)
+        if (status && status !== "ALL") params.set("status", status)
+        if (name) params.set("name", name)
+        if (cpf) params.set("cpf", cpf)
+        if (startDate) params.set("startDate", startDate)
+        if (endDate) params.set("endDate", endDate)
         if (p > 1) params.set("page", String(p))
         const qs = params.toString()
         return `/admin/solicitacoes${qs ? `?${qs}` : ""}`
@@ -162,7 +163,7 @@ export default async function SolicitacoesPage({
                                     <TableCell>{new Date(req.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</TableCell>
                                     <TableCell className="text-right">
                                         <Button asChild size="sm" variant="ghost">
-                                            <Link href={`/admin/solicitacoes/${req.id}`}>Ver Detalhes</Link>
+                                            <Link href={`/admin/solicitacoes/${req.id}`} prefetch={false}>Ver Detalhes</Link>
                                         </Button>
                                     </TableCell>
                                 </TableRow>
@@ -196,7 +197,7 @@ export default async function SolicitacoesPage({
                                         {new Date(req.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                                     </span>
                                     <Button asChild size="sm" variant="outline" className="h-8 text-xs">
-                                        <Link href={`/admin/solicitacoes/${req.id}`}>Ver Detalhes</Link>
+                                        <Link href={`/admin/solicitacoes/${req.id}`} prefetch={false}>Ver Detalhes</Link>
                                     </Button>
                                 </div>
                             </CardContent>
