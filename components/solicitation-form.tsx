@@ -274,10 +274,11 @@ export default function SolicitationForm() {
                 // Redirect to confirmation page with status
                 router.push(`/solicitar/confirmacao?status=${result.status}`)
             } else {
-                toast.error(result.message)
+                toast.error(result.message || "Erro ao enviar solicitação. Tente novamente.")
             }
-        } catch (error) {
-            toast.error("Erro ao enviar solicitação")
+        } catch (error: any) {
+            console.error("Erro ao chamar submitApplication:", error)
+            toast.error(error?.message || "Erro ao enviar solicitação. Tente novamente.")
         } finally {
             setLoading(false)
         }

@@ -185,6 +185,7 @@ export async function checkContactEmailExists(contactEmail: string) {
 }
 
 export async function submitApplication(prevState: any, formData: FormData) {
+    try {
     const supabase = getServiceSupabase()
 
     const isForeign = formData.get("isForeign") === "true"
@@ -454,12 +455,17 @@ export async function submitApplication(prevState: any, formData: FormData) {
 
     if (error) {
         console.error("Erro ao inserir usuário:", error)
-        return { success: false, message: "Erro ao salvar dados." }
+        return { success: false, message: `Erro ao salvar dados: ${error.message || error.code || "verifique os dados e tente novamente."}` }
+    }
+
+    if (!insertedData) {
+        console.error("Erro ao inserir usuário: insert retornou sem dados")
+        return { success: false, message: "Erro ao salvar dados. Tente novamente." }
     }
 
     // NOVO FLUXO: Sempre enviar email para definir senha (independente do status de validação)
     // O usuário terá acesso ao sistema imediatamente, mas o MAF PRO ID só após validação
-    if (insertedData) {
+    try {
         const emailResult = await sendWelcomeEmail(
             insertedData.id,
             rawData.email as string,
@@ -471,6 +477,9 @@ export async function submitApplication(prevState: any, formData: FormData) {
             console.error("Erro ao enviar email de boas-vindas:", emailResult.error)
             // Não retorna erro pois o cadastro foi feito com sucesso
         }
+    } catch (emailError: any) {
+        console.error("Exceção ao enviar email de boas-vindas:", emailError)
+        // Não retorna erro pois o cadastro foi feito com sucesso
     }
 
     const messageByStatus = {
@@ -483,5 +492,12 @@ export async function submitApplication(prevState: any, formData: FormData) {
         message: messageByStatus[status as keyof typeof messageByStatus] || "Cadastro realizado com sucesso!",
         status,
         userId: insertedData.id
+    }
+    } catch (unexpectedError: any) {
+        console.error("Erro inesperado em submitApplication:", unexpectedError)
+        return {
+            success: false,
+            message: `Erro inesperado ao processar solicitação: ${unexpectedError?.message || "tente novamente em alguns instantes."}`
+        }
     }
 }
