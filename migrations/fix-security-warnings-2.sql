@@ -175,7 +175,7 @@ CREATE POLICY "Public can submit answers"
     )
   );
 
--- 2c. users_cards — apenas solicitações públicas iniciais (status 'pending') ou admins
+-- 2c. users_cards — apenas solicitações públicas iniciais (status 'PENDENTE_MANUAL') ou admins
 DROP POLICY IF EXISTS "users_cards_insert_policy" ON public.users_cards;
 
 CREATE POLICY "users_cards_insert_policy"
@@ -183,7 +183,7 @@ CREATE POLICY "users_cards_insert_policy"
   FOR INSERT
   WITH CHECK (
     public.is_admin()
-    OR status = 'pending'
+    OR status = 'PENDENTE_MANUAL'
   );
 
 

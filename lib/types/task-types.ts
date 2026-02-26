@@ -25,6 +25,7 @@ export interface Project {
     created_by: string
     created_at: string
     updated_at: string
+    is_archived: boolean
     // campos calculados (opcionais, retornados em algumas rotas)
     tasks_count?: number
     tasks_done?: number
@@ -39,12 +40,12 @@ export interface CreateProjectData {
     end_date?: string
 }
 
-export type UpdateProjectData = Partial<CreateProjectData>
+export type UpdateProjectData = Partial<CreateProjectData> & { is_archived?: boolean }
 
-// ─── Coluna Kanban (personalizável por projeto) ───────────────────────────────
+// ─── Coluna Kanban (global, a nível de sistema) ───────────────────────────────
 export interface KanbanColumn {
     id: string
-    project_id: string
+    project_id?: string | null   // null/undefined para colunas do sistema (tasks_system_columns)
     name: string
     position: number
     color?: string | null
@@ -71,6 +72,7 @@ export interface Task {
     created_by: string
     created_at: string
     updated_at: string
+    is_archived?: boolean
     // campos calculados
     subtasks_count?: number
     subtasks_done?: number

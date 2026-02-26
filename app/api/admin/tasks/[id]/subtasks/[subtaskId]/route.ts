@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/supabase'
 import { verifyAdminAccess, handleAuthError } from '@/lib/auth'
 import { UpdateSubtaskData } from '@/lib/types/task-types'
+import { logTaskEvent } from '@/lib/utils/task-logger'
 
 type RouteParams = { params: Promise<{ id: string; subtaskId: string }> }
 
@@ -9,13 +10,13 @@ type RouteParams = { params: Promise<{ id: string; subtaskId: string }> }
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
     try {
         const admin = await verifyAdminAccess()
-        const { subtaskId } = await params
+        const { id, subtaskId } = await params
         const supabase = getServiceSupabase()
 
         // Segurança: verifica se o admin é responsável pela tarefa pai
         const { data: subtask } = await supabase
             .from('tasks_subtasks')
-            .select('task_id')
+            .select('task_id, title, is_done')
             .eq('id', subtaskId)
             .single()
 
@@ -59,23 +60,31 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             return NextResponse.json({ error: 'Falha ao atualizar sub tarefa' }, { status: 500 })
         }
 
+        // Log: conclusão / reabertura / edição
+        if (body.is_done !== undefined && body.is_done !== subtask.is_done) {
+            const action = body.is_done ? 'subtask_completed' : 'subtask_reopened'
+            const label  = body.is_done ? 'concluída' : 'reaberta'
+            await logTaskEvent(id, admin.email ?? 'admin', action, `Sub tarefa ${label}: "${subtask.title}"`)
+        } else if (body.title && body.title !== subtask.title) {
+            await logTaskEvent(id, admin.email ?? 'admin', 'subtask_added', `Sub tarefa renomeada: "${subtask.title}" → "${body.title}"`)
+        }
+
         return NextResponse.json(data)
     } catch (error) {
         return handleAuthError(error)
     }
 }
 
-// DELETE /api/admin/tasks/[id]/subtasks/[subtaskId]
 export async function DELETE(_req: NextRequest, { params }: RouteParams) {
     try {
         const admin = await verifyAdminAccess()
-        const { subtaskId } = await params
+        const { id, subtaskId } = await params
         const supabase = getServiceSupabase()
 
         // Segurança: verifica se o admin é responsável pela tarefa pai
         const { data: subtask } = await supabase
             .from('tasks_subtasks')
-            .select('task_id')
+            .select('task_id, title')
             .eq('id', subtaskId)
             .single()
 
@@ -102,6 +111,8 @@ export async function DELETE(_req: NextRequest, { params }: RouteParams) {
         if (error) {
             return NextResponse.json({ error: 'Falha ao excluir sub tarefa' }, { status: 500 })
         }
+
+        await logTaskEvent(id, admin.email ?? 'admin', 'subtask_deleted', `Sub tarefa removida: "${subtask?.title ?? ''}"` )
 
         return new NextResponse(null, { status: 204 })
     } catch (error) {

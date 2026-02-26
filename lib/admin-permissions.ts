@@ -4,10 +4,11 @@
  */
 
 /** Papéis disponíveis para administradores */
-export type AdminRole = 'master' | 'operator'
+export type AdminRole = 'super_admin' | 'master' | 'operator'
 
 /**
  * Módulos do painel admin com suas chaves de permissão.
+ * - Super Admins têm controle total, incluindo gestão de outros administradores.
  * - Masters têm acesso irrestrito a todos os módulos.
  * - Operadores só acessam módulos explicitamente liberados pelo master.
  */
@@ -51,12 +52,13 @@ export function hasPermission(
   permissions: AdminPermission[],
   module: AdminPermission
 ): boolean {
-  if (role === 'master') return true
+  if (role === 'super_admin' || role === 'master') return true
   return permissions.includes(module)
 }
 
 /** Labels amigáveis para exibição dos papéis */
 export const ROLE_LABELS: Record<AdminRole, string> = {
+  super_admin: 'Super Admin',
   master: 'Master',
   operator: 'Operador',
 }

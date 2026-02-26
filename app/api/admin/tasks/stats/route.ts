@@ -8,16 +8,18 @@ export async function GET() {
         await verifyAdminAccess()
         const supabase = getServiceSupabase()
 
-        // Busca todos os projetos
+        // Busca todos os projetos (excluindo arquivados)
         const { data: projects } = await supabase
             .from('tasks_projects')
             .select('id, name, status')
+            .eq('is_archived', false)
             .order('created_at', { ascending: false })
 
-        // Busca todas as tarefas com campos necessários para stats
+        // Busca todas as tarefas com campos necessários para stats (excluindo arquivadas)
         const { data: tasks, error } = await supabase
             .from('tasks_items')
             .select('id, title, done, due_datetime, priority, project_id, assignee_email')
+            .eq('is_archived', false)
             .order('due_datetime', { ascending: true, nullsFirst: false })
 
         if (error) return NextResponse.json({ error: 'Falha ao buscar tarefas' }, { status: 500 })

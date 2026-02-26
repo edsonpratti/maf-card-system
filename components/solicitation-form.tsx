@@ -11,9 +11,20 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { toast } from "sonner"
 import { checkCPFExists, checkEmailExists, checkContactEmailExists, submitApplication } from "@/app/actions/solicitar"
-import { Loader2, X, Globe, AlertTriangle, LogIn, KeyRound } from "lucide-react"
+import { Loader2, X, Globe, AlertTriangle, LogIn, KeyRound, UserX } from "lucide-react"
 import Link from "next/link"
 import { formatCEP, formatPhone } from "@/lib/utils"
+import {
+    AlertDialog,
+    AlertDialogContent,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogCancel,
+    AlertDialogAction,
+    AlertDialogMedia,
+} from "@/components/ui/alert-dialog"
 
 export default function SolicitationForm() {
     const router = useRouter()
@@ -25,6 +36,7 @@ export default function SolicitationForm() {
     const [cepLoading, setCepLoading] = useState(false)
     const [photoPreview, setPhotoPreview] = useState<string | null>(null)
     const [cepFilled, setCepFilled] = useState(false)
+    const [showCpfRegisteredDialog, setShowCpfRegisteredDialog] = useState(false)
 
 
     const form = useForm<StudentCombinedFormData>({
@@ -74,7 +86,7 @@ export default function SolicitationForm() {
         try {
             const result = await checkCPFExists(cpf)
             if (result.alreadyApplied) {
-                toast.error(result.message)
+                setShowCpfRegisteredDialog(true)
                 setCpfStatus("initial")
                 return
             }
@@ -287,8 +299,39 @@ export default function SolicitationForm() {
     const validationStatus = isForeign ? emailStatus : cpfStatus
 
     return (
-        <Card className="w-full max-w-2xl mx-auto bg-white/5 backdrop-blur-md border-white/10 shadow-2xl">
-            <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6">
+        <>
+            <AlertDialog open={showCpfRegisteredDialog} onOpenChange={setShowCpfRegisteredDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogMedia>
+                            <UserX />
+                        </AlertDialogMedia>
+                        <AlertDialogTitle>CPF já cadastrado</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Este CPF já possui uma conta no sistema. Acesse o portal para ver o status do seu pedido, ou recupere sua senha caso não a lembre.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            variant="outline"
+                            onClick={() => {
+                                sessionStorage.setItem("recover_password", "true")
+                                router.push("/login")
+                            }}
+                        >
+                            <KeyRound className="mr-2 h-4 w-4" />
+                            Recuperar Senha
+                        </AlertDialogAction>
+                        <AlertDialogAction onClick={() => router.push("/login")}>
+                            <LogIn className="mr-2 h-4 w-4" />
+                            Fazer Login
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            <Card className="w-full max-w-2xl mx-auto bg-white/5 backdrop-blur-md border-white/10 shadow-2xl">
+                <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6">
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
 
                     {/* CPF ou Email de compra (para estrangeiras) */}
@@ -639,7 +682,8 @@ export default function SolicitationForm() {
                     </div>
                 </form>
             </CardContent>
-        </Card>
+            </Card>
+        </>
     )
 }
 

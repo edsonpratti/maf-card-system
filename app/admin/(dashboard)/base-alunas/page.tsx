@@ -1,12 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { AddStudentForm, ImportCSVForm } from "@/components/admin/student-forms"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { deleteStudent, updateStudent, getStudentsBase } from "@/app/actions/base-alunas"
-import { Trash2, Pencil, Globe } from "lucide-react"
+import { Trash2, Pencil, Globe, ChevronLeft, ChevronRight } from "lucide-react"
 import { StudentBaseFilters } from "@/components/admin/student-base-filters"
 import { toast } from "sonner"
 import {
@@ -30,13 +30,18 @@ type Student = {
     is_recognized: boolean
 }
 
+const PAGE_SIZE = 50
+
 export default function BaseAlunasPage() {
     const [students, setStudents] = useState<Student[]>([])
-    const [filteredStudents, setFilteredStudents] = useState<Student[]>([])
+    const [total, setTotal] = useState(0)
+    const [totalBrazilians, setTotalBrazilians] = useState(0)
+    const [totalForeigners, setTotalForeigners] = useState(0)
+    const [page, setPage] = useState(1)
     const [searchTerm, setSearchTerm] = useState("")
     const [searchCPF, setSearchCPF] = useState("")
     const [loading, setLoading] = useState(true)
-    
+
     // Estados para edição
     const [editingStudent, setEditingStudent] = useState<Student | null>(null)
     const [editName, setEditName] = useState("")
@@ -45,41 +50,34 @@ export default function BaseAlunasPage() {
     const [editIsForeign, setEditIsForeign] = useState(false)
     const [editDialogOpen, setEditDialogOpen] = useState(false)
     const [saving, setSaving] = useState(false)
-    
+
     // Estado para confirmação de exclusão
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [studentToDelete, setStudentToDelete] = useState<Student | null>(null)
 
-    async function loadStudents() {
+    const loadStudents = useCallback(async (p: number, search: string, searchCpf: string) => {
         setLoading(true)
-        const data = await getStudentsBase()
-        setStudents(data)
-        setFilteredStudents(data)
+        const result = await getStudentsBase({ page: p, pageSize: PAGE_SIZE, search, searchCPF: searchCpf })
+        setStudents(result.data as Student[])
+        setTotal(result.total)
+        setTotalBrazilians(result.totalBrazilians)
+        setTotalForeigners(result.totalForeigners)
         setLoading(false)
-    }
-
-    useEffect(() => {
-        loadStudents()
     }, [])
 
+    // Debounce para busca
     useEffect(() => {
-        let filtered = students
+        const timer = setTimeout(() => {
+            setPage(1)
+            loadStudents(1, searchTerm, searchCPF)
+        }, 400)
+        return () => clearTimeout(timer)
+    }, [searchTerm, searchCPF, loadStudents])
 
-        if (searchTerm) {
-            filtered = filtered.filter((student) =>
-                student.name.toLowerCase().includes(searchTerm.toLowerCase())
-            )
-        }
-
-        if (searchCPF) {
-            filtered = filtered.filter((student) =>
-                (student.cpf?.replace(/\D/g, "") ?? "").includes(searchCPF.replace(/\D/g, "")) ||
-                (student.email ?? "").toLowerCase().includes(searchCPF.toLowerCase())
-            )
-        }
-
-        setFilteredStudents(filtered)
-    }, [searchTerm, searchCPF, students])
+    useEffect(() => {
+        loadStudents(page, searchTerm, searchCPF)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [page])
 
     const handleClear = () => {
         setSearchTerm("")
@@ -97,7 +95,7 @@ export default function BaseAlunasPage() {
         setDeleteDialogOpen(false)
         setStudentToDelete(null)
         toast.success("Aluna removida da base com sucesso!")
-        await loadStudents()
+        await loadStudents(page, searchTerm, searchCPF)
     }
 
     const handleEditClick = (student: Student) => {
@@ -120,7 +118,7 @@ export default function BaseAlunasPage() {
             toast.success(result.message)
             setEditDialogOpen(false)
             setEditingStudent(null)
-            await loadStudents()
+            await loadStudents(page, searchTerm, searchCPF)
         } else {
             toast.error(result.message)
         }
@@ -132,25 +130,41 @@ export default function BaseAlunasPage() {
         return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4")
     }
 
-    const foreignCount = students.filter((s) => s.is_foreign).length
+    const totalPages = Math.ceil(total / PAGE_SIZE)
 
     return (
         <div className="space-y-6 sm:space-y-8">
-            <div className="space-y-2">
-                <h1 className="text-2xl sm:text-3xl font-bold">Base de Alunas Habilitadas</h1>
-                <p className="text-sm sm:text-base text-muted-foreground">
-                    Alunas com habilitação reconhecida pelo sistema. CPFs (ou emails para estrangeiras) cadastrados aqui são aprovados automaticamente.
-                </p>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <div className="space-y-2">
+                    <h1 className="text-2xl sm:text-3xl font-bold">Base de Alunas Habilitadas</h1>
+                    <p className="text-sm sm:text-base text-muted-foreground">
+                        Alunas com habilitação reconhecida pelo sistema. CPFs (ou emails para estrangeiras) cadastrados aqui são aprovados automaticamente.
+                    </p>
+                </div>
+                <div className="flex flex-wrap gap-2 sm:shrink-0">
+                    <div className="rounded-lg border bg-card px-4 py-3 text-center min-w-[90px]">
+                        <p className="text-2xl font-bold">{loading ? "…" : (totalBrazilians + totalForeigners)}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Total</p>
+                    </div>
+                    <div className="rounded-lg border bg-card px-4 py-3 text-center min-w-[90px]">
+                        <p className="text-2xl font-bold">{loading ? "…" : totalBrazilians}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Brasileiras</p>
+                    </div>
+                    <div className="rounded-lg border bg-card px-4 py-3 text-center min-w-[90px]">
+                        <p className="text-2xl font-bold">{loading ? "…" : totalForeigners}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Estrangeiras</p>
+                    </div>
+                </div>
             </div>
 
             <div className="grid gap-4 sm:gap-8 md:grid-cols-2">
                 <div className="space-y-4 rounded-lg border p-3 sm:p-4">
                     <h2 className="text-base sm:text-lg font-semibold">Adicionar Manualmente</h2>
-                    <AddStudentForm onSuccess={loadStudents} />
+                    <AddStudentForm onSuccess={() => loadStudents(page, searchTerm, searchCPF)} />
                 </div>
                 <div className="space-y-4 rounded-lg border p-3 sm:p-4">
                     <h2 className="text-base sm:text-lg font-semibold">Importar em Massa</h2>
-                    <ImportCSVForm onSuccess={loadStudents} />
+                    <ImportCSVForm onSuccess={() => { setPage(1); loadStudents(1, searchTerm, searchCPF) }} />
                 </div>
             </div>
 
@@ -166,8 +180,8 @@ export default function BaseAlunasPage() {
             <div className="block md:hidden space-y-3">
                 {loading ? (
                     <div className="text-center py-8 text-muted-foreground">Carregando...</div>
-                ) : filteredStudents.length > 0 ? (
-                    filteredStudents.map((student) => (
+                ) : students.length > 0 ? (
+                    students.map((student) => (
                         <div key={student.id} className="border rounded-lg p-4 bg-card flex items-center justify-between gap-4">
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
@@ -237,8 +251,8 @@ export default function BaseAlunasPage() {
                                     Carregando...
                                 </TableCell>
                             </TableRow>
-                        ) : filteredStudents.length > 0 ? (
-                            filteredStudents.map((student) => (
+                        ) : students.length > 0 ? (
+                            students.map((student) => (
                                 <TableRow key={student.id}>
                                     <TableCell className="font-medium">{student.name}</TableCell>
                                     <TableCell className="text-muted-foreground text-sm">
@@ -297,17 +311,39 @@ export default function BaseAlunasPage() {
                 </Table>
             </div>
 
-            <div className="rounded-lg border p-4 bg-muted/50">
-                <p className="text-sm text-muted-foreground">
-                    <strong>Total de alunas habilitadas:</strong> {students.length}
-                    {foreignCount > 0 && (
-                        <> | <strong>Estrangeiras:</strong> {foreignCount}</>
-                    )}
-                    {filteredStudents.length !== students.length && (
-                        <> | <strong>Filtradas:</strong> {filteredStudents.length}</>
-                    )}
-                </p>
-            </div>
+            {/* Paginação */}
+            {!loading && totalPages > 0 && (
+                <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm text-muted-foreground">
+                        {total === 0
+                            ? "Nenhum resultado"
+                            : `Exibindo ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, total)} de ${total} aluna${total !== 1 ? "s" : ""}`
+                        }
+                        {(searchTerm || searchCPF) && " (filtrado)"}
+                    </p>
+                    <div className="flex items-center gap-1">
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setPage((p) => Math.max(1, p - 1))}
+                            disabled={page <= 1}
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="text-sm px-2">
+                            {page} / {totalPages}
+                        </span>
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                            disabled={page >= totalPages}
+                        >
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+            )}
 
             {/* Dialog de Edição */}
             <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>

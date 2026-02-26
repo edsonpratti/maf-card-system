@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/supabase'
 import { verifyAdminAccess, handleAuthError } from '@/lib/auth'
 import type { UpdateTaskData } from '@/lib/types/task-types'
+import { logTaskEvent, diffTaskFields } from '@/lib/utils/task-logger'
 
 type RouteParams = { params: Promise<{ id: string }> }
 
@@ -56,10 +57,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         const { id } = await params
         const supabase = getServiceSupabase()
 
-        // Segurança: apenas o responsável pela tarefa pode editá-la
+        // Busca tarefa existente para validação e diff de logs
         const { data: existing } = await supabase
             .from('tasks_items')
-            .select('assignee_email')
+            .select('assignee_email, title, description, done, priority, due_datetime, column_id')
             .eq('id', id)
             .single()
 
@@ -98,6 +99,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         if (error) {
             console.error('Error updating task:', error)
             return NextResponse.json({ error: 'Falha ao atualizar tarefa' }, { status: 500 })
+        }
+
+        // Escreve um log por campo alterado
+        const logEntries = diffTaskFields(existing as Record<string, unknown>, updates)
+        for (const entry of logEntries) {
+            await logTaskEvent(id, admin.email ?? 'admin', entry.action, entry.detail)
         }
 
         return NextResponse.json(data)

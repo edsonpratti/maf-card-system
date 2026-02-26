@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Download, RefreshCw, BarChart3, Users, Sparkles, ChevronLeft, ChevronRight, Trash2, Brain, TrendingUp, AlertTriangle, CheckCircle2, MessageSquareQuote, Lightbulb, ThumbsUp, ThumbsDown, Minus } from 'lucide-react'
+import { ArrowLeft, Download, RefreshCw, BarChart3, Users, Sparkles, ChevronLeft, ChevronRight, Trash2, Brain, AlertTriangle, Send } from 'lucide-react'
 import { Survey, QuestionAnalytics } from '@/lib/types/survey-types'
 import { toast } from 'sonner'
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadialBarChart, RadialBar } from 'recharts'
@@ -61,9 +61,12 @@ export default function SurveyResultsPage({ params }: { params: Promise<{ id: st
     const [deletingResponseId, setDeletingResponseId] = useState<string | null>(null)
     const [responsesPage, setResponsesPage] = useState(1)
     const responsesPerPage = 10
-    const [aiAnalysis, setAiAnalysis] = useState<any>(null)
-    const [aiLoading, setAiLoading] = useState(false)
-    const [aiError, setAiError] = useState<string | null>(null)
+    const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([])
+    const [chatInput, setChatInput] = useState('')
+    const [chatLoading, setChatLoading] = useState(false)
+    const [chatInitialized, setChatInitialized] = useState(false)
+    const [chatError, setChatError] = useState<string | null>(null)
+    const chatEndRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
         const initializePage = async () => {
@@ -86,6 +89,18 @@ export default function SurveyResultsPage({ params }: { params: Promise<{ id: st
             loadResponses()
         }
     }, [activeTab, surveyId])
+
+    // Initialize chat when switching to AI tab
+    useEffect(() => {
+        if (activeTab === 'ai' && surveyId && !chatInitialized && !chatLoading) {
+            initializeChat()
+        }
+    }, [activeTab, surveyId, chatInitialized])
+
+    // Auto-scroll to bottom when messages change
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }, [chatMessages, chatLoading])
 
     const loadSurvey = async () => {
         if (!surveyId) return
@@ -679,25 +694,188 @@ export default function SurveyResultsPage({ params }: { params: Promise<{ id: st
         )
     }
 
-    const handleGenerateAIAnalysis = async () => {
-        if (!surveyId) return
-        setAiLoading(true)
-        setAiError(null)
+    const initializeChat = async () => {
+        setChatLoading(true)
+        setChatError(null)
         try {
-            const response = await fetch(`/api/admin/surveys/${surveyId}/ai-analysis`, {
+            const response = await fetch(`/api/admin/surveys/${surveyId}/ai-chat`, {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages: [] }),
             })
             if (!response.ok) {
                 const err = await response.json()
-                throw new Error(err.error || 'Erro ao gerar análise')
+                throw new Error(err.error || 'Erro ao iniciar análise')
             }
             const data = await response.json()
-            setAiAnalysis(data)
+            setChatMessages([{ role: 'assistant', content: data.message }])
+            setChatInitialized(true)
         } catch (error: any) {
-            setAiError(error.message || 'Erro desconhecido')
+            setChatError(error.message || 'Erro desconhecido')
         } finally {
-            setAiLoading(false)
+            setChatLoading(false)
         }
+    }
+
+    const sendChatMessage = async () => {
+        if (!surveyId || !chatInput.trim() || chatLoading) return
+        const userMessage = chatInput.trim()
+        setChatInput('')
+        const updatedMessages = [...chatMessages, { role: 'user' as const, content: userMessage }]
+        setChatMessages(updatedMessages)
+        setChatLoading(true)
+        setChatError(null)
+        try {
+            const response = await fetch(`/api/admin/surveys/${surveyId}/ai-chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages: updatedMessages }),
+            })
+            if (!response.ok) {
+                const err = await response.json()
+                throw new Error(err.error || 'Erro ao obter resposta')
+            }
+            const data = await response.json()
+            setChatMessages(prev => [...prev, { role: 'assistant', content: data.message }])
+        } catch (error: any) {
+            setChatError(error.message || 'Erro desconhecido')
+            setChatMessages(chatMessages)
+        } finally {
+            setChatLoading(false)
+        }
+    }
+
+    const renderAIChat = () => {
+        return (
+            <Card className="overflow-hidden">
+                {/* Header */}
+                <CardHeader className="pb-3 border-b bg-muted/20">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                <Brain className="w-4 h-4 text-primary" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-base">Chat com IA</CardTitle>
+                                <CardDescription className="text-xs">Converse sobre os dados desta enquete</CardDescription>
+                            </div>
+                            <Badge variant="secondary" className="text-xs ml-1">GPT-4o mini</Badge>
+                        </div>
+                        {chatInitialized && (
+                            <button
+                                onClick={() => { setChatMessages([]); setChatError(null); setChatInitialized(false); }}
+                                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors"
+                            >
+                                <RefreshCw className="w-3 h-3" />
+                                Nova conversa
+                            </button>
+                        )}
+                    </div>
+                </CardHeader>
+
+                <CardContent className="p-0">
+                    {/* Messages area */}
+                    <div className="h-[480px] overflow-y-auto p-4 space-y-4">
+
+                        {/* Initial loading (before first message) */}
+                        {!chatInitialized && chatLoading && (
+                            <div className="flex items-end gap-2">
+                                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                    <Brain className="w-3.5 h-3.5 text-primary" />
+                                </div>
+                                <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-3">
+                                    <div className="flex gap-1 items-center h-4">
+                                        <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: '0ms' }} />
+                                        <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: '150ms' }} />
+                                        <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: '300ms' }} />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Error on initialization */}
+                        {!chatInitialized && !chatLoading && chatError && (
+                            <div className="flex items-center justify-center h-full">
+                                <div className="text-center space-y-3">
+                                    <AlertTriangle className="w-8 h-8 text-destructive mx-auto" />
+                                    <p className="text-sm text-destructive">{chatError}</p>
+                                    <button
+                                        onClick={initializeChat}
+                                        className="text-xs text-primary underline underline-offset-2"
+                                    >
+                                        Tentar novamente
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Chat messages */}
+                        {chatMessages.map((msg, i) => (
+                            <div key={i} className={`flex items-end gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                                {msg.role === 'assistant' && (
+                                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                        <Brain className="w-3.5 h-3.5 text-primary" />
+                                    </div>
+                                )}
+                                <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                                    msg.role === 'user'
+                                        ? 'bg-primary text-primary-foreground rounded-br-sm'
+                                        : 'bg-muted rounded-bl-sm'
+                                }`}>
+                                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* Typing indicator (after first message) */}
+                        {chatLoading && chatMessages.length > 0 && (
+                            <div className="flex items-end gap-2">
+                                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                    <Brain className="w-3.5 h-3.5 text-primary" />
+                                </div>
+                                <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-3">
+                                    <div className="flex gap-1 items-center h-4">
+                                        <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: '0ms' }} />
+                                        <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: '150ms' }} />
+                                        <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: '300ms' }} />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div ref={chatEndRef} />
+                    </div>
+
+                    {/* Input */}
+                    <div className="p-4 border-t">
+                        {chatError && chatInitialized && (
+                            <p className="text-xs text-destructive mb-2 flex items-center gap-1">
+                                <AlertTriangle className="w-3 h-3" />
+                                {chatError}
+                            </p>
+                        )}
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={chatInput}
+                                onChange={e => setChatInput(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } }}
+                                placeholder={chatInitialized ? 'Pergunte algo sobre os dados desta enquete...' : 'Aguardando análise inicial...'}
+                                disabled={chatLoading || !chatInitialized}
+                                className="flex-1 text-sm border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            />
+                            <button
+                                onClick={sendChatMessage}
+                                disabled={chatLoading || !chatInput.trim() || !chatInitialized}
+                                className="px-3 py-2 bg-primary text-primary-foreground rounded-lg disabled:opacity-40 hover:bg-primary/90 transition-colors flex items-center"
+                            >
+                                <Send className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+        )
     }
 
     const getSentimentConfig = (sentiment: string, score: number) => {
@@ -1070,7 +1248,7 @@ export default function SurveyResultsPage({ params }: { params: Promise<{ id: st
                     </TabsContent>
 
                     <TabsContent value="ai" className="mt-6">
-                        {renderAIAnalysis()}
+                        {renderAIChat()}
                     </TabsContent>
                 </Tabs>
             )}

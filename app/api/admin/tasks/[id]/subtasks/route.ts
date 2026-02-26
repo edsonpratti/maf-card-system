@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/supabase'
 import { verifyAdminAccess, handleAuthError } from '@/lib/auth'
 import { CreateSubtaskData } from '@/lib/types/task-types'
+import { logTaskEvent } from '@/lib/utils/task-logger'
 
 type RouteParams = { params: Promise<{ id: string }> }
 
@@ -57,6 +58,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             console.error('Error creating subtask:', error)
             return NextResponse.json({ error: 'Falha ao criar sub tarefa' }, { status: 500 })
         }
+
+        await logTaskEvent(id, admin.email ?? 'admin', 'subtask_added', `Sub tarefa adicionada: "${data.title}"`)
 
         return NextResponse.json(data, { status: 201 })
     } catch (error) {

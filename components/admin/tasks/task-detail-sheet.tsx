@@ -41,6 +41,13 @@ import {
     CalendarDays,
     AlertCircle,
     Pencil,
+    FolderKanban,
+    History,
+    CheckCircle2,
+    Circle,
+    Flag,
+    MessageSquare,
+    RefreshCw,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -73,11 +80,11 @@ function fmtDate(d: string | null | undefined) {
     return format(parseISO(d), 'dd/MM/yyyy', { locale: ptBR })
 }
 
-function DueDateBadge({ dt }: { dt: string | null | undefined }) {
+function DueDateBadge({ dt, done }: { dt: string | null | undefined; done?: boolean }) {
     if (!dt) return <span className="text-muted-foreground">—</span>
     const parsed  = parseISO(dt)
-    const overdue = isPast(parsed) && !isToday(parsed)
-    const today   = isToday(parsed)
+    const overdue = !done && isPast(parsed) && !isToday(parsed)
+    const today   = !done && isToday(parsed)
     return (
         <span className={`flex items-center gap-1 text-sm font-medium ${overdue ? 'text-destructive' : today ? 'text-yellow-600' : ''}`}>
             {(overdue || today) && <AlertCircle className="h-3.5 w-3.5" />}
@@ -100,6 +107,11 @@ function getTaskState(task: Pick<Task, 'done' | 'due_datetime'>) {
         if (isPast(parsed) && !isToday(parsed)) return 'overdue' as const
     }
     return 'active' as const
+}
+
+function getAssigneeName(email: string | null | undefined, members: AdminMember[]): string {
+    if (!email) return '—'
+    return members.find(m => m.email === email)?.name ?? email
 }
 
 // ─── Aba: Sub Tarefas ─────────────────────────────────────────────────────────
@@ -211,7 +223,7 @@ function SubtasksTab({ taskId, members, isOwner }: SubtasksTabProps) {
                                 <div className="flex flex-wrap gap-2 mt-1">
                                     {s.assignee_email && (
                                         <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                            <User className="h-3 w-3" />{s.assignee_email}
+                                            <User className="h-3 w-3" />{getAssigneeName(s.assignee_email, members)}
                                         </span>
                                     )}
                                     {s.due_date && (
@@ -494,6 +506,101 @@ function AttachmentsTab({ taskId, isOwner }: AttachmentsTabProps) {
     )
 }
 
+// ─── Aba: Logs de Atividade ───────────────────────────────────────────────────
+interface TaskLog {
+    id:          string
+    actor_email: string
+    action:      string
+    detail:      string | null
+    created_at:  string
+}
+
+const ACTION_CONFIG: Record<string, { icon: React.ElementType; color: string; label: string }> = {
+    created:             { icon: Plus,           color: 'text-green-600',       label: 'Tarefa criada' },
+    title_changed:       { icon: Pencil,         color: 'text-blue-600',        label: 'Título alterado' },
+    description_changed: { icon: Pencil,         color: 'text-blue-500',        label: 'Descrição alterada' },
+    done:                { icon: CheckCircle2,   color: 'text-green-600',       label: 'Tarefa concluída' },
+    undone:              { icon: Circle,         color: 'text-muted-foreground',label: 'Tarefa reaberta' },
+    priority_changed:    { icon: Flag,           color: 'text-orange-500',      label: 'Prioridade alterada' },
+    assignee_changed:    { icon: User,           color: 'text-purple-600',      label: 'Responsável alterado' },
+    due_changed:         { icon: CalendarDays,   color: 'text-orange-500',      label: 'Prazo alterado' },
+    column_changed:      { icon: History,        color: 'text-muted-foreground',label: 'Coluna alterada' },
+    subtask_added:       { icon: Plus,           color: 'text-blue-500',        label: 'Sub tarefa adicionada' },
+    subtask_completed:   { icon: CheckCircle2,   color: 'text-green-600',       label: 'Sub tarefa concluída' },
+    subtask_reopened:    { icon: Circle,         color: 'text-muted-foreground',label: 'Sub tarefa reaberta' },
+    subtask_deleted:     { icon: Trash2,         color: 'text-destructive',     label: 'Sub tarefa removida' },
+    comment_added:       { icon: MessageSquare,  color: 'text-blue-500',        label: 'Comentário adicionado' },
+    comment_deleted:     { icon: Trash2,         color: 'text-destructive',     label: 'Comentário removido' },
+    attachment_added:    { icon: Paperclip,      color: 'text-blue-500',        label: 'Arquivo anexado' },
+    attachment_deleted:  { icon: Trash2,         color: 'text-destructive',     label: 'Arquivo removido' },
+}
+
+function LogsTab({ taskId }: { taskId: string }) {
+    const [logs,    setLogs]    = useState<TaskLog[]>([])
+    const [loading, setLoading] = useState(true)
+
+    const load = async () => {
+        setLoading(true)
+        const res = await fetch(`/api/admin/tasks/${taskId}/logs`)
+        if (res.ok) setLogs(await res.json())
+        setLoading(false)
+    }
+
+    useEffect(() => { load() }, [taskId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    return (
+        <div className="space-y-2">
+            <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">{logs.length} evento{logs.length !== 1 ? 's' : ''} registrado{logs.length !== 1 ? 's' : ''}</p>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={load} disabled={loading} title="Atualizar">
+                    <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+                </Button>
+            </div>
+
+            {loading ? (
+                <p className="text-sm text-muted-foreground text-center py-6">Carregando...</p>
+            ) : logs.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+                    <History className="h-8 w-8 opacity-30" />
+                    <p className="text-sm">Nenhuma atividade registrada ainda.</p>
+                </div>
+            ) : (
+                <div className="relative">
+                    {/* Linha vertical da timeline */}
+                    <div className="absolute left-[15px] top-3 bottom-3 w-px bg-border" />
+
+                    <ul className="space-y-1">
+                        {logs.map(log => {
+                            const cfg = ACTION_CONFIG[log.action] ?? { icon: History, color: 'text-muted-foreground', label: log.action }
+                            const Icon = cfg.icon
+                            return (
+                                <li key={log.id} className="flex gap-3 pl-1">
+                                    {/* Dot da timeline */}
+                                    <div className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-background border ${cfg.color}`}>
+                                        <Icon className="h-3.5 w-3.5" />
+                                    </div>
+
+                                    <div className="flex-1 min-w-0 pt-1 pb-3">
+                                        <p className="text-sm leading-snug">
+                                            {log.detail ?? cfg.label}
+                                        </p>
+                                        <div className="flex flex-wrap items-center gap-x-2 mt-0.5">
+                                            <span className="text-xs font-medium text-muted-foreground">{log.actor_email}</span>
+                                            <span className="text-xs text-muted-foreground">
+                                                {format(parseISO(log.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </li>
+                            )
+                        })}
+                    </ul>
+                </div>
+            )}
+        </div>
+    )
+}
+
 // ─── Diálogo de edição da tarefa ──────────────────────────────────────────────
 interface EditTaskDialogProps {
     open:     boolean
@@ -639,12 +746,13 @@ interface TaskDetailSheetProps {
     columns:            KanbanColumn[]
     open:               boolean
     currentAdminEmail:  string
+    projectName?:       string
     onClose:            () => void
     onUpdated:          (t: Task) => void
     onDeleted:          (id: string) => void
 }
 
-export function TaskDetailSheet({ task, members, columns, open, currentAdminEmail, onClose, onUpdated, onDeleted }: TaskDetailSheetProps) {
+export function TaskDetailSheet({ task, members, columns, open, currentAdminEmail, projectName, onClose, onUpdated, onDeleted }: TaskDetailSheetProps) {
     const [editOpen, setEditOpen] = useState(false)
 
     if (!task) return null
@@ -705,17 +813,26 @@ export function TaskDetailSheet({ task, members, columns, open, currentAdminEmai
                         {task.description && (
                             <p className="text-sm text-muted-foreground whitespace-pre-wrap">{task.description}</p>
                         )}
+                        {projectName && (
+                            <div className="text-sm">
+                                <p className="text-xs text-muted-foreground mb-0.5">Projeto</p>
+                                <p className="font-medium flex items-center gap-1">
+                                    <FolderKanban className="h-3.5 w-3.5 text-muted-foreground" />
+                                    {projectName}
+                                </p>
+                            </div>
+                        )}
                         <div className="grid grid-cols-2 gap-3 text-sm">
                             <div>
                                 <p className="text-xs text-muted-foreground mb-0.5">Responsável</p>
                                 <p className="font-medium flex items-center gap-1">
                                     <User className="h-3.5 w-3.5 text-muted-foreground" />
-                                    {task.assignee_email ?? '—'}
+                                    {getAssigneeName(task.assignee_email, members)}
                                 </p>
                             </div>
                             <div>
                                 <p className="text-xs text-muted-foreground mb-0.5">Prazo</p>
-                                <DueDateBadge dt={task.due_datetime} />
+                                <DueDateBadge dt={task.due_datetime} done={task.done} />
                             </div>
                         </div>
                     </div>
@@ -724,9 +841,12 @@ export function TaskDetailSheet({ task, members, columns, open, currentAdminEmai
                     <div className="flex-1 px-6 py-4">
                         <Tabs defaultValue="subtasks">
                             <TabsList className="w-full mb-4">
-                                <TabsTrigger value="subtasks"  className="flex-1">Sub Tarefas</TabsTrigger>
-                                <TabsTrigger value="comments"  className="flex-1">Comentários</TabsTrigger>
+                                <TabsTrigger value="subtasks"   className="flex-1">Sub Tarefas</TabsTrigger>
+                                <TabsTrigger value="comments"   className="flex-1">Comentários</TabsTrigger>
                                 <TabsTrigger value="attachments" className="flex-1">Anexos</TabsTrigger>
+                                <TabsTrigger value="logs"       className="flex-1 gap-1">
+                                    <History className="h-3.5 w-3.5" />Logs
+                                </TabsTrigger>
                             </TabsList>
 
                             <TabsContent value="subtasks">
@@ -739,6 +859,10 @@ export function TaskDetailSheet({ task, members, columns, open, currentAdminEmai
 
                             <TabsContent value="attachments">
                                 <AttachmentsTab taskId={task.id} isOwner={isOwner} />
+                            </TabsContent>
+
+                            <TabsContent value="logs">
+                                <LogsTab taskId={task.id} />
                             </TabsContent>
                         </Tabs>
                     </div>

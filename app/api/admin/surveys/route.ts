@@ -14,7 +14,7 @@ export async function GET() {
 
         const { data, error } = await supabase
             .from('surveys')
-            .select('*')
+            .select('*, survey_responses(count)')
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -22,7 +22,14 @@ export async function GET() {
             return NextResponse.json({ error: 'Failed to fetch surveys' }, { status: 500 });
         }
 
-        return NextResponse.json(data);
+        // Flatten response count
+        const surveysWithCount = (data ?? []).map((s: any) => ({
+            ...s,
+            response_count: s.survey_responses?.[0]?.count ?? 0,
+            survey_responses: undefined,
+        }));
+
+        return NextResponse.json(surveysWithCount);
     } catch (error) {
         console.error('Error in GET /api/admin/surveys:', error);
         return handleAuthError(error);

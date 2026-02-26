@@ -6,6 +6,7 @@ import {
     createAdminUser,
     resetAdminPassword,
     updateAdminPermissions,
+    updateAdminRole,
     deleteAdminUser,
 } from "@/app/actions/admin-users"
 import { ADMIN_MODULES } from "@/lib/admin-permissions"
@@ -32,7 +33,7 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
-import { KeyRound, Loader2, Shield, UserCog, Trash2, Pencil, UserPlus, Crown, Info } from "lucide-react"
+import { KeyRound, Loader2, Shield, UserCog, Trash2, Pencil, UserPlus, Crown, Info, ShieldCheck } from "lucide-react"
 
 type AdminUser = {
     id: string
@@ -47,9 +48,16 @@ type AdminUser = {
 
 interface AdminUsersClientProps {
     initialAdmins: AdminUser[]
+    myRole: AdminRole
 }
 
 const ROLE_CONFIG = {
+    super_admin: {
+        label: "Super Admin",
+        description: "Controle total, incluindo gestão de outros administradores",
+        variant: "destructive" as const,
+        icon: ShieldCheck,
+    },
     master: {
         label: "Master",
         description: "Acesso irrestrito a todos os módulos",
@@ -64,7 +72,7 @@ const ROLE_CONFIG = {
     },
 }
 
-export function AdminUsersClient({ initialAdmins }: AdminUsersClientProps) {
+export function AdminUsersClient({ initialAdmins, myRole }: AdminUsersClientProps) {
     const [admins, setAdmins] = useState<AdminUser[]>(initialAdmins)
     const [form, setForm] = useState({
         name: "",
@@ -81,6 +89,12 @@ export function AdminUsersClient({ initialAdmins }: AdminUsersClientProps) {
     const [editTarget, setEditTarget] = useState<AdminUser | null>(null)
     const [editPermissions, setEditPermissions] = useState<AdminPermission[]>([])
     const [editLoading, setEditLoading] = useState(false)
+
+    // Edit role dialog (super_admin only)
+    const [roleEditTarget, setRoleEditTarget] = useState<AdminUser | null>(null)
+    const [newRole, setNewRole] = useState<AdminRole>("operator")
+    const [newPermissions, setNewPermissions] = useState<AdminPermission[]>([])
+    const [roleEditLoading, setRoleEditLoading] = useState(false)
 
     const refreshAdmins = async () => {
         const updated = await getAdminUsers()
@@ -162,6 +176,26 @@ export function AdminUsersClient({ initialAdmins }: AdminUsersClientProps) {
         setEditLoading(false)
     }
 
+    const openRoleEdit = (admin: AdminUser) => {
+        setRoleEditTarget(admin)
+        setNewRole(admin.role)
+        setNewPermissions([...(admin.permissions ?? [])])
+    }
+
+    const handleSaveRole = async () => {
+        if (!roleEditTarget) return
+        setRoleEditLoading(true)
+        const res = await updateAdminRole(roleEditTarget.id, newRole, newPermissions)
+        if (res.success) {
+            toast.success(res.message)
+            await refreshAdmins()
+            setRoleEditTarget(null)
+        } else {
+            toast.error(res.message)
+        }
+        setRoleEditLoading(false)
+    }
+
     return (
         <div className="space-y-8">
             <div>
@@ -172,7 +206,22 @@ export function AdminUsersClient({ initialAdmins }: AdminUsersClientProps) {
             </div>
 
             {/* Info sobre papéis */}
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {myRole === "super_admin" && (
+                    <Card className="border-destructive/30 bg-destructive/5">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm flex items-center gap-2">
+                                <ShieldCheck className="h-4 w-4 text-destructive" />
+                                Super Admin
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-xs text-muted-foreground">
+                                Controle total sobre todos os administradores. Pode editar, excluir e alterar o papel de masters e operadores.
+                            </p>
+                        </CardContent>
+                    </Card>
+                )}
                 <Card className="border-primary/20 bg-primary/5">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm flex items-center gap-2">
@@ -259,6 +308,14 @@ export function AdminUsersClient({ initialAdmins }: AdminUsersClientProps) {
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
+                                        {myRole === "super_admin" && (
+                                            <SelectItem value="super_admin">
+                                                <span className="flex items-center gap-2">
+                                                    <ShieldCheck className="h-3.5 w-3.5" />
+                                                    Super Admin — controle total
+                                                </span>
+                                            </SelectItem>
+                                        )}
                                         <SelectItem value="master">
                                             <span className="flex items-center gap-2">
                                                 <Crown className="h-3.5 w-3.5" />
@@ -322,7 +379,7 @@ export function AdminUsersClient({ initialAdmins }: AdminUsersClientProps) {
                             ) : (
                                 <UserPlus className="h-4 w-4" />
                             )}
-                            {loading ? "Cadastrando..." : form.role === "master" ? "Cadastrar Master" : "Cadastrar Operador"}
+                            {loading ? "Cadastrando..." : form.role === "super_admin" ? "Cadastrar Super Admin" : form.role === "master" ? "Cadastrar Master" : "Cadastrar Operador"}
                         </Button>
                     </form>
                 </CardContent>
@@ -344,7 +401,19 @@ export function AdminUsersClient({ initialAdmins }: AdminUsersClientProps) {
                             {admins.map((admin, index) => {
                                 const config = ROLE_CONFIG[admin.role ?? "master"]
                                 const RoleIcon = config.icon
+                                const isSuperAdmin = admin.role === "super_admin"
                                 const isMasterUser = admin.role === "master" || admin.role === undefined
+
+                                // Quem pode editar permissões: super_admin pode editar qualquer um (exceto super_admins); master só pode editar operadores
+                                const canEditPermissions = !admin.source && !isSuperAdmin && (
+                                    myRole === "super_admin" || admin.role === "operator"
+                                )
+                                // Quem pode alterar papel: somente super_admin, e não em si mesmo (super_admin)
+                                const canEditRole = myRole === "super_admin" && !isSuperAdmin && !admin.source
+                                // Quem pode excluir: super_admin pode excluir masters e operadores; master só pode excluir operadores
+                                const canDelete = !admin.source && !isSuperAdmin && (
+                                    myRole === "super_admin" || admin.role === "operator"
+                                )
 
                                 return (
                                     <div key={admin.id}>
@@ -401,15 +470,18 @@ export function AdminUsersClient({ initialAdmins }: AdminUsersClientProps) {
                                                         </div>
                                                     )}
 
-                                                    {isMasterUser && (
+                                                    {isMasterUser && !isSuperAdmin && (
                                                         <p className="text-xs text-primary mt-1">Acesso irrestrito a todos os módulos</p>
+                                                    )}
+                                                    {isSuperAdmin && (
+                                                        <p className="text-xs text-destructive mt-1">Controle total sobre todos os administradores</p>
                                                     )}
                                                 </div>
                                             </div>
 
                                             {/* Ações */}
                                             <div className="flex items-center gap-2 shrink-0">
-                                                {!isMasterUser && !admin.source && (
+                                                {canEditPermissions && (
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
@@ -418,6 +490,17 @@ export function AdminUsersClient({ initialAdmins }: AdminUsersClientProps) {
                                                     >
                                                         <Pencil className="h-3 w-3" />
                                                         Permissões
+                                                    </Button>
+                                                )}
+                                                {canEditRole && (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="gap-1.5 text-xs"
+                                                        onClick={() => openRoleEdit(admin)}
+                                                    >
+                                                        <ShieldCheck className="h-3 w-3" />
+                                                        Papel
                                                     </Button>
                                                 )}
                                                 <Button
@@ -434,7 +517,7 @@ export function AdminUsersClient({ initialAdmins }: AdminUsersClientProps) {
                                                     )}
                                                     Resetar Senha
                                                 </Button>
-                                                {!isMasterUser && !admin.source && (
+                                                {canDelete && (
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
@@ -512,6 +595,92 @@ export function AdminUsersClient({ initialAdmins }: AdminUsersClientProps) {
                         <Button onClick={handleSavePermissions} disabled={editLoading} className="gap-2">
                             {editLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                             Salvar permissões
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+            {/* Dialog para editar papel (super_admin only) */}
+            <Dialog open={!!roleEditTarget} onOpenChange={(open) => !open && setRoleEditTarget(null)}>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <ShieldCheck className="h-4 w-4" />
+                            Alterar Papel
+                        </DialogTitle>
+                        <DialogDescription>
+                            Altere o papel de <strong>{roleEditTarget?.name}</strong>. Esta ação afeta imediatamente o acesso deste administrador.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-2">
+                        <div className="grid gap-2">
+                            <Label>Novo papel</Label>
+                            <Select
+                                value={newRole}
+                                onValueChange={(v) => { setNewRole(v as AdminRole); setNewPermissions([]) }}
+                            >
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="master">
+                                        <span className="flex items-center gap-2">
+                                            <Crown className="h-3.5 w-3.5" />
+                                            Master — acesso irrestrito
+                                        </span>
+                                    </SelectItem>
+                                    <SelectItem value="operator">
+                                        <span className="flex items-center gap-2">
+                                            <UserCog className="h-3.5 w-3.5" />
+                                            Operador — acesso limitado
+                                        </span>
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {newRole === "operator" && (
+                            <div className="space-y-2">
+                                <Label className="text-sm font-semibold">Módulos liberados</Label>
+                                <div className="grid gap-2">
+                                    {ADMIN_MODULES.map((module) => (
+                                        <label
+                                            key={module.key}
+                                            className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                                        >
+                                            <Checkbox
+                                                checked={newPermissions.includes(module.key as AdminPermission)}
+                                                onCheckedChange={() =>
+                                                    togglePermission(
+                                                        module.key as AdminPermission,
+                                                        newPermissions,
+                                                        setNewPermissions
+                                                    )
+                                                }
+                                                className="mt-0.5"
+                                            />
+                                            <div>
+                                                <p className="text-sm font-medium">{module.label}</p>
+                                                <p className="text-xs text-muted-foreground">{module.description}</p>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                                {newPermissions.length === 0 && (
+                                    <div className="flex items-center gap-2 text-amber-600 text-xs">
+                                        <Info className="h-3.5 w-3.5" />
+                                        <span>Sem módulos selecionados — o operador não terá acesso a nada além do Início.</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setRoleEditTarget(null)}>
+                            Cancelar
+                        </Button>
+                        <Button onClick={handleSaveRole} disabled={roleEditLoading} className="gap-2">
+                            {roleEditLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                            Salvar papel
                         </Button>
                     </DialogFooter>
                 </DialogContent>

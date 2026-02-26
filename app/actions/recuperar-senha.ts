@@ -31,8 +31,6 @@ export interface RecuperarSenhaResult {
  */
 export async function solicitarRecuperacaoSenha(email: string): Promise<RecuperarSenhaResult> {
     try {
-        console.log("🔑 [RECUPERAR_SENHA] Iniciando para email:", email)
-        
         // 1. Buscar dados do usuário na tabela users_cards
         const { data: userCard, error: userCardError } = await supabaseAdmin
             .from("users_cards")
@@ -40,15 +38,8 @@ export async function solicitarRecuperacaoSenha(email: string): Promise<Recupera
             .eq("email", email)
             .single()
 
-        console.log("🔑 [RECUPERAR_SENHA] Resultado users_cards:", { 
-            found: !!userCard, 
-            auth_user_id: userCard?.auth_user_id,
-            error: userCardError?.message 
-        })
-
         // Se não encontrou na tabela ou ocorreu erro, retorna mensagem genérica por segurança
         if (userCardError || !userCard) {
-            console.log("🔑 [RECUPERAR_SENHA] Usuário não encontrado em users_cards:", email)
             return {
                 success: true,
                 message: "Se o email estiver cadastrado e ativado, você receberá as instruções em breve."
@@ -58,7 +49,6 @@ export async function solicitarRecuperacaoSenha(email: string): Promise<Recupera
         // 2. Verificar se o usuário já completou o primeiro acesso (está ativado)
         // Apenas usuários com auth_user_id ou first_access_completed podem recuperar senha
         if (!userCard.auth_user_id) {
-            console.log("🔑 [RECUPERAR_SENHA] Usuário não ativado (sem auth_user_id):", email)
             return {
                 success: true,
                 message: "Se o email estiver cadastrado e ativado, você receberá as instruções em breve."
@@ -80,7 +70,6 @@ export async function solicitarRecuperacaoSenha(email: string): Promise<Recupera
         
         if (!user) {
             // Por segurança, retornar mensagem genérica mesmo se email não existir no auth
-            console.log("Usuário não encontrado no auth.users:", email)
             return {
                 success: true,
                 message: "Se o email estiver cadastrado e ativado, você receberá as instruções em breve."
@@ -94,12 +83,8 @@ export async function solicitarRecuperacaoSenha(email: string): Promise<Recupera
         const resetToken = crypto.randomBytes(32).toString("hex")
         const expiresAt = new Date(Date.now() + 30 * 60 * 1000) // 30 minutos
 
-        console.log("Gerando token para user_id:", user.id, "email:", email)
-        console.log("Token gerado:", resetToken)
-        console.log("Expira em:", expiresAt)
-
         // 5. Salvar token no banco (usar admin para bypass RLS)
-        const { data: insertData, error: insertError } = await supabaseAdmin
+        const { error: insertError } = await supabaseAdmin
             .from("password_reset_tokens")
             .insert({
                 user_id: user.id,
@@ -109,8 +94,6 @@ export async function solicitarRecuperacaoSenha(email: string): Promise<Recupera
                 used: false
             })
             .select()
-
-        console.log("Resultado insert token:", { insertData, insertError })
 
         if (insertError) {
             console.error("Erro ao salvar token:", insertError)
@@ -124,15 +107,7 @@ export async function solicitarRecuperacaoSenha(email: string): Promise<Recupera
         const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://mafpro.amandafernandes.com"
         const resetLink = `${siteUrl}/recuperar-senha/${resetToken}`
 
-        console.log("Link de recuperação:", resetLink)
-
         // 7. Enviar email via Resend
-        console.log("🔑 [RECUPERAR_SENHA] Enviando email via Resend...")
-        console.log("🔑 [RECUPERAR_SENHA] Config:", {
-            apiKey: process.env.RESEND_API_KEY ? "OK" : "MISSING",
-            from: process.env.RESEND_FROM_EMAIL || "mafpro@amandafernandes.com",
-            to: email
-        })
         
         const { data: emailData, error: emailError } = await resend.emails.send({
             from: process.env.RESEND_FROM_EMAIL || "mafpro@amandafernandes.com",
@@ -148,8 +123,6 @@ export async function solicitarRecuperacaoSenha(email: string): Promise<Recupera
                 message: "Erro ao enviar email. Tente novamente."
             }
         }
-
-        console.log("🔑 [RECUPERAR_SENHA] ✅ Email enviado com sucesso! ID:", emailData?.id)
 
         return {
             success: true,
@@ -174,8 +147,6 @@ export async function validarTokenRecuperacao(token: string): Promise<{
     message?: string
 }> {
     try {
-        console.log("Validando token:", token)
-        
         const { data, error } = await supabaseAdmin
             .from("password_reset_tokens")
             .select("*")
@@ -183,28 +154,22 @@ export async function validarTokenRecuperacao(token: string): Promise<{
             .eq("used", false)
             .single()
 
-        console.log("Resultado da consulta:", { data, error })
-
         if (error) {
             console.error("Erro ao buscar token:", error)
             return { valid: false, message: "Token inválido ou expirado." }
         }
 
         if (!data) {
-            console.log("Token não encontrado no banco")
             return { valid: false, message: "Token inválido ou expirado." }
         }
 
         const now = new Date()
         const expiresAt = new Date(data.expires_at)
 
-        console.log("Verificando expiração:", { now, expiresAt, expired: now > expiresAt })
-
         if (now > expiresAt) {
             return { valid: false, message: "Token expirado. Solicite um novo link." }
         }
 
-        console.log("Token válido para email:", data.email)
         return { valid: true, email: data.email }
 
     } catch (error) {
@@ -218,6 +183,17 @@ export async function validarTokenRecuperacao(token: string): Promise<{
  */
 export async function redefinirSenha(token: string, novaSenha: string): Promise<RecuperarSenhaResult> {
     try {
+        // 0. Validar força da senha antes de qualquer operação
+        if (!novaSenha || novaSenha.length < 8) {
+            return { success: false, message: "A senha deve ter pelo menos 8 caracteres." }
+        }
+        if (!/[A-Z]/.test(novaSenha)) {
+            return { success: false, message: "A senha deve conter pelo menos uma letra maiúscula." }
+        }
+        if (!/[0-9]/.test(novaSenha)) {
+            return { success: false, message: "A senha deve conter pelo menos um número." }
+        }
+
         // 1. Validar token
         const validation = await validarTokenRecuperacao(token)
         

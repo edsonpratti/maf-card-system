@@ -30,10 +30,8 @@ async function createAuditLog(
 }
 
 export async function addStudent(prevState: any, formData: FormData) {
-    console.log("addStudent called")
     try {
         const user = await verifyAdminAccess()
-        console.log("Admin verified:", user.id)
         
         const supabase = getServiceSupabase()
         const name = formData.get("name") as string
@@ -41,11 +39,8 @@ export async function addStudent(prevState: any, formData: FormData) {
         const cpf = isForeign ? undefined : (formData.get("cpf") as string).replace(/\D/g, "")
         const email = isForeign ? (formData.get("email") as string)?.trim().toLowerCase() : undefined
 
-        console.log("Adding student:", { name, cpf, email, isForeign })
-
         const parsed = baseSchema.safeParse({ name, cpf, email, is_foreign: isForeign })
         if (!parsed.success) {
-            console.log("Validation failed:", parsed.error)
             return { success: false, message: "Dados inválidos." }
         }
 
@@ -63,11 +58,9 @@ export async function addStudent(prevState: any, formData: FormData) {
             return { success: false, message: error.message }
         }
 
-        console.log("Student added successfully")
-
         // Log action (don't let audit log errors prevent success)
         try {
-            await createAuditLog(user.id, "ADD_STUDENT", { name, cpf, email, isForeign })
+            await createAuditLog(user.id, "ADD_STUDENT", { name, isForeign })
         } catch (auditError) {
             console.error("Erro ao criar audit log:", auditError)
             // Continue even if audit log fails
@@ -76,15 +69,12 @@ export async function addStudent(prevState: any, formData: FormData) {
         // Revalidate after successful operation
         try {
             revalidatePath("/admin/base-alunas")
-            console.log("Path revalidated")
         } catch (revalidateError) {
             console.error("Erro ao revalidar path:", revalidateError)
             // Continue even if revalidation fails
         }
         
-        const result = { success: true, message: "Aluna adicionada!" }
-        console.log("Returning result:", result)
-        return result
+        return { success: true, message: "Aluna adicionada!" }
     } catch (error) {
         console.error("Erro em addStudent:", error)
         return { success: false, message: "Erro inesperado ao adicionar aluna." }
@@ -235,27 +225,46 @@ export async function importCSV(prevState: any, formData: FormData) {
             return true
         })
 
-        // Upsert brasileiras por CPF e estrangeiras por email (separados)
+        // Inserir brasileiras por CPF e estrangeiras por email (separados)
+        // Nota: o índice único de CPF é parcial (WHERE cpf IS NOT NULL), portanto
+        // ON CONFLICT não é suportado via cliente — filtramos previamente os duplicados.
         const brazilians = dedupedStudents.filter((s) => !s.is_foreign)
         const foreigners = dedupedStudents.filter((s) => s.is_foreign)
 
         if (brazilians.length > 0) {
-            const { error } = await supabase.from("students_base").upsert(
-                brazilians,
-                { ignoreDuplicates: true }
-            )
-            if (error) {
-                return { success: false, message: "Erro na importação (brasileiras): " + error.message }
+            // Busca apenas os CPFs do lote atual que já existem na base
+            // (evita buscar todos os registros, que pode exceder o limite de 1000 do Supabase)
+            const cpfsNoBatch = brazilians.map((s) => s.cpf).filter(Boolean) as string[]
+            const { data: existingCpfRows } = await supabase
+                .from("students_base")
+                .select("cpf")
+                .in("cpf", cpfsNoBatch)
+            const existingCpfs = new Set((existingCpfRows || []).map((r: any) => r.cpf))
+            const newBrazilians = brazilians.filter((s) => s.cpf && !existingCpfs.has(s.cpf))
+
+            if (newBrazilians.length > 0) {
+                const { error } = await supabase.from("students_base").insert(newBrazilians)
+                if (error) {
+                    return { success: false, message: "Erro na importação (brasileiras): " + error.message }
+                }
             }
         }
 
         if (foreigners.length > 0) {
-            const { error } = await supabase.from("students_base").upsert(
-                foreigners,
-                { ignoreDuplicates: true }
-            )
-            if (error) {
-                return { success: false, message: "Erro na importação (estrangeiras): " + error.message }
+            // Busca apenas os emails do lote atual que já existem na base
+            const emailsNoBatch = foreigners.map((s) => s.email).filter(Boolean) as string[]
+            const { data: existingEmailRows } = await supabase
+                .from("students_base")
+                .select("email")
+                .in("email", emailsNoBatch)
+            const existingEmails = new Set((existingEmailRows || []).map((r: any) => r.email))
+            const newForeigners = foreigners.filter((s) => s.email && !existingEmails.has(s.email))
+
+            if (newForeigners.length > 0) {
+                const { error } = await supabase.from("students_base").insert(newForeigners)
+                if (error) {
+                    return { success: false, message: "Erro na importação (estrangeiras): " + error.message }
+                }
             }
         }
 
@@ -462,19 +471,60 @@ export async function getStudentById(id: string) {
 /**
  * Busca todos os alunos da base
  */
-export async function getStudentsBase() {
+export async function getStudentsBase(params?: {
+    page?: number
+    pageSize?: number
+    search?: string
+    searchCPF?: string
+}) {
     await verifyAdminAccess()
-    
+
     const supabase = getServiceSupabase()
-    const { data, error } = await supabase
+    const page = params?.page ?? 1
+    const pageSize = params?.pageSize ?? 50
+    const search = params?.search?.trim() ?? ""
+    const searchCPF = params?.searchCPF?.trim().replace(/\D/g, "") ?? ""
+
+    // Query paginada com filtros
+    let query = supabase
         .from("students_base")
-        .select("*")
+        .select("*", { count: "exact" })
         .order("created_at", { ascending: false })
-    
+        .range((page - 1) * pageSize, page * pageSize - 1)
+
+    if (search) {
+        query = query.ilike("name", `%${search}%`)
+    }
+
+    if (searchCPF) {
+        // Busca por CPF (numérico) ou email (texto)
+        query = query.or(`cpf.ilike.%${searchCPF}%,email.ilike.%${searchCPF}%`)
+    }
+
+    const { data, error, count } = await query
+
     if (error) {
         console.error("Erro ao buscar alunos da base:", error)
-        return []
+        return { data: [], total: 0, totalBrazilians: 0, totalForeigners: 0 }
     }
-    
-    return data || []
+
+    // Contagens totais sem filtros (para os cards de resumo)
+    const { count: totalAll } = await supabase
+        .from("students_base")
+        .select("*", { count: "exact", head: true })
+
+    const { count: totalForeigners } = await supabase
+        .from("students_base")
+        .select("*", { count: "exact", head: true })
+        .eq("is_foreign", true)
+
+    const all = totalAll ?? 0
+    const foreign = totalForeigners ?? 0
+
+    return {
+        data: data || [],
+        total: count ?? 0,
+        totalBrazilians: all - foreign,
+        totalForeigners: foreign,
+    }
 }

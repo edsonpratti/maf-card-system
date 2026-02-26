@@ -14,16 +14,12 @@ const resend = new Resend(process.env.RESEND_API_KEY)
  */
 export async function sendWelcomeEmail(userId: string, email: string, name: string, status: string) {
     try {
-        console.log("📧 [WELCOME] Iniciando envio de email para:", { userId, email, name, status })
-        
         const supabase = getServiceSupabase()
         
         // Generate a secure token
         const token = crypto.randomBytes(32).toString('hex')
         const expiresAt = new Date()
         expiresAt.setHours(expiresAt.getHours() + 72) // 72 hours to set password
-        
-        console.log("🔑 [WELCOME] Token gerado, salvando no banco...")
         
         // Save token to database
         const { error: updateError } = await supabase
@@ -39,13 +35,9 @@ export async function sendWelcomeEmail(userId: string, email: string, name: stri
             return { success: false, error: "Erro ao gerar token de acesso" }
         }
         
-        console.log("✅ [WELCOME] Token salvo com sucesso")
-        
         // Generate the link
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://mafpro.amandafernandes.com'
         const accessLink = `${baseUrl}/primeiro-acesso/${token}`
-        
-        console.log("🔗 [WELCOME] Link gerado:", accessLink)
         
         // Determinar se está aprovado ou pendente
         const isApproved = status === "AUTO_APROVADA"
@@ -70,7 +62,6 @@ export async function sendWelcomeEmail(userId: string, email: string, name: stri
                 return { success: false, error: `Erro ao enviar email: ${error.message || JSON.stringify(error)}` }
             }
             
-            console.log("✅ [WELCOME] Email enviado com sucesso! ID:", data?.id)
             return { success: true, link: accessLink }
             
         } catch (emailError: any) {
@@ -127,6 +118,17 @@ export async function verifyFirstAccessToken(token: string) {
 
 export async function setUserPassword(token: string, password: string) {
     try {
+        // Validar força da senha antes de qualquer operação
+        if (!password || password.length < 8) {
+            return { success: false, error: "A senha deve ter pelo menos 8 caracteres." }
+        }
+        if (!/[A-Z]/.test(password)) {
+            return { success: false, error: "A senha deve conter pelo menos uma letra maiúscula." }
+        }
+        if (!/[0-9]/.test(password)) {
+            return { success: false, error: "A senha deve conter pelo menos um número." }
+        }
+
         const supabase = getServiceSupabase()
         
         // First verify the token and get the user
@@ -189,7 +191,6 @@ export async function setUserPassword(token: string, password: string) {
             // Não retorna erro pois a senha foi definida com sucesso
         }
         
-        console.log("✅ Senha definida com sucesso para:", user.email)
         return { success: true }
     } catch (error: any) {
         console.error("Erro ao definir senha:", error)
@@ -203,8 +204,6 @@ export async function setUserPassword(token: string, password: string) {
  */
 export async function sendRejectionEmail(email: string, name: string, rejectionReason: string) {
     try {
-        console.log("📧 [REJECTION] Iniciando envio de email para:", { email, name })
-        
         const emailHtml = rejectionEmailTemplate(name, rejectionReason)
         
         // Send email via Resend
@@ -220,7 +219,6 @@ export async function sendRejectionEmail(email: string, name: string, rejectionR
             return { success: false, error: `Erro ao enviar email: ${error.message || JSON.stringify(error)}` }
         }
         
-        console.log("✅ [REJECTION] Email de recusa enviado com sucesso! ID:", data?.id)
         return { success: true }
         
     } catch (error: any) {

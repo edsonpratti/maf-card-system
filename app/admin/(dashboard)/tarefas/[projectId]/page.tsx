@@ -112,11 +112,16 @@ function getColBorder(color: string | null | undefined) {
     return COLUMN_COLORS.find(c => c.value === color)?.border ?? 'border-t-slate-400'
 }
 
-function DueMeta({ dt }: { dt: string | null | undefined }) {
+function getAssigneeName(email: string | null | undefined, members: AdminMember[]): string {
+    if (!email) return '—'
+    return members.find(m => m.email === email)?.name ?? email
+}
+
+function DueMeta({ dt, done }: { dt: string | null | undefined; done?: boolean }) {
     if (!dt) return null
     const parsed  = parseISO(dt)
-    const overdue = isPast(parsed) && !isToday(parsed)
-    const today   = isToday(parsed)
+    const overdue = !done && isPast(parsed) && !isToday(parsed)
+    const today   = !done && isToday(parsed)
     return (
         <span className={`flex items-center gap-1 text-xs ${overdue ? 'text-destructive font-medium' : today ? 'text-yellow-600 font-medium' : 'text-muted-foreground'}`}>
             {(overdue || today) && <AlertCircle className="h-3 w-3" />}
@@ -311,8 +316,8 @@ function ColumnDialog({ open, initial, onClose, onSave }: {
 }
 
 // ─── Visão: Cards ─────────────────────────────────────────────────────────────
-function CardsView({ tasks, onOpen, onComplete, currentAdminEmail }: {
-    tasks: Task[]; onOpen: (t: Task) => void; onComplete: (t: Task) => void; currentAdminEmail: string
+function CardsView({ tasks, onOpen, onComplete, currentAdminEmail, members }: {
+    tasks: Task[]; onOpen: (t: Task) => void; onComplete: (t: Task) => void; currentAdminEmail: string; members: AdminMember[]
 }) {
     return (
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -337,10 +342,10 @@ function CardsView({ tasks, onOpen, onComplete, currentAdminEmail }: {
                                     </Badge>
                                     {task.assignee_email && (
                                         <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                                            <User className="h-3 w-3" />{task.assignee_email}
+                                            <User className="h-3 w-3" />{getAssigneeName(task.assignee_email, members)}
                                         </span>
                                     )}
-                                    <DueMeta dt={task.due_datetime} />
+                                    <DueMeta dt={task.due_datetime} done={task.done} />
                                     {(task.subtasks_count ?? 0) > 0 && (
                                         <span className="flex items-center gap-1 text-xs text-muted-foreground">
                                             <ListTodo className="h-3 w-3" />{task.subtasks_done}/{task.subtasks_count}
@@ -357,10 +362,10 @@ function CardsView({ tasks, onOpen, onComplete, currentAdminEmail }: {
 }
 
 // ─── Visão: Lista ─────────────────────────────────────────────────────────────
-function ListView({ tasks, visibleCols, columns, onOpen, onComplete, currentAdminEmail }: {
+function ListView({ tasks, visibleCols, columns, onOpen, onComplete, currentAdminEmail, members }: {
     tasks: Task[]; visibleCols: Set<ListCol>; columns: KanbanColumn[]
     onOpen: (t: Task) => void; onComplete: (t: Task) => void
-    currentAdminEmail: string
+    currentAdminEmail: string; members: AdminMember[]
 }) {
     const colName = (id: string | null | undefined) => columns.find(c => c.id === id)?.name ?? '—'
     return (
@@ -405,11 +410,11 @@ function ListView({ tasks, visibleCols, columns, onOpen, onComplete, currentAdmi
                             {visibleCols.has('assignee') && (
                                 <td className="p-3 text-xs text-muted-foreground whitespace-nowrap">
                                     {task.assignee_email
-                                        ? <span className="flex items-center gap-1"><User className="h-3 w-3" />{task.assignee_email}</span>
+                                        ? <span className="flex items-center gap-1"><User className="h-3 w-3" />{getAssigneeName(task.assignee_email, members)}</span>
                                         : '—'}
                                 </td>
                             )}
-                            {visibleCols.has('due')      && <td className="p-3 whitespace-nowrap"><DueMeta dt={task.due_datetime} /></td>}
+                            {visibleCols.has('due')      && <td className="p-3 whitespace-nowrap"><DueMeta dt={task.due_datetime} done={task.done} /></td>}
                             {visibleCols.has('subtasks') && (
                                 <td className="p-3 text-xs text-muted-foreground whitespace-nowrap">
                                     {(task.subtasks_count ?? 0) > 0
@@ -431,10 +436,10 @@ function ListView({ tasks, visibleCols, columns, onOpen, onComplete, currentAdmi
 }
 
 // ─── Visão: Kanban ────────────────────────────────────────────────────────────
-function KanbanCard({ task, columns, currentColId, onOpen, onComplete, onMove, currentAdminEmail }: {
+function KanbanCard({ task, columns, currentColId, onOpen, onComplete, onMove, currentAdminEmail, members }: {
     task: Task; columns: KanbanColumn[]; currentColId: string | null
     onOpen: (t: Task) => void; onComplete: (t: Task) => void
-    onMove: (t: Task, colId: string | null) => void; currentAdminEmail: string
+    onMove: (t: Task, colId: string | null) => void; currentAdminEmail: string; members: AdminMember[]
 }) {
     const isOwner = !task.assignee_email || task.assignee_email === currentAdminEmail
     const destinations = currentColId
@@ -480,7 +485,7 @@ function KanbanCard({ task, columns, currentColId, onOpen, onComplete, onMove, c
                     {task.assignee_email && (
                         <span className="flex items-center gap-1 text-xs text-muted-foreground">
                             <User className="h-3 w-3 shrink-0" />
-                            <span className="truncate max-w-[100px]">{task.assignee_email.split('@')[0]}</span>
+                            <span className="truncate max-w-[100px]">{getAssigneeName(task.assignee_email, members)}</span>
                         </span>
                     )}
                     {(task.subtasks_count ?? 0) > 0 && (
@@ -489,13 +494,13 @@ function KanbanCard({ task, columns, currentColId, onOpen, onComplete, onMove, c
                         </span>
                     )}
                 </div>
-                {task.due_datetime && <DueMeta dt={task.due_datetime} />}
+                {task.due_datetime && <DueMeta dt={task.due_datetime} done={task.done} />}
             </CardContent>
         </Card>
     )
 }
 
-function KanbanView({ tasks, columns, onOpen, onComplete, onMove, onAddCol, onRename, onDelete, currentAdminEmail }: {
+function KanbanView({ tasks, columns, onOpen, onComplete, onMove, onAddCol, onRename, onDelete, currentAdminEmail, members, isMaster }: {
     tasks: Task[]; columns: KanbanColumn[]
     onOpen:     (t: Task) => void
     onComplete: (t: Task) => void
@@ -503,7 +508,8 @@ function KanbanView({ tasks, columns, onOpen, onComplete, onMove, onAddCol, onRe
     onAddCol:   () => void
     onRename:   (col: KanbanColumn) => void
     onDelete:   (col: KanbanColumn) => void
-    currentAdminEmail: string
+    currentAdminEmail: string; members: AdminMember[]
+    isMaster: boolean
 }) {
     const unassigned = tasks.filter(t => !t.column_id || !columns.find(c => c.id === t.column_id))
 
@@ -519,13 +525,13 @@ function KanbanView({ tasks, columns, onOpen, onComplete, onMove, onAddCol, onRe
                     <div className="p-2 space-y-2 min-h-16">
                         {unassigned.map(task => (
                             <KanbanCard key={task.id} task={task} columns={columns} currentColId={null}
-                                onOpen={onOpen} onComplete={onComplete} onMove={onMove} currentAdminEmail={currentAdminEmail} />
+                                onOpen={onOpen} onComplete={onComplete} onMove={onMove} currentAdminEmail={currentAdminEmail} members={members} />
                         ))}
                     </div>
                 </div>
             )}
 
-            {/* Colunas personalizadas */}
+            {/* Colunas do sistema */}
             {columns.map(col => {
                 const colTasks = tasks.filter(t => t.column_id === col.id)
                 return (
@@ -534,28 +540,31 @@ function KanbanView({ tasks, columns, onOpen, onComplete, onMove, onAddCol, onRe
                             <span className="font-medium text-sm truncate flex-1">{col.name}</span>
                             <div className="flex items-center gap-1 shrink-0">
                                 <span className="text-xs bg-muted px-2 py-0.5 rounded-full font-medium">{colTasks.length}</span>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <button className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground">
-                                            <MoreVertical className="h-3.5 w-3.5" />
-                                        </button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => onRename(col)}>
-                                            <Pencil className="h-3.5 w-3.5 mr-2" />Renomear
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem onClick={() => onDelete(col)} className="text-destructive focus:text-destructive">
-                                            <Trash2 className="h-3.5 w-3.5 mr-2" />Excluir coluna
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                                {/* Gerenciamento de coluna: apenas master */}
+                                {isMaster && (
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <button className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground">
+                                                <MoreVertical className="h-3.5 w-3.5" />
+                                            </button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => onRename(col)}>
+                                                <Pencil className="h-3.5 w-3.5 mr-2" />Renomear
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem onClick={() => onDelete(col)} className="text-destructive focus:text-destructive">
+                                                <Trash2 className="h-3.5 w-3.5 mr-2" />Excluir coluna
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                )}
                             </div>
                         </div>
                         <div className="p-2 space-y-2 min-h-16">
                             {colTasks.map(task => (
                                 <KanbanCard key={task.id} task={task} columns={columns} currentColId={col.id}
-                                    onOpen={onOpen} onComplete={onComplete} onMove={onMove} currentAdminEmail={currentAdminEmail} />
+                                    onOpen={onOpen} onComplete={onComplete} onMove={onMove} currentAdminEmail={currentAdminEmail} members={members} />
                             ))}
                             {colTasks.length === 0 && (
                                 <p className="text-xs text-muted-foreground text-center py-6">Sem tarefas</p>
@@ -565,11 +574,13 @@ function KanbanView({ tasks, columns, onOpen, onComplete, onMove, onAddCol, onRe
                 )
             })}
 
-            {/* Botão nova coluna */}
-            <button onClick={onAddCol}
-                className="flex-shrink-0 w-56 h-16 rounded-lg border-2 border-dashed border-muted-foreground/20 hover:border-primary/40 hover:bg-muted/20 transition-all flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-                <Plus className="h-4 w-4" />Nova coluna
-            </button>
+            {/* Botão nova coluna: apenas master */}
+            {isMaster && (
+                <button onClick={onAddCol}
+                    className="flex-shrink-0 w-56 h-16 rounded-lg border-2 border-dashed border-muted-foreground/20 hover:border-primary/40 hover:bg-muted/20 transition-all flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+                    <Plus className="h-4 w-4" />Nova coluna
+                </button>
+            )}
         </div>
     )
 }
@@ -584,10 +595,11 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
     const [members,      setMembers]           = useState<AdminMember[]>([])
     const [columns,      setColumns]           = useState<KanbanColumn[]>([])
     const [currentAdminEmail, setCurrentAdminEmail] = useState('')
+    const [isMaster,     setIsMaster]     = useState(false)
     const [loading,      setLoading]           = useState(true)
     const [tab,          setTab]          = useState<TabFilter>('all')
     const [search,       setSearch]       = useState('')
-    const [viewMode,     setViewMode]     = useState<ViewMode>('cards')
+    const [viewMode,     setViewMode]     = useState<ViewMode>('kanban')
     const [visibleCols,  setVisibleCols]  = useState<Set<ListCol>>(DEFAULT_LIST_COLS)
     const [taskDialog,   setTaskDialog]   = useState(false)
     const [savingTask,   setSavingTask]   = useState(false)
@@ -602,7 +614,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
             fetch(`/api/admin/projects/${projectId}`),
             fetch(`/api/admin/projects/${projectId}/tasks`),
             fetch('/api/admin/admin-members'),
-            fetch(`/api/admin/projects/${projectId}/columns`),
+            fetch('/api/admin/tasks/system-columns'),
             fetch('/api/admin/me'),
         ])
         if (!projRes.ok) { router.push('/admin/tarefas'); return }
@@ -610,7 +622,11 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
         if (tasksRes.ok) setTasks(await tasksRes.json())
         if (membRes.ok)  setMembers(await membRes.json())
         if (colsRes.ok)  setColumns(await colsRes.json())
-        if (meRes.ok)    setCurrentAdminEmail((await meRes.json()).email ?? '')
+        if (meRes.ok) {
+            const meData = await meRes.json()
+            setCurrentAdminEmail(meData.email ?? '')
+            setIsMaster(meData.role === 'master')
+        }
         setLoading(false)
     }, [projectId, router])
 
@@ -660,7 +676,10 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
         const existing = columns.find(c => c.name.toLowerCase() === 'concluídos')
         if (existing) return existing
 
-        const res = await fetch(`/api/admin/projects/${projectId}/columns`, {
+        // Apenas masters podem criar colunas do sistema
+        if (!isMaster) return null
+
+        const res = await fetch('/api/admin/tasks/system-columns', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: 'Concluídos', color: 'green' }),
         })
@@ -717,14 +736,14 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
 
     const handleSaveCol = async (name: string, color: string) => {
         if (editingCol) {
-            const res = await fetch(`/api/admin/projects/${projectId}/columns/${editingCol.id}`, {
+            const res = await fetch(`/api/admin/tasks/system-columns/${editingCol.id}`, {
                 method: 'PATCH', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, color }),
             })
             if (res.ok) { setColumns(p => p.map(c => c.id === editingCol.id ? { ...c, name, color } : c)); toast.success('Coluna renomeada') }
             else toast.error('Erro ao renomear coluna')
         } else {
-            const res = await fetch(`/api/admin/projects/${projectId}/columns`, {
+            const res = await fetch('/api/admin/tasks/system-columns', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, color }),
             })
@@ -739,7 +758,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
 
     const handleDeleteCol = async (col: KanbanColumn) => {
         if (!confirm(`Excluir a coluna "${col.name}"? As tarefas nela ficarão sem coluna.`)) return
-        const res = await fetch(`/api/admin/projects/${projectId}/columns/${col.id}`, { method: 'DELETE' })
+        const res = await fetch(`/api/admin/tasks/system-columns/${col.id}`, { method: 'DELETE' })
         if (res.ok) {
             setColumns(p => p.filter(c => c.id !== col.id))
             setTasks(p => p.map(t => t.column_id === col.id ? { ...t, column_id: null } : t))
@@ -886,14 +905,16 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
                     )}
                 </div>
             ) : viewMode === 'cards' ? (
-                <CardsView tasks={filtered} onOpen={openTask} onComplete={handleComplete} currentAdminEmail={currentAdminEmail} />
+                <CardsView tasks={filtered} onOpen={openTask} onComplete={handleComplete} currentAdminEmail={currentAdminEmail} members={members} />
             ) : viewMode === 'list' ? (
-                <ListView tasks={filtered} visibleCols={visibleCols} columns={columns} onOpen={openTask} onComplete={handleComplete} currentAdminEmail={currentAdminEmail} />
+                <ListView tasks={filtered} visibleCols={visibleCols} columns={columns} onOpen={openTask} onComplete={handleComplete} currentAdminEmail={currentAdminEmail} members={members} />
             ) : (
                 <KanbanView
                     tasks={filtered} columns={columns}
                     onOpen={openTask} onComplete={handleComplete} onMove={handleMove}
                     currentAdminEmail={currentAdminEmail}
+                    members={members}
+                    isMaster={isMaster}
                     onAddCol={() => { setEditingCol(null); setColDialog(true) }}
                     onRename={col => { setEditingCol(col); setColDialog(true) }}
                     onDelete={handleDeleteCol}

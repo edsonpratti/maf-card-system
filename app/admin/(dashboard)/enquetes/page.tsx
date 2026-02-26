@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Eye, Edit, Copy, Trash2, BarChart3 } from 'lucide-react'
+import { Plus, Eye, Edit, Copy, Trash2, BarChart3, Users } from 'lucide-react'
 import { Survey, SurveyStatus } from '@/lib/types/survey-types'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
@@ -172,6 +172,10 @@ export default function EnquetesPage() {
                                             {survey.end_date && (
                                                 <span>Término: {format(new Date(survey.end_date), 'dd/MM/yyyy')}</span>
                                             )}
+                                            <span className="inline-flex items-center gap-1 font-medium text-primary">
+                                                <Users className="h-3.5 w-3.5" />
+                                                {(survey as any).response_count ?? 0} {((survey as any).response_count ?? 0) === 1 ? 'resposta' : 'respostas'}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>

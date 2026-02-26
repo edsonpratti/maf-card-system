@@ -25,6 +25,7 @@ import {
     Shield,
     UserCircle,
     FolderKanban,
+    BarChart3,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { AdminRole, AdminPermission } from "@/lib/admin-permissions"
@@ -73,14 +74,16 @@ const menuItems: MenuGroup[] = [
         sectionIcon: HelpCircle,
         items: [
             { href: "/admin/enquetes", icon: ClipboardList, label: "Enquetes", permission: "maf-pro-quiz" },
+            { href: "/resultados-enquetes", icon: BarChart3, label: "Dashboard Público", permission: "maf-pro-quiz" },
         ],
     },
     {
         section: "MAF Pro Tasks",
         sectionIcon: ListTodo,
         items: [
-            { href: "/admin/tarefas/dashboard", icon: LayoutDashboard, label: "Dashboard",  permission: "maf-pro-tasks" },
-            { href: "/admin/tarefas/projetos",  icon: FolderKanban,    label: "Projetos",   permission: "maf-pro-tasks" },
+            { href: "/admin/tarefas/dashboard",       icon: LayoutDashboard, label: "Dashboard",      permission: "maf-pro-tasks" },
+            { href: "/admin/tarefas/projetos",         icon: FolderKanban,    label: "Projetos",        permission: "maf-pro-tasks" },
+            { href: "/admin/tarefas/minhas-tarefas",  icon: UserCircle,      label: "Minhas Tarefas",  permission: "maf-pro-tasks" },
         ],
     },
     {
@@ -99,7 +102,7 @@ function isItemVisible(
     role: AdminRole,
     permissions: AdminPermission[]
 ): boolean {
-    if (item.masterOnly) return role === "master"
+    if (item.masterOnly) return role === "master" || role === "super_admin"
     if (!item.permission) return true
     return hasPermission(role, permissions, item.permission)
 }

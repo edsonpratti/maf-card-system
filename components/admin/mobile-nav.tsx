@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Menu, Users, FileText, Database, Shield, LogOut, UserCheck, Home, ClipboardList, X } from "lucide-react"
+import { Menu, Users, FileText, Database, Shield, LogOut, UserCheck, Home, ClipboardList, X, BarChart3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
     Sheet,
@@ -28,6 +28,7 @@ const navItems = [
     { href: "/admin/base-alunas", label: "Base de Alunas", icon: Users },
     { section: "MAF Pro Quiz" },
     { href: "/admin/enquetes", label: "Enquetes", icon: ClipboardList },
+    { href: "/resultados-enquetes", label: "Dashboard Público", icon: BarChart3 },
     { section: "Sistema" },
     { href: "/admin/logs", label: "Logs de Auditoria", icon: Database },
 ]

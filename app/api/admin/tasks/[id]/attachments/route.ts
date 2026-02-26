@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/supabase'
 import { verifyAdminAccess, handleAuthError } from '@/lib/auth'
+import { logTaskEvent } from '@/lib/utils/task-logger'
 
 type RouteParams = { params: Promise<{ id: string }> }
 
@@ -100,6 +101,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         const { data: signed } = await supabase.storage
             .from('task-attachments')
             .createSignedUrl(filePath, 3600)
+
+        await logTaskEvent(id, admin.email ?? 'admin', 'attachment_added', `Arquivo anexado: "${file.name}"`)
 
         return NextResponse.json({ ...data, signed_url: signed?.signedUrl ?? null }, { status: 201 })
     } catch (error) {

@@ -8,9 +8,9 @@ export default async function AdminUsersPage() {
         getAdminUsers(),
     ])
 
-    if (myInfo?.role !== "master") {
+    if (myInfo?.role !== "master" && myInfo?.role !== "super_admin") {
         redirect("/admin")
     }
 
-    return <AdminUsersClient initialAdmins={initialAdmins as any} />
+    return <AdminUsersClient initialAdmins={initialAdmins as any} myRole={myInfo.role} />
 }

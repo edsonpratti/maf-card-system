@@ -18,7 +18,7 @@ import {
     TrendingUp,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { TASK_PRIORITY_LABELS, TASK_PRIORITY_VARIANT } from '@/lib/types/task-types'
+import { AdminMember, TASK_PRIORITY_LABELS, TASK_PRIORITY_VARIANT } from '@/lib/types/task-types'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -68,6 +68,11 @@ function fmtDate(d: string | null | undefined) {
     return format(parseISO(d), 'dd/MM/yyyy', { locale: ptBR })
 }
 
+function getAssigneeName(email: string | null | undefined, members: AdminMember[]): string {
+    if (!email) return '—'
+    return members.find(m => m.email === email)?.name ?? email
+}
+
 const PERIOD_LABELS: Record<Period, string> = {
     today: 'Hoje',
     week:  'Esta semana',
@@ -99,7 +104,7 @@ function StatCard({
     )
 }
 
-function TaskRow({ task, showProject = true }: { task: TaskSummary; showProject?: boolean }) {
+function TaskRow({ task, members, showProject = true }: { task: TaskSummary; members: AdminMember[]; showProject?: boolean }) {
     const priority = task.priority as keyof typeof TASK_PRIORITY_LABELS
     return (
         <div className="flex items-start gap-3 py-3 border-b last:border-0">
@@ -120,7 +125,7 @@ function TaskRow({ task, showProject = true }: { task: TaskSummary; showProject?
                     )}
                     {task.assignee_email && (
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <User className="h-3 w-3" />{task.assignee_email.split('@')[0]}
+                            <User className="h-3 w-3" />{getAssigneeName(task.assignee_email, members)}
                         </span>
                     )}
                 </div>
@@ -152,13 +157,18 @@ export default function TasksDashboardPage() {
     const [stats,   setStats]   = useState<Stats | null>(null)
     const [loading, setLoading] = useState(true)
     const [period,  setPeriod]  = useState<Period>('today')
+    const [members, setMembers] = useState<AdminMember[]>([])
 
     const loadStats = useCallback(async () => {
         try {
             setLoading(true)
-            const res = await fetch('/api/admin/tasks/stats')
-            if (res.ok) setStats(await res.json())
+            const [statsRes, membersRes] = await Promise.all([
+                fetch('/api/admin/tasks/stats'),
+                fetch('/api/admin/admin-members'),
+            ])
+            if (statsRes.ok) setStats(await statsRes.json())
             else toast.error('Erro ao carregar estatísticas')
+            if (membersRes.ok) setMembers(await membersRes.json())
         } catch {
             toast.error('Erro ao carregar dashboard')
         } finally {
@@ -291,7 +301,7 @@ export default function TasksDashboardPage() {
                             ) : (
                                 <div className="divide-y">
                                     {stats.today_tasks.map(task => (
-                                        <TaskRow key={task.id} task={task} />
+                                        <TaskRow key={task.id} task={task} members={members} />
                                     ))}
                                 </div>
                             )}
@@ -311,7 +321,7 @@ export default function TasksDashboardPage() {
                             <CardContent>
                                 <div className="divide-y">
                                     {stats.overdue_tasks.slice(0, 8).map(task => (
-                                        <TaskRow key={task.id} task={task} />
+                                        <TaskRow key={task.id} task={task} members={members} />
                                     ))}
                                 </div>
                                 {stats.overdue_tasks.length > 8 && (

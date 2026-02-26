@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/supabase'
 import { verifyAdminAccess, handleAuthError } from '@/lib/auth'
+import { logTaskEvent } from '@/lib/utils/task-logger'
 
 type RouteParams = { params: Promise<{ id: string; attachmentId: string }> }
 
@@ -14,7 +15,7 @@ export async function DELETE(_req: NextRequest, { params }: RouteParams) {
         // Busca o file_path e task_id antes de deletar
         const { data: att } = await supabase
             .from('tasks_attachments')
-            .select('file_path, task_id')
+            .select('file_path, task_id, file_name')
             .eq('id', attachmentId)
             .single()
 
@@ -47,6 +48,10 @@ export async function DELETE(_req: NextRequest, { params }: RouteParams) {
 
         if (error) {
             return NextResponse.json({ error: 'Falha ao excluir anexo' }, { status: 500 })
+        }
+
+        if (att?.task_id) {
+            await logTaskEvent(att.task_id, admin.email ?? 'admin', 'attachment_deleted', `Arquivo removido: "${att.file_name ?? attachmentId}"`)
         }
 
         return new NextResponse(null, { status: 204 })

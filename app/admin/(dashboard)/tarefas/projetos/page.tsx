@@ -40,6 +40,8 @@ import {
     User,
     ArrowRight,
     CheckCircle2,
+    Archive,
+    ArchiveRestore,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -213,14 +215,31 @@ function ProjectDialog({ open, project, members, onClose, onSave, saving }: Proj
 }
 
 // ─── Card de Projeto ──────────────────────────────────────────────────────────
-function ProjectCard({ project, onEdit, onDelete }: { project: Project; onEdit: (p: Project) => void; onDelete: (p: Project) => void }) {
+function ProjectCard({
+    project, onEdit, onDelete, onArchive, onRestore,
+}: {
+    project: Project
+    onEdit:    (p: Project) => void
+    onDelete:  (p: Project) => void
+    onArchive: (p: Project) => void
+    onRestore: (p: Project) => void
+}) {
+    const hasTasks = (project.tasks_count ?? 0) > 0
+
     return (
-        <Card className="group hover:shadow-md hover:border-primary/40 transition-all duration-200 flex flex-col">
+        <Card className={`group hover:shadow-md transition-all duration-200 flex flex-col ${
+            project.is_archived
+                ? 'opacity-70 border-dashed hover:border-muted-foreground/40'
+                : 'hover:border-primary/40'
+        }`}>
             <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
-                        <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
-                            <FolderKanban className="h-4 w-4" />
+                        <div className={`p-2 rounded-lg shrink-0 ${project.is_archived ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary'}`}>
+                            {project.is_archived
+                                ? <Archive className="h-4 w-4" />
+                                : <FolderKanban className="h-4 w-4" />
+                            }
                         </div>
                         <div className="min-w-0">
                             <CardTitle className="text-base leading-snug truncate group-hover:text-primary transition-colors">
@@ -230,9 +249,13 @@ function ProjectCard({ project, onEdit, onDelete }: { project: Project; onEdit: 
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
-                        <Badge variant={PROJECT_STATUS_VARIANT[project.status]} className="text-xs">
-                            {PROJECT_STATUS_LABELS[project.status]}
-                        </Badge>
+                        {project.is_archived ? (
+                            <Badge variant="secondary" className="text-xs">Arquivado</Badge>
+                        ) : (
+                            <Badge variant={PROJECT_STATUS_VARIANT[project.status]} className="text-xs">
+                                {PROJECT_STATUS_LABELS[project.status]}
+                            </Badge>
+                        )}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -240,13 +263,37 @@ function ProjectCard({ project, onEdit, onDelete }: { project: Project; onEdit: 
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => onEdit(project)}>
-                                    <Pencil className="h-4 w-4 mr-2" />Editar
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => onDelete(project)} className="text-destructive focus:text-destructive">
-                                    <Trash2 className="h-4 w-4 mr-2" />Excluir
-                                </DropdownMenuItem>
+                                {project.is_archived ? (
+                                    <>
+                                        <DropdownMenuItem onClick={() => onRestore(project)}>
+                                            <ArchiveRestore className="h-4 w-4 mr-2" />Restaurar
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        {!hasTasks && (
+                                            <DropdownMenuItem onClick={() => onDelete(project)} className="text-destructive focus:text-destructive">
+                                                <Trash2 className="h-4 w-4 mr-2" />Excluir permanentemente
+                                            </DropdownMenuItem>
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        <DropdownMenuItem onClick={() => onEdit(project)}>
+                                            <Pencil className="h-4 w-4 mr-2" />Editar
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onClick={() => onArchive(project)}>
+                                            <Archive className="h-4 w-4 mr-2" />Arquivar
+                                        </DropdownMenuItem>
+                                        {!hasTasks && (
+                                            <>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem onClick={() => onDelete(project)} className="text-destructive focus:text-destructive">
+                                                    <Trash2 className="h-4 w-4 mr-2" />Excluir
+                                                </DropdownMenuItem>
+                                            </>
+                                        )}
+                                    </>
+                                )}
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
@@ -277,12 +324,14 @@ function ProjectCard({ project, onEdit, onDelete }: { project: Project; onEdit: 
 
                 <div className="space-y-3">
                     <ProgressBar done={project.tasks_done ?? 0} total={project.tasks_count ?? 0} />
-                    <Link href={`/admin/tarefas/${project.id}`}>
-                        <Button variant="outline" size="sm" className="w-full gap-2 group-hover:border-primary/50 transition-colors">
-                            Ver tarefas
-                            <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
-                        </Button>
-                    </Link>
+                    {!project.is_archived && (
+                        <Link href={`/admin/tarefas/${project.id}`}>
+                            <Button variant="outline" size="sm" className="w-full gap-2 group-hover:border-primary/50 transition-colors">
+                                Ver tarefas
+                                <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+                            </Button>
+                        </Link>
+                    )}
                 </div>
             </CardContent>
         </Card>
@@ -295,6 +344,7 @@ export default function ProjetosPage() {
     const [members,     setMembers]     = useState<AdminMember[]>([])
     const [loading,     setLoading]     = useState(true)
     const [search,      setSearch]      = useState('')
+    const [activeTab,   setActiveTab]   = useState<'active' | 'archived'>('active')
     const [dialogOpen,  setDialogOpen]  = useState(false)
     const [editProject, setEditProject] = useState<Project | null>(null)
     const [saving,      setSaving]      = useState(false)
@@ -318,12 +368,17 @@ export default function ProjetosPage() {
 
     useEffect(() => { loadData() }, [loadData])
 
-    const filtered = projects.filter(p =>
-        !search.trim() ||
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.description?.toLowerCase().includes(search.toLowerCase()) ||
-        p.manager_email.toLowerCase().includes(search.toLowerCase())
-    )
+    const filtered = projects.filter(p => {
+        const matchesTab = activeTab === 'active' ? !p.is_archived : p.is_archived
+        const matchesSearch = !search.trim() ||
+            p.name.toLowerCase().includes(search.toLowerCase()) ||
+            p.description?.toLowerCase().includes(search.toLowerCase()) ||
+            p.manager_email.toLowerCase().includes(search.toLowerCase())
+        return matchesTab && matchesSearch
+    })
+
+    // Apenas projetos ativos nas estatísticas
+    const activeProjects = projects.filter(p => !p.is_archived)
 
     const handleSave = async (data: CreateProjectData) => {
         setSaving(true)
@@ -342,10 +397,46 @@ export default function ProjetosPage() {
     }
 
     const handleDelete = async (project: Project) => {
-        if (!confirm(`Excluir o projeto "${project.name}"? Todas as tarefas serão removidas permanentemente.`)) return
+        if (!confirm(`Excluir permanentemente o projeto "${project.name}"? Esta ação não pode ser desfeita.`)) return
         const res = await fetch(`/api/admin/projects/${project.id}`, { method: 'DELETE' })
         if (res.ok) { toast.success('Projeto excluído'); await loadData() }
-        else toast.error('Erro ao excluir projeto')
+        else {
+            const body = await res.json()
+            toast.error(body.error ?? 'Erro ao excluir projeto')
+        }
+    }
+
+    const handleArchive = async (project: Project) => {
+        if (!confirm(`Arquivar o projeto "${project.name}"? Todas as tarefas vinculadas também serão arquivadas e não aparecerão nos relatórios.`)) return
+        const res = await fetch(`/api/admin/projects/${project.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_archived: true }),
+        })
+        if (res.ok) {
+            toast.success('Projeto arquivado com sucesso')
+            setActiveTab('archived')
+            await loadData()
+        } else {
+            const body = await res.json()
+            toast.error(body.error ?? 'Erro ao arquivar projeto')
+        }
+    }
+
+    const handleRestore = async (project: Project) => {
+        const res = await fetch(`/api/admin/projects/${project.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_archived: false }),
+        })
+        if (res.ok) {
+            toast.success('Projeto restaurado com sucesso')
+            setActiveTab('active')
+            await loadData()
+        } else {
+            const body = await res.json()
+            toast.error(body.error ?? 'Erro ao restaurar projeto')
+        }
     }
 
     const openNew  = () => { setEditProject(null); setDialogOpen(true) }
@@ -369,14 +460,14 @@ export default function ProjetosPage() {
                 </Button>
             </div>
 
-            {/* Resumo rápido */}
-            {projects.length > 0 && (
+            {/* Resumo rápido — apenas projetos ativos */}
+            {activeProjects.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {[
-                        { label: 'Total de Projetos', value: projects.length,                                      color: '' },
-                        { label: 'Projetos Ativos',   value: projects.filter(p => p.status === 'active').length,   color: 'text-green-600' },
-                        { label: 'Total de Tarefas',  value: projects.reduce((s, p) => s + (p.tasks_count ?? 0), 0), color: '' },
-                        { label: 'Concluídas',        value: projects.reduce((s, p) => s + (p.tasks_done  ?? 0), 0), color: 'text-green-600' },
+                        { label: 'Total de Projetos', value: activeProjects.length,                                           color: '' },
+                        { label: 'Projetos Ativos',   value: activeProjects.filter(p => p.status === 'active').length,        color: 'text-green-600' },
+                        { label: 'Total de Tarefas',  value: activeProjects.reduce((s, p) => s + (p.tasks_count ?? 0), 0),    color: '' },
+                        { label: 'Concluídas',        value: activeProjects.reduce((s, p) => s + (p.tasks_done  ?? 0), 0),    color: 'text-green-600' },
                     ].map(({ label, value, color }) => (
                         <Card key={label}>
                             <CardHeader className="p-4 pb-1">
@@ -390,31 +481,78 @@ export default function ProjetosPage() {
                 </div>
             )}
 
-            {/* Busca */}
-            <Input
-                placeholder="Buscar projetos..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="max-w-sm"
-            />
+            {/* Busca + Tabs */}
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                <Input
+                    placeholder="Buscar projetos..."
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    className="max-w-sm"
+                />
+                <div className="flex gap-1 rounded-lg border p-1 bg-muted/40">
+                    <button
+                        onClick={() => { setActiveTab('active'); setSearch('') }}
+                        className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                            activeTab === 'active'
+                                ? 'bg-background shadow-sm font-medium'
+                                : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                    >
+                        Ativos
+                        {activeProjects.length > 0 && (
+                            <span className="ml-1.5 text-xs text-muted-foreground">({activeProjects.length})</span>
+                        )}
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('archived'); setSearch('') }}
+                        className={`px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1.5 ${
+                            activeTab === 'archived'
+                                ? 'bg-background shadow-sm font-medium'
+                                : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                    >
+                        <Archive className="h-3.5 w-3.5" />
+                        Arquivados
+                        {projects.filter(p => p.is_archived).length > 0 && (
+                            <span className="text-xs text-muted-foreground">({projects.filter(p => p.is_archived).length})</span>
+                        )}
+                    </button>
+                </div>
+            </div>
 
             {/* Grid */}
             {loading ? (
                 <div className="flex items-center justify-center py-20 text-muted-foreground">Carregando projetos...</div>
             ) : filtered.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-3 text-center text-muted-foreground">
-                    <FolderKanban className="h-12 w-12 opacity-25" />
-                    <p className="text-sm">{search ? 'Nenhum projeto encontrado.' : 'Nenhum projeto criado ainda. Comece criando o primeiro!'}</p>
-                    {!search && (
-                        <Button variant="outline" size="sm" onClick={openNew}>
-                            <Plus className="h-4 w-4 mr-2" />Criar projeto
-                        </Button>
+                    {activeTab === 'archived' ? (
+                        <>
+                            <Archive className="h-12 w-12 opacity-25" />
+                            <p className="text-sm">{search ? 'Nenhum projeto arquivado encontrado.' : 'Nenhum projeto arquivado.'}</p>
+                        </>
+                    ) : (
+                        <>
+                            <FolderKanban className="h-12 w-12 opacity-25" />
+                            <p className="text-sm">{search ? 'Nenhum projeto encontrado.' : 'Nenhum projeto criado ainda. Comece criando o primeiro!'}</p>
+                            {!search && (
+                                <Button variant="outline" size="sm" onClick={openNew}>
+                                    <Plus className="h-4 w-4 mr-2" />Criar projeto
+                                </Button>
+                            )}
+                        </>
                     )}
                 </div>
             ) : (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {filtered.map(p => (
-                        <ProjectCard key={p.id} project={p} onEdit={openEdit} onDelete={handleDelete} />
+                        <ProjectCard
+                            key={p.id}
+                            project={p}
+                            onEdit={openEdit}
+                            onDelete={handleDelete}
+                            onArchive={handleArchive}
+                            onRestore={handleRestore}
+                        />
                     ))}
                 </div>
             )}

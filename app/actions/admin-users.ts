@@ -90,7 +90,17 @@ export async function createAdminUser(
   await verifyAdminAccess()
 
   const myInfo = await getMyAdminInfo()
-  if (myInfo?.role !== "master") {
+
+  // Apenas super_admin pode criar outro super_admin
+  if (role === "super_admin" && myInfo?.role !== "super_admin") {
+    return {
+      success: false,
+      message: "Apenas super administradores podem cadastrar outros super administradores.",
+    }
+  }
+
+  // Master ou super_admin podem cadastrar admins
+  if (myInfo?.role !== "master" && myInfo?.role !== "super_admin") {
     return {
       success: false,
       message: "Apenas administradores master podem cadastrar novos admins.",
@@ -166,7 +176,7 @@ export async function updateAdminPermissions(
   await verifyAdminAccess()
 
   const myInfo = await getMyAdminInfo()
-  if (myInfo?.role !== "master") {
+  if (myInfo?.role !== "master" && myInfo?.role !== "super_admin") {
     return {
       success: false,
       message: "Apenas administradores master podem alterar permissões.",
@@ -174,11 +184,11 @@ export async function updateAdminPermissions(
   }
 
   const supabase = getServiceSupabase()
-  const { error } = await supabase
-    .from("admin_users")
-    .update({ permissions })
-    .eq("id", adminId)
-    .eq("role", "operator")
+
+  // Master só pode atualizar operadores; super_admin pode atualizar qualquer um
+  const { error } = myInfo.role === "master"
+    ? await supabase.from("admin_users").update({ permissions }).eq("id", adminId).eq("role", "operator")
+    : await supabase.from("admin_users").update({ permissions }).eq("id", adminId)
 
   if (error) return { success: false, message: error.message }
   return { success: true, message: "Permissões atualizadas com sucesso!" }
@@ -188,7 +198,7 @@ export async function deleteAdminUser(adminId: string) {
   await verifyAdminAccess()
 
   const myInfo = await getMyAdminInfo()
-  if (myInfo?.role !== "master") {
+  if (myInfo?.role !== "master" && myInfo?.role !== "super_admin") {
     return {
       success: false,
       message: "Apenas administradores master podem remover admins.",
@@ -204,8 +214,15 @@ export async function deleteAdminUser(adminId: string) {
     .single()
 
   if (!adminData) return { success: false, message: "Administrador não encontrado." }
-  if (adminData.role === "master") {
-    return { success: false, message: "Não é possível remover um administrador master por aqui." }
+
+  // Ninguém pode remover um super_admin
+  if (adminData.role === "super_admin") {
+    return { success: false, message: "Não é possível remover um super administrador." }
+  }
+
+  // Masters só podem remover operadores; super_admin pode remover qualquer um (exceto outro super_admin)
+  if (myInfo.role === "master" && adminData.role === "master") {
+    return { success: false, message: "Administradores master não podem remover outros masters. Apenas um super administrador pode fazer isso." }
   }
 
   const { error } = await supabase
@@ -224,7 +241,67 @@ export async function deleteAdminUser(adminId: string) {
     })
   }
 
-  return { success: true, message: "Operador removido com sucesso." }
+  return {
+    success: true,
+    message: adminData.role === "master"
+      ? "Administrador master removido com sucesso."
+      : "Operador removido com sucesso.",
+  }
+}
+
+export async function updateAdminRole(
+  adminId: string,
+  newRole: AdminRole,
+  permissions: AdminPermission[] = []
+) {
+  await verifyAdminAccess()
+
+  const myInfo = await getMyAdminInfo()
+  if (myInfo?.role !== "super_admin") {
+    return {
+      success: false,
+      message: "Apenas super administradores podem alterar o papel de outros administradores.",
+    }
+  }
+
+  const supabase = getServiceSupabase()
+
+  const { data: target } = await supabase
+    .from("admin_users")
+    .select("email, role")
+    .eq("id", adminId)
+    .single()
+
+  if (!target) return { success: false, message: "Administrador não encontrado." }
+  if (target.role === "super_admin") {
+    return { success: false, message: "Não é possível alterar o papel de um super administrador." }
+  }
+  // Impede que um super_admin seja criado via esta rota (deve ser feito via createAdminUser)
+  if (newRole === "super_admin") {
+    return { success: false, message: "Para promover alguém a super administrador, crie um novo usuário com esse papel." }
+  }
+
+  const { error } = await supabase
+    .from("admin_users")
+    .update({
+      role: newRole,
+      permissions: newRole === "operator" ? permissions : [],
+    })
+    .eq("id", adminId)
+
+  if (error) return { success: false, message: error.message }
+
+  // Sincronizar metadados no Supabase Auth
+  const { data: listData } = await supabase.auth.admin.listUsers()
+  const authUser = listData?.users.find((u) => u.email === target.email)
+  if (authUser) {
+    await supabase.auth.admin.updateUserById(authUser.id, {
+      user_metadata: { ...authUser.user_metadata, admin_role: newRole },
+      app_metadata: { ...authUser.app_metadata, admin_role: newRole },
+    })
+  }
+
+  return { success: true, message: "Papel atualizado com sucesso!" }
 }
 
 export async function resetAdminPassword(email: string) {

@@ -23,8 +23,6 @@ function generateCode(): string {
  */
 export async function generateAndSend2FACode(email: string, userId?: string) {
   try {
-    console.log("🔐 [2FA] Gerando código para:", email)
-
     // 1. Verificar se o usuário é admin
     // Usa getUserById (direto, sem paginação) se userId fornecido; fallback por email
     let user: any
@@ -45,7 +43,6 @@ export async function generateAndSend2FACode(email: string, userId?: string) {
       }
       user = authUser.users.find(u => u.email === email)
       if (!user) {
-        console.log("❌ [2FA] Usuário não encontrado:", email)
         return { success: false, message: "Usuário não encontrado" }
       }
     }
@@ -53,7 +50,6 @@ export async function generateAndSend2FACode(email: string, userId?: string) {
     const isAdmin = user.user_metadata?.is_admin === true || user.app_metadata?.is_admin === true
     
     if (!isAdmin) {
-      console.log("❌ [2FA] Usuário não é admin:", email)
       return {
         success: false,
         message: "Acesso negado"
@@ -62,8 +58,6 @@ export async function generateAndSend2FACode(email: string, userId?: string) {
 
     // 2. Gerar código
     const code = generateCode()
-    console.log("✅ [2FA] Código gerado:", code)
-
     // 3. Salvar no banco de dados
     const { error: insertError } = await supabase
       .from("admin_2fa_codes")
@@ -82,8 +76,6 @@ export async function generateAndSend2FACode(email: string, userId?: string) {
         message: "Erro ao gerar código de acesso"
       }
     }
-
-    console.log("✅ [2FA] Código salvo no banco")
 
     // 4. Em modo desenvolvimento, pular envio de email e retornar código diretamente
     if (process.env.NODE_ENV === 'development') {
@@ -118,8 +110,6 @@ export async function generateAndSend2FACode(email: string, userId?: string) {
         }
       }
 
-      console.log("✅ [2FA] Email enviado com sucesso:", emailData)
-
       return {
         success: true,
         message: "Código enviado para seu email. Verifique sua caixa de entrada.",
@@ -146,8 +136,6 @@ export async function generateAndSend2FACode(email: string, userId?: string) {
  */
 export async function validate2FACode(email: string, code: string) {
   try {
-    console.log("🔐 [2FA] Validando código para:", email)
-
     // 1. Buscar código no banco
     const { data: codes, error: fetchError } = await supabase
       .from("admin_2fa_codes")
@@ -167,7 +155,6 @@ export async function validate2FACode(email: string, code: string) {
     }
 
     if (!codes || codes.length === 0) {
-      console.log("❌ [2FA] Código não encontrado ou já usado")
       return {
         success: false,
         message: "Código inválido ou já utilizado"
@@ -181,7 +168,6 @@ export async function validate2FACode(email: string, code: string) {
     const now = new Date()
 
     if (now > expiresAt) {
-      console.log("❌ [2FA] Código expirado")
       return {
         success: false,
         message: "Código expirado. Solicite um novo código."
@@ -204,8 +190,6 @@ export async function validate2FACode(email: string, code: string) {
         message: "Erro ao processar código"
       }
     }
-
-    console.log("✅ [2FA] Código validado com sucesso")
 
     return {
       success: true,
@@ -226,8 +210,6 @@ export async function validate2FACode(email: string, code: string) {
  */
 export async function validate2FACodeAndLogin(email: string, code: string, password: string) {
   try {
-    console.log("🔐 [2FA] Validando código e fazendo login para:", email)
-
     // 1. Buscar código no banco
     const { data: codes, error: fetchError } = await supabase
       .from("admin_2fa_codes")
@@ -247,7 +229,6 @@ export async function validate2FACodeAndLogin(email: string, code: string, passw
     }
 
     if (!codes || codes.length === 0) {
-      console.log("❌ [2FA] Código não encontrado ou já usado")
       return {
         success: false,
         message: "Código inválido ou já utilizado"
@@ -257,11 +238,10 @@ export async function validate2FACodeAndLogin(email: string, code: string, passw
     const codeData = codes[0]
 
     // 2. Verificar expiração
-    const expiresAt = new Date(codeData.expires_at)
-    const now = new Date()
+    const expiresAt2 = new Date(codeData.expires_at)
+    const now2 = new Date()
 
-    if (now > expiresAt) {
-      console.log("❌ [2FA] Código expirado")
+    if (now2 > expiresAt2) {
       return {
         success: false,
         message: "Código expirado. Solicite um novo código."
@@ -269,7 +249,7 @@ export async function validate2FACodeAndLogin(email: string, code: string, passw
     }
 
     // 3. Marcar código como usado
-    const { error: updateError } = await supabase
+    const { error: updateError2 } = await supabase
       .from("admin_2fa_codes")
       .update({
         used: true,
@@ -277,15 +257,13 @@ export async function validate2FACodeAndLogin(email: string, code: string, passw
       })
       .eq("id", codeData.id)
 
-    if (updateError) {
-      console.error("❌ [2FA] Erro ao marcar código como usado:", updateError)
+    if (updateError2) {
+      console.error("❌ [2FA] Erro ao marcar código como usado:", updateError2)
       return {
         success: false,
         message: "Erro ao processar código"
       }
     }
-
-    console.log("✅ [2FA] Código validado com sucesso")
 
     // 4. Retornar sucesso (o login será feito no cliente)
     return {

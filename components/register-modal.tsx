@@ -11,8 +11,19 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { checkCPFExists, submitApplication } from "@/app/actions/solicitar"
-import { Loader2, User, Phone, Mail, MapPin, FileText, CheckCircle2, AlertCircle, Upload, X } from "lucide-react"
+import { Loader2, User, Phone, Mail, MapPin, FileText, CheckCircle2, AlertCircle, Upload, X, LogIn, KeyRound, UserX } from "lucide-react"
 import { formatCEP, formatPhone } from "@/lib/utils"
+import {
+    AlertDialog,
+    AlertDialogContent,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogCancel,
+    AlertDialogAction,
+    AlertDialogMedia,
+} from "@/components/ui/alert-dialog"
 
 interface RegisterModalProps {
     open: boolean
@@ -25,6 +36,7 @@ export default function RegisterModal({ open, onOpenChange }: RegisterModalProps
     const [cpfStatus, setCpfStatus] = useState<"initial" | "found" | "not_found" | "checking">("initial")
     const [cepLoading, setCepLoading] = useState(false)
     const [cepFilled, setCepFilled] = useState(false)
+    const [showCpfRegisteredDialog, setShowCpfRegisteredDialog] = useState(false)
 
     const form = useForm<StudentFormData>({
         resolver: zodResolver(studentSchema),
@@ -58,7 +70,7 @@ export default function RegisterModal({ open, onOpenChange }: RegisterModalProps
         try {
             const result = await checkCPFExists(cpf)
             if (result.alreadyApplied) {
-                toast.error(result.message)
+                setShowCpfRegisteredDialog(true)
                 setCpfStatus("initial")
                 return
             }
@@ -172,9 +184,40 @@ export default function RegisterModal({ open, onOpenChange }: RegisterModalProps
     }
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden p-0">
-                <div className="overflow-y-auto max-h-[90vh]">
+        <>
+            <AlertDialog open={showCpfRegisteredDialog} onOpenChange={setShowCpfRegisteredDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogMedia>
+                            <UserX />
+                        </AlertDialogMedia>
+                        <AlertDialogTitle>CPF já cadastrado</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Este CPF já possui uma conta no sistema. Acesse o portal para ver o status do seu pedido, ou recupere sua senha caso não a lembre.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            variant="outline"
+                            onClick={() => {
+                                sessionStorage.setItem("recover_password", "true")
+                                router.push("/login")
+                            }}
+                        >
+                            <KeyRound className="mr-2 h-4 w-4" />
+                            Recuperar Senha
+                        </AlertDialogAction>
+                        <AlertDialogAction onClick={() => router.push("/login")}>
+                            <LogIn className="mr-2 h-4 w-4" />
+                            Fazer Login
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            <Dialog open={open} onOpenChange={onOpenChange}>
+                <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden p-0">
+                    <div className="overflow-y-auto max-h-[90vh]">
                     <DialogHeader className="px-6 pt-6 pb-4 border-b bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5">
                         <DialogTitle className="text-2xl font-bold flex items-center gap-2">
                             <User className="h-6 w-6 text-primary" />
@@ -501,6 +544,7 @@ export default function RegisterModal({ open, onOpenChange }: RegisterModalProps
                     </form>
                 </div>
             </DialogContent>
-        </Dialog>
+            </Dialog>
+        </>
     )
 }

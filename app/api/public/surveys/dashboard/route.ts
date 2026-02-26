@@ -87,14 +87,10 @@ export async function GET() {
                         question.question_type === 'email' ||
                         question.question_type === 'phone'
                     ) {
+                        // SEGURANÇA: endpoint público retorna apenas contagem, nunca texto individual
                         analyticsData = {
                             type: 'text',
-                            responses: questionAnswers.map((a: any) => ({
-                                text: a.answer_value?.text ||
-                                    (a.answer_value?.first_name
-                                        ? `${a.answer_value.first_name} ${a.answer_value.last_name || ''}`.trim()
-                                        : JSON.stringify(a.answer_value))
-                            }))
+                            total: questionAnswers.length
                         };
                     }
 
@@ -120,31 +116,6 @@ export async function GET() {
                     .map(([date, count]) => ({ date, count: count as number }))
                     .sort((a, b) => a.date.localeCompare(b.date));
 
-                // Preparar respostas individuais para visão de planilha
-                const rawResponses = completedResponses.map((r: any) => {
-                    const answers: Record<string, string> = {};
-                    questionList.forEach(q => {
-                        const answer = (r.survey_answers as any[]).find((a: any) => a.question_id === q.id);
-                        if (answer) {
-                            const val = answer.answer_value;
-                            if (val?.text !== undefined) {
-                                answers[q.id] = val.text;
-                            } else if (val?.selected !== undefined) {
-                                answers[q.id] = Array.isArray(val.selected) ? val.selected.join(', ') : String(val.selected);
-                            } else if (val?.value !== undefined) {
-                                answers[q.id] = String(val.value);
-                            } else if (val?.first_name !== undefined) {
-                                answers[q.id] = `${val.first_name} ${val.last_name || ''}`.trim();
-                            } else {
-                                answers[q.id] = JSON.stringify(val);
-                            }
-                        } else {
-                            answers[q.id] = '';
-                        }
-                    });
-                    return { id: r.id, completed_at: r.completed_at, answers };
-                });
-
                 return {
                     survey: {
                         id: survey.id,
@@ -162,7 +133,7 @@ export async function GET() {
                     },
                     question_analytics: questionAnalytics,
                     responses_timeline: responsesTimeline,
-                    raw_responses: rawResponses,
+                    // raw_responses removido: endpoint público não deve expor dados pessoais individuais
                 };
             })
         );

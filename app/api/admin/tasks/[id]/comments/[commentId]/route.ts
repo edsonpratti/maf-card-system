@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/supabase'
 import { verifyAdminAccess, handleAuthError } from '@/lib/auth'
+import { logTaskEvent } from '@/lib/utils/task-logger'
 
 type RouteParams = { params: Promise<{ id: string; commentId: string }> }
 
 // DELETE /api/admin/tasks/[id]/comments/[commentId]
 export async function DELETE(_req: NextRequest, { params }: RouteParams) {
     try {
-        await verifyAdminAccess()
-        const { commentId } = await params
+        const admin = await verifyAdminAccess()
+        const { id, commentId } = await params
         const supabase = getServiceSupabase()
 
         const { error } = await supabase
@@ -19,6 +20,8 @@ export async function DELETE(_req: NextRequest, { params }: RouteParams) {
         if (error) {
             return NextResponse.json({ error: 'Falha ao excluir comentário' }, { status: 500 })
         }
+
+        await logTaskEvent(id, admin.email ?? 'admin', 'comment_deleted', 'Comentário removido')
 
         return new NextResponse(null, { status: 204 })
     } catch (error) {

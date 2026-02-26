@@ -42,6 +42,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         if (body.status        !== undefined) updates.status        = body.status
         if (body.start_date    !== undefined) updates.start_date    = body.start_date
         if (body.end_date      !== undefined) updates.end_date      = body.end_date || null
+        if (body.is_archived   !== undefined) updates.is_archived   = body.is_archived
 
         if (Object.keys(updates).length === 0) {
             return NextResponse.json({ error: 'Nenhum campo para atualizar' }, { status: 400 })
@@ -60,6 +61,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             return NextResponse.json({ error: 'Falha ao atualizar projeto' }, { status: 500 })
         }
 
+        // Ao arquivar/restaurar um projeto, propaga para todas as suas tarefas
+        if (body.is_archived !== undefined) {
+            await supabase
+                .from('tasks_items')
+                .update({ is_archived: body.is_archived })
+                .eq('project_id', id)
+        }
+
         return NextResponse.json(data)
     } catch (error) {
         return handleAuthError(error)
@@ -72,6 +81,19 @@ export async function DELETE(_req: NextRequest, { params }: RouteParams) {
         await verifyAdminAccess()
         const { id } = await params
         const supabase = getServiceSupabase()
+
+        // Bloqueia exclusão se o projeto possui tarefas vinculadas
+        const { count } = await supabase
+            .from('tasks_items')
+            .select('id', { count: 'exact', head: true })
+            .eq('project_id', id)
+
+        if ((count ?? 0) > 0) {
+            return NextResponse.json(
+                { error: 'Este projeto possui tarefas vinculadas e não pode ser excluído. Use o arquivamento para desativá-lo.' },
+                { status: 409 }
+            )
+        }
 
         // Cascata elimina tasks_items, subtasks, comments e attachments
         // Mas precisamos remover os arquivos do Storage antes

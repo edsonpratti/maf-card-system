@@ -8,7 +8,10 @@ import { sendWelcomeEmail } from "./first-access"
 import crypto from "crypto"
 
 // Rate limiting helper (simple in-memory implementation)
-// For production, consider using Redis or similar
+// AVISO DE SEGURANÇA: Esta implementação em memória não persiste entre reinicializações
+// do servidor e não é compartilhada entre múltiplas instâncias (ex: Vercel Serverless).
+// Para proteção real em produção, substitua por uma solução baseada em banco de dados
+// (ex: tabela de rate_limits no Supabase) ou Redis.
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
 
 function checkRateLimit(identifier: string, maxAttempts: number = 10, windowMs: number = 60000): boolean {

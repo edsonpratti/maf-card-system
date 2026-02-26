@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/supabase'
 import { verifyAdminAccess, handleAuthError } from '@/lib/auth'
 import type { CreateTaskData } from '@/lib/types/task-types'
+import { logTaskEvent } from '@/lib/utils/task-logger'
 
 type RouteParams = { params: Promise<{ id: string }> }
 
@@ -16,6 +17,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
             .from('tasks_items')
             .select('*')
             .eq('project_id', id)
+            .eq('is_archived', false)
             .order('created_at', { ascending: false })
 
         if (error) {
@@ -96,6 +98,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             console.error('Error creating task:', error)
             return NextResponse.json({ error: 'Falha ao criar tarefa' }, { status: 500 })
         }
+
+        // Log de criação
+        const details: string[] = [`Criada por ${admin.email ?? 'admin'}`]
+        if (body.assignee_email) details.push(`Responsável: ${body.assignee_email.trim()}`)
+        if (body.priority && body.priority !== 'medium') details.push(`Prioridade: ${body.priority}`)
+        await logTaskEvent(data.id, admin.email ?? 'admin', 'created', details.join(' · '))
 
         return NextResponse.json(data, { status: 201 })
     } catch (error) {

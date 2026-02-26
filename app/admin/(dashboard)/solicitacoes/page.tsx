@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { RequestFilters } from "@/components/admin/request-filters"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { CheckCircle, XCircle, Clock, FileCheck, ChevronLeft, ChevronRight } from "lucide-react"
+import { CheckCircle, XCircle, Clock, FileCheck, ChevronLeft, ChevronRight, List } from "lucide-react"
 
 const PAGE_SIZE = 30
 
@@ -94,7 +94,17 @@ export default async function SolicitacoesPage({
             </div>
 
             {/* Cards de Estatísticas */}
-            <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
+                        <CardTitle className="text-sm font-medium">Total</CardTitle>
+                        <List className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                        <div className="text-2xl font-bold">{stats.total}</div>
+                        <p className="text-xs text-muted-foreground">Todas as solicitações</p>
+                    </CardContent>
+                </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
                         <CardTitle className="text-sm font-medium">Pendentes</CardTitle>

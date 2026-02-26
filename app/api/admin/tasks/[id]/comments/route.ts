@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceSupabase } from '@/lib/supabase'
 import { verifyAdminAccess, handleAuthError } from '@/lib/auth'
+import { logTaskEvent } from '@/lib/utils/task-logger'
 
 type RouteParams = { params: Promise<{ id: string }> }
 
@@ -53,6 +54,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             console.error('Error creating comment:', error)
             return NextResponse.json({ error: 'Falha ao adicionar comentário' }, { status: 500 })
         }
+
+        await logTaskEvent(id, admin.email ?? 'admin', 'comment_added', 'Comentário adicionado')
 
         return NextResponse.json(data, { status: 201 })
     } catch (error) {

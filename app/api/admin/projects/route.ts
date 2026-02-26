@@ -43,6 +43,7 @@ export async function GET() {
             tasks_done:  countsMap[p.id]?.done  ?? 0,
         }))
 
+        // Retorna todos (ativos + arquivados) — o front-end separa por is_archived
         return NextResponse.json(result)
     } catch (error) {
         return handleAuthError(error)
