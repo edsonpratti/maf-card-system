@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Download, RefreshCw, BarChart3, Users, Sparkles, ChevronLeft, ChevronRight, Trash2, Brain, AlertTriangle, Send, ThumbsUp, ThumbsDown, Minus } from 'lucide-react'
+import { ArrowLeft, Download, RefreshCw, BarChart3, Users, Sparkles, ChevronLeft, ChevronRight, Trash2, Brain, AlertTriangle, Send, ThumbsUp, ThumbsDown, Minus, TrendingUp, Lightbulb, MessageSquareQuote, CheckCircle2 } from 'lucide-react'
 import { Survey, QuestionAnalytics } from '@/lib/types/survey-types'
 import { toast } from 'sonner'
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadialBarChart, RadialBar } from 'recharts'
@@ -67,6 +67,9 @@ export default function SurveyResultsPage({ params }: { params: Promise<{ id: st
     const [chatInitialized, setChatInitialized] = useState(false)
     const [chatError, setChatError] = useState<string | null>(null)
     const chatEndRef = useRef<HTMLDivElement>(null)
+    const [aiLoading, setAiLoading] = useState(false)
+    const [aiAnalysis, setAiAnalysis] = useState<any>(null)
+    const [aiError, setAiError] = useState<string | null>(null)
 
     useEffect(() => {
         const initializePage = async () => {
@@ -692,6 +695,28 @@ export default function SurveyResultsPage({ params }: { params: Promise<{ id: st
                 </CardContent>
             </Card>
         )
+    }
+
+    const handleGenerateAIAnalysis = async () => {
+        if (!surveyId) return
+        setAiLoading(true)
+        setAiError(null)
+        try {
+            const response = await fetch(`/api/admin/surveys/${surveyId}/ai-analysis`, {
+                method: 'POST',
+            })
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => null)
+                throw new Error(errorData?.error || 'Erro ao gerar análise')
+            }
+            const data = await response.json()
+            setAiAnalysis(data)
+        } catch (error: any) {
+            console.error('Erro ao gerar análise IA:', error)
+            setAiError(error.message || 'Erro ao gerar análise com IA. Tente novamente.')
+        } finally {
+            setAiLoading(false)
+        }
     }
 
     const initializeChat = async () => {
