@@ -218,6 +218,12 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                                 <p className="text-sm font-medium text-muted-foreground">CEP</p>
                                 <p className="font-mono">{address?.cep || 'N/A'}</p>
                             </div>
+                            {address?.country && (
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground">País</p>
+                                    <p>{address.country}</p>
+                                </div>
+                            )}
                         </div>
                     </CardContent>
                 </Card>

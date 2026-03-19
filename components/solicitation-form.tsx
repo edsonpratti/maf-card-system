@@ -14,6 +14,7 @@ import { checkCPFExists, checkEmailExists, checkContactEmailExists, submitApplic
 import { Loader2, X, Globe, AlertTriangle, LogIn, KeyRound, UserX } from "lucide-react"
 import Link from "next/link"
 import { formatCEP, formatPhone } from "@/lib/utils"
+import { InternationalPhoneInput } from "@/components/ui/phone-input"
 import {
     AlertDialog,
     AlertDialogContent,
@@ -57,6 +58,7 @@ export default function SolicitationForm() {
                 neighborhood: "",
                 city: "",
                 state: "",
+                country: "",
             },
         },
     })
@@ -67,6 +69,17 @@ export default function SolicitationForm() {
         form.setValue("isForeign", next)
         form.setValue("cpf", "")
         form.setValue("purchaseEmail", "")
+        form.setValue("whatsapp", "")
+        // Limpar endereço ao trocar de modo
+        form.setValue("address.cep", "")
+        form.setValue("address.street", "")
+        form.setValue("address.number", "")
+        form.setValue("address.complement", "")
+        form.setValue("address.neighborhood", "")
+        form.setValue("address.city", "")
+        form.setValue("address.state", "")
+        form.setValue("address.country", next ? "" : "")
+        setCepFilled(false)
         // If switching back to Brazilian mode, clear the email that was auto-filled
         if (isForeign) form.setValue("email", "")
         setCpfStatus("initial")
@@ -197,6 +210,7 @@ export default function SolicitationForm() {
         form.setValue("address.neighborhood", "")
         form.setValue("address.city", "")
         form.setValue("address.state", "")
+        form.setValue("address.country", "")
         setCepFilled(false)
         toast.info("Endereço limpo. Você pode preencher manualmente.")
     }
@@ -243,13 +257,14 @@ export default function SolicitationForm() {
         formData.append("whatsapp", data.whatsapp)
         formData.append("email", data.email)
         formData.append("certificationDate", data.certificationDate)
-        formData.append("address.cep", data.address.cep)
+        formData.append("address.cep", data.address.cep || "")
         formData.append("address.street", data.address.street)
         formData.append("address.number", data.address.number)
         formData.append("address.complement", data.address.complement || "")
-        formData.append("address.neighborhood", data.address.neighborhood)
+        formData.append("address.neighborhood", data.address.neighborhood || "")
         formData.append("address.city", data.address.city)
-        formData.append("address.state", data.address.state)
+        formData.append("address.state", data.address.state || "")
+        formData.append("address.country", data.address.country || "")
 
         // Handle photo upload (required)
         const photoInput = document.getElementById("photo") as HTMLInputElement
@@ -453,17 +468,27 @@ export default function SolicitationForm() {
 
                     <div className="grid grid-cols-1 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="whatsapp" className="text-gray-300 text-sm">WhatsApp</Label>
-                            <Input
-                                id="whatsapp"
-                                {...form.register("whatsapp")}
-                                placeholder="(00) 00000-0000"
-                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 text-base"
-                                onChange={(e) => {
-                                    e.target.value = formatPhone(e.target.value)
-                                    form.register("whatsapp").onChange(e)
-                                }}
-                            />
+                            <Label htmlFor="whatsapp" className="text-gray-300 text-sm">
+                                {isForeign ? "Telefone / WhatsApp" : "WhatsApp"}
+                            </Label>
+                            {isForeign ? (
+                                <InternationalPhoneInput
+                                    id="whatsapp"
+                                    value={form.watch("whatsapp")}
+                                    onChange={(val) => form.setValue("whatsapp", val, { shouldValidate: true })}
+                                />
+                            ) : (
+                                <Input
+                                    id="whatsapp"
+                                    {...form.register("whatsapp")}
+                                    placeholder="(00) 00000-0000"
+                                    className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 h-11 text-base"
+                                    onChange={(e) => {
+                                        e.target.value = formatPhone(e.target.value)
+                                        form.register("whatsapp").onChange(e)
+                                    }}
+                                />
+                            )}
                             {form.formState.errors.whatsapp && (
                                 <p className="text-sm text-red-400">{form.formState.errors.whatsapp.message}</p>
                             )}
@@ -532,117 +557,216 @@ export default function SolicitationForm() {
                     </div>
 
                     {/* Address Fields Simplified */}
-                    <div className="space-y-2">
-                        <Label htmlFor="cep" className="text-gray-300 text-sm">CEP</Label>
-                        <div className="relative">
-                            <Input
-                                id="cep"
-                                {...form.register("address.cep")}
-                                placeholder="00000-000"
-                                disabled={cepLoading}
-                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base"
-                                onChange={(e) => {
-                                    e.target.value = formatCEP(e.target.value)
-                                    form.register("address.cep").onChange(e)
-                                }}
-                                onBlur={(e) => {
-                                    form.register("address.cep").onBlur(e)
-                                    handleCEPBlur(e)
-                                }}
-                            />
-                            {cepLoading && (
-                                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-emerald-400" />
-                            )}
-                        </div>
-                        {cepLoading && (
-                            <p className="text-sm text-gray-400">Buscando endereço...</p>
-                        )}
-                        {cepFilled && (
-                            <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/30 rounded-md p-2">
-                                <p className="text-xs text-emerald-400">✓ Endereço preenchido automaticamente</p>
-                                <button
-                                    type="button"
-                                    onClick={handleClearAddress}
-                                    className="text-emerald-400 hover:text-emerald-300 transition-colors"
-                                    title="Limpar endereço"
-                                >
-                                    <X className="h-4 w-4" />
-                                </button>
+                    {!isForeign ? (
+                        /* ── Endereço Brasileiro ── */
+                        <>
+                            <div className="space-y-2">
+                                <Label htmlFor="cep" className="text-gray-300 text-sm">CEP</Label>
+                                <div className="relative">
+                                    <Input
+                                        id="cep"
+                                        {...form.register("address.cep")}
+                                        placeholder="00000-000"
+                                        disabled={cepLoading}
+                                        className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base"
+                                        onChange={(e) => {
+                                            e.target.value = formatCEP(e.target.value)
+                                            form.register("address.cep").onChange(e)
+                                        }}
+                                        onBlur={(e) => {
+                                            form.register("address.cep").onBlur(e)
+                                            handleCEPBlur(e)
+                                        }}
+                                    />
+                                    {cepLoading && (
+                                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-emerald-400" />
+                                    )}
+                                </div>
+                                {cepLoading && (
+                                    <p className="text-sm text-gray-400">Buscando endereço...</p>
+                                )}
+                                {cepFilled && (
+                                    <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/30 rounded-md p-2">
+                                        <p className="text-xs text-emerald-400">✓ Endereço preenchido automaticamente</p>
+                                        <button
+                                            type="button"
+                                            onClick={handleClearAddress}
+                                            className="text-emerald-400 hover:text-emerald-300 transition-colors"
+                                            title="Limpar endereço"
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
 
 
-                    <div className="grid grid-cols-1 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="street" className="text-gray-300 text-sm">Rua</Label>
-                            <Input
-                                id="street"
-                                {...form.register("address.street")}
-                                disabled={cepLoading}
-                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base"
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="street" className="text-gray-300 text-sm">Rua</Label>
+                                    <Input
+                                        id="street"
+                                        {...form.register("address.street")}
+                                        disabled={cepLoading}
+                                        className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="number" className="text-gray-300 text-sm">Número</Label>
+                                        <Input
+                                            id="number"
+                                            {...form.register("address.number")}
+                                            disabled={cepLoading}
+                                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="complement" className="text-gray-300 text-sm">Complemento</Label>
+                                        <Input
+                                            id="complement"
+                                            {...form.register("address.complement")}
+                                            placeholder="Opcional"
+                                            disabled={cepLoading}
+                                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="neighborhood" className="text-gray-300 text-sm">Bairro</Label>
+                                    <Input
+                                        id="neighborhood"
+                                        {...form.register("address.neighborhood")}
+                                        disabled={cepLoading}
+                                        className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div className="space-y-2 col-span-2">
+                                        <Label htmlFor="city" className="text-gray-300 text-sm">Cidade</Label>
+                                        <Input
+                                            id="city"
+                                            {...form.register("address.city")}
+                                            disabled={cepLoading}
+                                            readOnly={cepFilled}
+                                            className={`bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base ${cepFilled ? "bg-white/10 cursor-not-allowed" : ""}`}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="state" className="text-gray-300 text-sm">UF</Label>
+                                        <Input
+                                            id="state"
+                                            {...form.register("address.state")}
+                                            maxLength={2}
+                                            disabled={cepLoading}
+                                            readOnly={cepFilled}
+                                            className={`bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base ${cepFilled ? "bg-white/10 cursor-not-allowed" : ""}`}
+                                            onChange={(e) => {
+                                                e.target.value = e.target.value.toUpperCase()
+                                                form.register("address.state").onChange(e)
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        /* ── Endereço Internacional (Estrangeiro) ── */
+                        <>
+                            <div className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                                <Globe className="h-4 w-4 text-blue-400 shrink-0" />
+                                <p className="text-xs text-blue-300">
+                                    Preencha seu endereço internacional. Não é necessário CEP brasileiro.
+                                </p>
+                            </div>
+
                             <div className="space-y-2">
-                                <Label htmlFor="number" className="text-gray-300 text-sm">Número</Label>
+                                <Label htmlFor="country" className="text-gray-300 text-sm">País / Country *</Label>
                                 <Input
-                                    id="number"
-                                    {...form.register("address.number")}
-                                    disabled={cepLoading}
-                                    className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base"
+                                    id="country"
+                                    {...form.register("address.country")}
+                                    placeholder="Ex: United States, Portugal, Argentina..."
+                                    className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500/20 h-11 text-base"
                                 />
+                                {form.formState.errors.address?.country && (
+                                    <p className="text-sm text-red-400">{form.formState.errors.address.country.message}</p>
+                                )}
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="complement" className="text-gray-300 text-sm">Complemento</Label>
-                                <Input
-                                    id="complement"
-                                    {...form.register("address.complement")}
-                                    placeholder="Opcional"
-                                    disabled={cepLoading}
-                                    className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base"
-                                />
+
+                            <div className="grid grid-cols-1 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="street" className="text-gray-300 text-sm">Endereço / Address *</Label>
+                                    <Input
+                                        id="street"
+                                        {...form.register("address.street")}
+                                        placeholder="Ex: 123 Main Street, Apt 4B"
+                                        className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500/20 h-11 text-base"
+                                    />
+                                    {form.formState.errors.address?.street && (
+                                        <p className="text-sm text-red-400">{form.formState.errors.address.street.message}</p>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="number" className="text-gray-300 text-sm">Número / Number *</Label>
+                                        <Input
+                                            id="number"
+                                            {...form.register("address.number")}
+                                            placeholder="Ex: 123"
+                                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500/20 h-11 text-base"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="complement" className="text-gray-300 text-sm">Complemento</Label>
+                                        <Input
+                                            id="complement"
+                                            {...form.register("address.complement")}
+                                            placeholder="Apt, Suite..."
+                                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500/20 h-11 text-base"
+                                        />
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-1 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="neighborhood" className="text-gray-300 text-sm">Bairro</Label>
-                            <Input
-                                id="neighborhood"
-                                {...form.register("address.neighborhood")}
-                                disabled={cepLoading}
-                                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base"
-                            />
-                        </div>
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="space-y-2 col-span-2">
-                                <Label htmlFor="city" className="text-gray-300 text-sm">Cidade</Label>
-                                <Input
-                                    id="city"
-                                    {...form.register("address.city")}
-                                    disabled={cepLoading}
-                                    readOnly={cepFilled}
-                                    className={`bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base ${cepFilled ? "bg-white/10 cursor-not-allowed" : ""}`}
-                                />
+
+                            <div className="grid grid-cols-1 gap-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="city" className="text-gray-300 text-sm">Cidade / City *</Label>
+                                        <Input
+                                            id="city"
+                                            {...form.register("address.city")}
+                                            placeholder="Ex: New York, Lisboa..."
+                                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500/20 h-11 text-base"
+                                        />
+                                        {form.formState.errors.address?.city && (
+                                            <p className="text-sm text-red-400">{form.formState.errors.address.city.message}</p>
+                                        )}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="state" className="text-gray-300 text-sm">Estado / Province</Label>
+                                        <Input
+                                            id="state"
+                                            {...form.register("address.state")}
+                                            placeholder="Ex: NY, CA..."
+                                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500/20 h-11 text-base"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="cep" className="text-gray-300 text-sm">Código Postal / Zip Code</Label>
+                                    <Input
+                                        id="cep"
+                                        {...form.register("address.cep")}
+                                        placeholder="Ex: 10001, SW1A 1AA..."
+                                        className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500/20 h-11 text-base"
+                                    />
+                                    <p className="text-xs text-gray-500">Opcional para endereços internacionais</p>
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="state" className="text-gray-300 text-sm">UF</Label>
-                                <Input
-                                    id="state"
-                                    {...form.register("address.state")}
-                                    maxLength={2}
-                                    disabled={cepLoading}
-                                    readOnly={cepFilled}
-                                    className={`bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 h-11 text-base ${cepFilled ? "bg-white/10 cursor-not-allowed" : ""}`}
-                                    onChange={(e) => {
-                                        e.target.value = e.target.value.toUpperCase()
-                                        form.register("address.state").onChange(e)
-                                    }}
-                                />
-                            </div>
-                        </div>
-                    </div>
+                        </>
+                    )}
 
                     {needsCertificate && (
                         <div className="space-y-2 border border-yellow-500/30 p-3 sm:p-4 rounded-lg bg-yellow-500/10">

@@ -237,6 +237,7 @@ export async function submitApplication(prevState: any, formData: FormData) {
             neighborhood: formData.get("address.neighborhood"),
             city: formData.get("address.city"),
             state: formData.get("address.state"),
+            country: formData.get("address.country") || (isForeign ? "" : "Brasil"),
         },
         // We will handle the files separately
     }
@@ -320,7 +321,8 @@ export async function submitApplication(prevState: any, formData: FormData) {
     }
 
     const photoExt = photoFile.name.split('.').pop()
-    const photoFileName = `${cpfClean}_photo_${Date.now()}.${photoExt}`
+    const photoIdentifier = cpfClean || rawData.purchaseEmail?.replace(/[@.]/g, '_') || `foreign_${Date.now()}`
+    const photoFileName = `${photoIdentifier}_photo_${Date.now()}.${photoExt}`
 
     try {
         const { data: photoUploadData, error: photoUploadError } = await supabase.storage

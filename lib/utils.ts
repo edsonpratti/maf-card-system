@@ -28,6 +28,17 @@ export function formatPhone(phone: string) {
     .substring(0, 15)
 }
 
+export function formatInternationalPhone(phone: string) {
+  // Permite +, dígitos, espaços e hífens para telefones internacionais
+  let cleaned = phone.replace(/[^\d+\s-]/g, "")
+  // Garante que + só aparece no início
+  if (cleaned.indexOf("+") > 0) {
+    cleaned = cleaned.replace(/\+/g, "")
+  }
+  // Limitar tamanho
+  return cleaned.substring(0, 20)
+}
+
 /**
  * Gera um número de cartão único no formato: [Letra][00000-99999]
  * Exemplo: A12345, Z98765

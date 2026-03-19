@@ -43,6 +43,7 @@ export default function EditUserDataForm({ user, photoUrl }: EditUserDataFormPro
         city: address.city || "",
         state: address.state || "",
         cep: address.cep || "",
+        country: address.country || "",
     })
 
     const [photoFile, setPhotoFile] = useState<File | null>(null)
@@ -104,6 +105,7 @@ export default function EditUserDataForm({ user, photoUrl }: EditUserDataFormPro
                     city: formData.city,
                     state: formData.state,
                     cep: formData.cep,
+                    country: formData.country,
                 },
                 photoBase64: photoBase64,
                 removePhoto: removePhoto
@@ -299,12 +301,22 @@ export default function EditUserDataForm({ user, photoUrl }: EditUserDataFormPro
                                     />
                                 </div>
                                 
-                                <div className="space-y-2 md:col-span-2">
+                                <div className="space-y-2">
                                     <Label htmlFor="state">Estado</Label>
                                     <Input
                                         id="state"
                                         value={formData.state}
                                         onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                                    />
+                                </div>
+                                
+                                <div className="space-y-2">
+                                    <Label htmlFor="country">País</Label>
+                                    <Input
+                                        id="country"
+                                        value={formData.country}
+                                        onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                                        placeholder="Ex: Brasil, United States..."
                                     />
                                 </div>
                             </div>

@@ -1132,6 +1132,7 @@ export async function updateUserData(userId: string, data: {
         city?: string
         state?: string
         cep?: string
+        country?: string
     }
     photoBase64?: string | null
     removePhoto?: boolean

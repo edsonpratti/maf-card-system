@@ -464,8 +464,12 @@ export default function AlunasCadastradasPage() {
                                             {student.address_json && Object.keys(student.address_json).length > 0 ? (
                                                 <div className="text-xs">
                                                     {student.address_json.street && <div>{student.address_json.street}</div>}
-                                                    {student.address_json.city && student.address_json.state && (
-                                                        <div>{student.address_json.city} - {student.address_json.state}</div>
+                                                    {student.address_json.city && (
+                                                        <div>
+                                                            {student.address_json.city}
+                                                            {student.address_json.state && ` - ${student.address_json.state}`}
+                                                            {student.address_json.country && student.address_json.country !== 'Brasil' && ` (${student.address_json.country})`}
+                                                        </div>
                                                     )}
                                                 </div>
                                             ) : '-'}
