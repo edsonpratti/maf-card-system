@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Download, RefreshCw, BarChart3, Users, Sparkles, ChevronLeft, ChevronRight, Trash2, Brain, AlertTriangle, Send } from 'lucide-react'
+import { ArrowLeft, Download, RefreshCw, BarChart3, Users, Sparkles, ChevronLeft, ChevronRight, Trash2, Brain, AlertTriangle, Send, ThumbsUp, ThumbsDown, Minus } from 'lucide-react'
 import { Survey, QuestionAnalytics } from '@/lib/types/survey-types'
 import { toast } from 'sonner'
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadialBarChart, RadialBar } from 'recharts'
