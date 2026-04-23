@@ -265,9 +265,11 @@ export function validateAnswer(question: SurveyQuestion, answerValue: any): bool
 
         case 'phone':
             if (typeof answerValue.text !== 'string' || answerValue.text.trim() === '') return false;
-            // Validação de telefone brasileiro (10 ou 11 dígitos)
+            // Validação internacional: aceita 7 a 15 dígitos (padrão E.164)
+            // Cobre tanto formatos brasileiros ("+55 11999999999" ou "11999999999")
+            // quanto formatos internacionais ("+351 912345678", "+1 2025550123" etc.)
             const phoneNumbers = answerValue.text.replace(/\D/g, '');
-            return phoneNumbers.length >= 10 && phoneNumbers.length <= 11;
+            return phoneNumbers.length >= 7 && phoneNumbers.length <= 15;
 
         case 'multiple_choice':
             const mcSettings = question.settings as MultipleChoiceSettings;
